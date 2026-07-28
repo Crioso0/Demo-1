@@ -295,7 +295,13 @@ canvas#game.placing{cursor:none}
 .inspect-actions{display:flex; gap:8px}
 .inspect-actions .btn{flex:1}
 
-.sidebar-foot{margin-top:auto; display:flex; gap:8px; padding-top:8px}
+.sidebar-foot{
+  margin-top:auto; display:flex; gap:8px;
+  /* stays reachable when the shop list outgrows a short viewport */
+  position:sticky; bottom:-12px;
+  padding:10px 0 4px;
+  background:linear-gradient(180deg, rgba(16,24,51,0), #101833 24%);
+}
 .btn-go{
   flex:1; padding:12px; border-radius:14px; line-height:1.15;
   background:linear-gradient(#5ee38a,#22a75a); border-color:#177c40; color:#06240f;
@@ -395,6 +401,18 @@ canvas#game.placing{cursor:none}
   background:var(--rare,#6f86d6); color:#0b1020;
 }
 .crate-continue{position:absolute; bottom:2px}
+
+/* short viewports — tighten the chrome so the map keeps its room */
+@media (max-height:720px){
+  .stage{padding:8px 8px 8px 12px}
+  .hud{margin-bottom:6px}
+  .hud-item{padding:5px 12px; font-size:15px}
+  .shop-item{padding:6px}
+  .shop-grid{gap:6px}
+  .sidebar{gap:8px; padding:10px 12px 10px}
+  .shop-section h4{margin-bottom:5px}
+  .inspect{padding:9px}
+}
 
 /* small screens */
 @media (max-width:900px){
