@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Balloon Bastion — Hero Collector Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<!-- ===================== MENU ===================== -->
+<section class="screen active" id="screen-menu">
+  <div class="menu-bg">
+    <span class="floaty b1"></span><span class="floaty b2"></span><span class="floaty b3"></span>
+    <span class="floaty b4"></span><span class="floaty b5"></span><span class="floaty b6"></span>
+  </div>
+  <div class="menu-inner">
+    <h1 class="logo">
+      <span class="logo-top">BALLOON</span>
+      <span class="logo-bot">BASTION</span>
+    </h1>
+    <p class="tagline">Round-based defense &middot; Collect all 3 heroes &middot; <em>demo build</em></p>
+
+    <div class="menu-buttons">
+      <button class="btn btn-primary big" id="btn-play">Play</button>
+      <button class="btn big" id="btn-collection">Heroes</button>
+      <button class="btn ghost" id="btn-howto">How to play</button>
+    </div>
+
+    <div class="menu-foot">
+      <span class="gem-chip"><i class="gem"></i><span id="menu-gems">0</span></span>
+      <span class="roster-chip">Heroes unlocked: <b id="menu-roster">1</b>/3</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== COLLECTION ===================== -->
+<section class="screen" id="screen-collection">
+  <header class="sub-head">
+    <button class="btn small" data-back>&larr; Back</button>
+    <h2>Hero Collection</h2>
+    <span class="gem-chip"><i class="gem"></i><span id="col-gems">0</span></span>
+  </header>
+
+  <div class="collection-body">
+    <div class="hero-cards" id="hero-cards"><!-- built by JS --></div>
+
+    <div class="crate-panel">
+      <div class="crate-visual" id="crate-visual">
+        <div class="crate">
+          <div class="crate-lid"></div>
+          <div class="crate-body"><span class="crate-star">★</span></div>
+        </div>
+      </div>
+      <h3>Hero Crate</h3>
+      <p class="muted">Contains one hero. Duplicates convert to <b>75</b> gems.</p>
+      <button class="btn btn-primary" id="btn-open-crate">Open Crate &mdash; 150 <i class="gem sm"></i></button>
+      <p class="crate-note" id="crate-note">Earn gems by clearing rounds.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== GAME ===================== -->
+<section class="screen" id="screen-game">
+  <div class="game-wrap">
+    <div class="stage">
+      <div class="hud">
+        <div class="hud-item lives"><i class="ico-heart"></i><span id="hud-lives">100</span></div>
+        <div class="hud-item cash"><i class="ico-coin"></i><span id="hud-cash">650</span></div>
+        <div class="hud-item round"><span class="lbl">ROUND</span><span id="hud-round">0/15</span></div>
+        <button class="btn small ghost hud-quit" id="btn-quit">Quit</button>
+      </div>
+
+      <div class="canvas-holder">
+        <canvas id="game" width="1120" height="640"></canvas>
+        <div class="wave-banner" id="wave-banner"></div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="shop-section">
+        <h4>Towers</h4>
+        <div class="shop-grid" id="shop-towers"></div>
+      </div>
+      <div class="shop-section">
+        <h4>Heroes <span class="hint">one each</span></h4>
+        <div class="shop-grid heroes" id="shop-heroes"></div>
+      </div>
+
+      <div class="inspect" id="inspect" hidden>
+        <div class="inspect-head">
+          <b id="ins-name">—</b>
+          <span class="lvl" id="ins-level">Lv 1</span>
+        </div>
+        <div class="inspect-stats" id="ins-stats"></div>
+        <div class="inspect-actions">
+          <button class="btn small btn-primary" id="btn-upgrade">Upgrade</button>
+          <button class="btn small danger" id="btn-sell">Sell</button>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="btn btn-go" id="btn-start-round">
+          <span class="go-label">Start Round</span>
+          <span class="go-sub" id="go-sub">15 rounds to win</span>
+        </button>
+        <button class="btn speed" id="btn-speed">1&times;</button>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ===================== OVERLAYS ===================== -->
+<div class="overlay" id="overlay-result" hidden>
+  <div class="result-card">
+    <h2 id="res-title">Victory!</h2>
+    <p id="res-sub">You defended the bastion.</p>
+    <div class="reward-row"><i class="gem"></i><span id="res-gems">+0</span> gems earned</div>
+    <div class="result-actions">
+      <button class="btn btn-primary" id="btn-res-again">Play again</button>
+      <button class="btn" id="btn-res-menu">Menu</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-crate" hidden>
+  <div class="crate-stage" id="crate-stage">
+    <div class="rays"></div>
+    <div class="crate big" id="crate-anim">
+      <div class="crate-lid"></div>
+      <div class="crate-body"><span class="crate-star">★</span></div>
+    </div>
+    <div class="reveal-card" id="reveal-card">
+      <div class="reveal-inner">
+        <div class="reveal-art" id="reveal-art"></div>
+        <div class="reveal-name" id="reveal-name">Hero</div>
+        <div class="reveal-role" id="reveal-role">role</div>
+        <div class="reveal-tag" id="reveal-tag">NEW HERO</div>
+      </div>
+    </div>
+    <button class="btn btn-primary crate-continue" id="btn-crate-continue" hidden>Continue</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-help" hidden>
+  <div class="help-card">
+    <h2>How to play</h2>
+    <ol>
+      <li>Pick a tower or hero from the right panel, then click the grass to place it. You can't build on the track.</li>
+      <li>Press <b>Start Round</b> to send the balloons. Survive all <b>15</b> rounds.</li>
+      <li>Every balloon that reaches the end costs you lives. Popping earns cash for more towers.</li>
+      <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it.</li>
+      <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other two heroes.</li>
+    </ol>
+    <button class="btn btn-primary" id="btn-help-close">Got it</button>
+  </div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
