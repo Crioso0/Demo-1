@@ -112,7 +112,7 @@ const UI = {
       g.beginPlacing(def, isHero);
       this.syncShop();
       this.syncInspect();
-      Sfx.tone({ freq: 620, dur: .06, type: 'triangle', gain: .03 });
+      Sfx.click();
     };
 
     this.shopItems.push({ el, def, isHero });
@@ -280,7 +280,7 @@ const UI = {
     $('#overlay-crate').hidden = false;
 
     Sfx.resume();
-    Sfx.tone({ freq: 160, to: 420, dur: 1.1, type: 'sawtooth', gain: .03 });
+    Sfx.crateRumble();
     stage.classList.add('shaking');
 
     setTimeout(() => {

@@ -62,6 +62,26 @@ level 3) and sells back for 70%.
 | `Q` / click Verdant | Fire the sawblade ultimate |
 | `Esc` / right-click | Cancel placement |
 
+## Sound
+
+Every effect is synthesised at runtime — there are no audio files. Each one is
+built from two primitives (a pitched `tone` and filtered `noise`, both with
+sweepable envelopes) layered to match the real thing:
+
+- **Balloon pop** — a near-instant broadband crack over a short low cavity
+  thump. Bigger balloons crack lower and duller. A cascading pink pops five
+  layers in one frame, so a gate thins the stack instead of machine-gunning.
+- **Sawblade** — a *sustained* voice, not a one-shot: a blade tone plus its
+  octave, amplitude-modulated at the rate the teeth pass (that's the buzz),
+  over a bed of grind noise. It spins up, bites when it cuts a balloon, and
+  spins down. Bigger blades run brighter and grittier.
+- **Explosion** — a hard crack, a filtered body that darkens as it decays, and
+  a sub-bass drop, all with a plateau before the tail so the blast has weight.
+- **Dart** an airy rising thwip, **tacks** a metallic scatter, **frost** an icy
+  rush upward, **lightning** a bright crackle with a thunder tail, **slam** a
+  deep impact with debris rattling after it, and a **leak** is the squeal of a
+  balloon deflating away.
+
 ## Layout
 
 ```

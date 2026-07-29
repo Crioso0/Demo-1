@@ -254,7 +254,7 @@ class Tower {
             kind: 'tack', color: '#f2f6ff', size: 3.2,
           }));
         }
-        Sfx.shoot();
+        Sfx.tack();
         break;
       }
       case 'bomb': {
@@ -275,7 +275,7 @@ class Tower {
           b.chill(d.slow, d.slowTime);
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y });
         }
-        Sfx.tone({ freq: 900, to: 1500, dur: .18, type: 'sine', gain: .03 });
+        Sfx.frost();
         break;
       }
       case 'chain': {
@@ -325,7 +325,8 @@ class Tower {
         });
         game.damage(target, this.damage, { source: this, x: target.x, y: target.y });
         game.spark(target.x, target.y, '#9dffc6', 5);
-        Sfx.tone({ freq: 1150, to: 720, dur: .09, type: 'sine', gain: .022 });
+        Sfx.tone({ freq: 1250, to: 780, dur: .09, type: 'sine', gain: .02, attack: .001 });
+        Sfx.noise({ dur: .1, gain: .03, type: 'bandpass', freq: 3000, freqTo: 1400, q: 2 });
         break;
       }
     }
@@ -511,6 +512,8 @@ class Saw {
     this.x = PATH.at(0).x; this.y = PATH.at(0).y;
     /* brief per-balloon cooldown so a blimp is chewed, not one-shot */
     this.hitAt = new Map();
+    /* the blade hum runs for as long as the saw is on the track */
+    this.voice = Sfx.startSaw(level);
   }
 
   update(dt, game) {
@@ -538,10 +541,12 @@ class Saw {
       this.hitAt.set(b, this.age + .12);
       game.damage(b, this.damage, { source: this, x: b.x, y: b.y, silent: true });
       game.spark(b.x, b.y, '#9dffc6', 6);
+      this.voice.bite();
     }
 
     if (this.d >= PATH.length) {
       this.dead = true;
+      this.voice.stop();
       game.explodeFx(this.x, this.y, 70, '#5cff9e');
       game.shake = Math.max(game.shake, 6);
     }
@@ -681,6 +686,7 @@ class Game {
   }
 
   reset() {
+    Sfx.stopAll();
     this.time = 0;
     this.lives = 100;
     this.cash = 650;
@@ -860,7 +866,7 @@ class Game {
     if (!p) return false;
     const cost = p.isHero ? 0 : p.def.cost;
     if (!this.canPlaceAt(x, y) || this.cash < cost) {
-      Sfx.tone({ freq: 200, to: 120, dur: .12, type: 'square', gain: .04 });
+      Sfx.deny();
       return false;
     }
     const t = new Tower(p.def, x, y, p.isHero);
@@ -898,7 +904,7 @@ class Game {
   upgrade(t) {
     if (t.level >= MAX_LEVEL) return;
     const cost = upgradeCost(t.def, t.level);
-    if (this.cash < cost) { Sfx.tone({ freq: 200, to: 120, dur: .12, type: 'square', gain: .04 }); return; }
+    if (this.cash < cost) { Sfx.deny(); return; }
     this.cash -= cost;
     t.spent += cost;
     t.level++;
@@ -926,12 +932,12 @@ class Game {
     if (!t || !t.def.ability || this.over) return false;
     if (t.charges <= 0) {
       this.floatText(t.x, t.y - 40, 'No charges left', '#ff5a6e', 1, 14);
-      Sfx.tone({ freq: 200, to: 120, dur: .12, type: 'square', gain: .04 });
+      Sfx.deny();
       return false;
     }
     if (!this.running && !this.bloons.length) {
       this.floatText(t.x, t.y - 40, 'Start a round first', '#ffcf5c', 1, 14);
-      Sfx.tone({ freq: 260, to: 180, dur: .12, type: 'square', gain: .035 });
+      Sfx.deny();
       return false;
     }
 
@@ -949,7 +955,7 @@ class Game {
     }
     this.floatText(t.x, t.y - 46, t.def.ability.name.toUpperCase() + '!', '#5cff9e', 1.5, 20);
     this.shake = Math.max(this.shake, 9);
-    Sfx.saw();
+    Sfx.ultCharge();
     this.onEvent('shop');
     return true;
   }
@@ -990,6 +996,7 @@ class Game {
   end(win) {
     if (this.over) return;
     this.over = true;
+    Sfx.stopAll();
     this.running = false;
     if (win) Sfx.fanfare(); else Sfx.defeat();
     this.onEvent(win ? 'victory' : 'defeat', this.runGems);
