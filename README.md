@@ -1,8 +1,7 @@
-# Balloon Bastion — hero collector demo
+# Void Bastion — hero collector demo
 
-A round-based balloon tower-defense demo that runs in the browser. You start with
-one hero, earn gems by clearing rounds, and spend them on crates to unlock the
-other three.
+A round-based tower-defense demo that runs in the browser. Ten levels across four
+maps, six collectible heroes, and the Void Legion marching on your bastion.
 
 **Play it:** open `index.html` in any modern browser. No build step, no server,
 no dependencies, no asset files — every sprite is drawn procedurally on canvas
@@ -10,39 +9,72 @@ and all sound is synthesised with WebAudio.
 
 ## The loop
 
-1. Place towers and heroes on the grass (not on the track).
-2. Start a round; balloons walk the track and cost you lives if they reach the
-   bastion. Popping them pays cash.
-3. Clear a round → cash bonus + **12 gems**. Clear all 15 → **75 gems**.
-4. Spend **150 gems** on a hero crate in the Heroes screen. Duplicates refund 75
-   gems. Progress is saved to `localStorage`.
+1. Pick a level from the campaign screen. Levels unlock in order.
+2. Place towers and up to **two heroes** on open ground (not on the route).
+3. Start a round; troopers march the route and cost you lives if they reach the
+   bastion. Kills pay cash.
+4. Clear every round in a level to win it. Levels pay **gems** (double on first
+   clear); a failed run still pays for the rounds you held.
+5. Spend **150 gems** on a hero crate. Duplicates refund 75. Progress is saved
+   to `localStorage`.
 
-Round 10, 14 and 15 send **M.O.A.B.** blimps that take a lot of damage and break
-into a pack of yellows.
+## The campaign
+
+Ten levels, escalating across four maps. Later levels add **Dreadnought**
+walkers, **Runners** (faster troopers) and **Shielded** troopers that shrug off
+part of every hit.
+
+| # | Level | Map | Rounds | Threats |
+|---|---|---|---|---|
+| 1 | First Contact | Sentry Ridge | 6 | — |
+| 2 | Ridge Patrol | Sentry Ridge | 8 | — |
+| 3 | Ashfall Landing | Ashfall Crater | 8 | faster legion |
+| 4 | Crater Push | Ashfall Crater | 10 | Dreadnought |
+| 5 | Frostline Watch | Frostline Outpost | 10 | runners |
+| 6 | Deep Freeze | Frostline Outpost | 12 | shielded, Dreadnought |
+| 7 | Ridge Assault | Sentry Ridge | 12 | runners, 2× Dreadnought |
+| 8 | Molten Siege | Ashfall Crater | 14 | shielded, 2× Dreadnought |
+| 9 | Whiteout | Frostline Outpost | 14 | runners, 3× Dreadnought |
+| 10 | The Rift | The Rift | 16 | everything, 4× Dreadnought |
+
+Waves are generated deterministically from the level definition, so a level
+always plays the same way but escalates with both round and level number.
+
+## The Void Legion
+
+Five grades of trooper — Grunt, Scout, Ranger, Shocker, Elite — where each tier
+is a heavier grade of armour. Damage strips one grade at a time, so an Elite
+sheds plating down through the ranks before it drops. **Dreadnought** walkers
+take sustained fire and spill a squad of Shockers when they break.
 
 ## Heroes
 
+Only **two may be deployed per mission**, so the roster choice is part of the
+level.
+
 | Hero | Role | Unlock | Ability |
 |---|---|---|---|
-| **Ember** | Flame Archer | starter | Fast arrows that ignite balloons for damage over time |
-| **Volt** | Storm Caller | crate | Forked lightning that arcs between up to four balloons |
-| **Terra** | Stone Warden | crate | Ground slam: area damage, knockback and a slow |
-| **Verdant** | Ring Bearer | crate | Weak ring beam, plus a clickable sawblade ultimate |
+| **Ember** | Flame Archer | starter | Fast arrows that ignite troopers |
+| **Volt** | Storm Caller | crate | Forked lightning across four targets |
+| **Terra** | Stone Warden | crate | Ground slam: area damage, knockback, slow |
+| **Verdant** | Ring Bearer | crate | Ring beam + **Buzzsaw Construct** ultimate |
+| **Streak** | Speedster | crate | Lightning jabs + **Overdrive** ultimate |
+| **Paragon** | Solar Sentinel | crate | Solar bolts + **Solar Lance** ultimate |
 
-Heroes cost nothing to deploy but only one of each can be on the map.
+### Clickable ultimates
 
-### Verdant's ultimate
+Three heroes have an ability you fire yourself — **click the hero on the map**,
+press `Q`, or use the green button in the inspect panel.
 
-Verdant is the only hero with an ability you fire yourself. His passive is a
-weak green energy beam; **click him on the map** (or press `Q`, or use the green
-button in the inspect panel) to grow huge and roll a giant sawblade construct
-down the entire track, shredding everything it rolls over.
+- **Buzzsaw Construct** (Verdant) — he swells and rolls a giant sawblade the
+  full length of the route, shredding everything it passes.
+- **Overdrive** (Streak) — a burst of supersonic fire where every shot forks
+  between three targets. A ring around him counts the window down.
+- **Solar Lance** (Paragon) — a blinding sustained beam that tracks the leading
+  trooper and burns everything in the line.
 
-Charges go by level — **1 use at level 1, 2 at level 2, 3 at level 3** — and the
-level-3 construct is bigger, faster, hits harder and runs a second
-counter-rotating blade. Charges refill at the start of every round, so the limit
-is per round rather than per run. Charge pips float above his head, and he wears
-a pulsing ring while a charge is available.
+All three scale the same way: **1 use at level 1, 2 at level 2, 3 at level 3**,
+refilled at the start of every round. Charge pips float above the hero.
 
 ## Towers
 
@@ -56,43 +88,47 @@ level 3) and sells back for 70%.
 |---|---|
 | Click shop item, then click map | Place |
 | Click a placed unit | Inspect / upgrade / sell |
+| Click a hero with a charge | Fire their ultimate |
 | `Space` | Start next round |
 | `1`–`4` | Quick-select a tower |
+| `Q` | Fire an ultimate |
 | `F` / speed button | 1× → 2× → 3× |
-| `Q` / click Verdant | Fire the sawblade ultimate |
 | `Esc` / right-click | Cancel placement |
 
 ## Sound
 
-Every effect is synthesised at runtime — there are no audio files. Each one is
-built from two primitives (a pitched `tone` and filtered `noise`, both with
-sweepable envelopes) layered to match the real thing:
+Every effect is synthesised at runtime — there are no audio files. Each is built
+from two primitives (a pitched `tone` and filtered `noise`, both with
+attack/hold/decay envelopes and a sweepable cutoff) layered to match the real
+thing, mixed through a compressor so a wave of simultaneous kills can't clip.
 
-- **Balloon pop** — a near-instant broadband crack over a short low cavity
-  thump. Bigger balloons crack lower and duller. A cascading pink pops five
-  layers in one frame, so a gate thins the stack instead of machine-gunning.
-- **Sawblade** — a *sustained* voice, not a one-shot: a blade tone plus its
-  octave, amplitude-modulated at the rate the teeth pass (that's the buzz),
-  over a bed of grind noise. It spins up, bites when it cuts a balloon, and
-  spins down. Bigger blades run brighter and grittier.
-- **Explosion** — a hard crack, a filtered body that darkens as it decays, and
-  a sub-bass drop, all with a plateau before the tail so the blast has weight.
-- **Dart** an airy rising thwip, **tacks** a metallic scatter, **frost** an icy
-  rush upward, **lightning** a bright crackle with a thunder tail, **slam** a
-  deep impact with debris rattling after it, and a **leak** is the squeal of a
-  balloon deflating away.
+- **Trooper down** — armour cracking apart over a low thud, with a fizz off the
+  ruptured power core. Heavier grades crack lower and duller. A gate thins the
+  stack when one trooper sheds several grades in a single frame.
+- **Money** — a bright metallic ding over a register clunk, then coins settling;
+  round payouts add a rising flourish on top.
+- **Sawblade** — a *sustained* voice: a blade tone plus its octave, amplitude-
+  modulated at the rate the teeth pass, over grind noise. It spins up, bites on
+  each cut, and spins down.
+- **Solar Lance** — a sustained searing voice, a detuned pair over a wide band
+  of roaring noise, running for as long as the beam burns.
+- **Overdrive** — a sonic-boom crack into an electric whine that holds for the
+  duration.
+- **Explosion** a hard crack with a plateau before the tail, **dart** an airy
+  thwip, **tacks** a metallic scatter, **frost** an icy rush, **lightning** a
+  bright crackle with a thunder tail, **slam** a deep impact with debris.
 
 ## Layout
 
 ```
 index.html        screens + markup
-css/styles.css    menu, collection, HUD, crate-opening animations
-js/utils.js       math, colour and path helpers
-js/data.js        map, balloon tiers, wave table, tower/hero defs + all artwork
-js/save.js        localStorage profile (gems, unlocked heroes)
-js/audio.js       WebAudio sound effects
+css/styles.css    menu, campaign, collection, HUD, crate animations
+js/utils.js       math, colour, path and seeded-RNG helpers
+js/data.js        maps, troop tiers, campaign, tower/hero defs + all artwork
+js/save.js        localStorage profile (gems, heroes, campaign progress)
+js/audio.js       WebAudio synthesis
 js/game.js        simulation and rendering
-js/ui.js          screens, shop, hero collection, crate ceremony
+js/ui.js          screens, campaign select, shop, crate ceremony
 js/main.js        boot + render loop
 ```
 
@@ -100,8 +136,10 @@ Console handle for tinkering: `BB.game`, `BB.Save`, `BB.UI`.
 
 ## Demo scope
 
-15 rounds, one map, 4 heroes, 4 towers, 5 balloon tiers + blimps. No meta
-progression beyond the crate unlocks, and hero levels reset each run.
+10 levels, 4 maps, 6 heroes, 4 towers, 5 troop grades plus Dreadnought walkers.
+No meta progression beyond crate unlocks and level unlocks; hero levels reset
+each run.
 
-Verdant is an original character built for this demo — a green ring-construct
-hero, not a licensed one.
+Verdant, Streak and Paragon are original characters built for this demo — a
+ring-construct hero, a speedster and a solar sentinel — not licensed ones, and
+the Void Legion is likewise this demo's own.

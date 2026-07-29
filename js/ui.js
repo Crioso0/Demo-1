@@ -14,11 +14,12 @@ const UI = {
     game.onEvent = (type, payload) => this.onGameEvent(type, payload);
 
     /* ---- menu ---- */
-    $('#btn-play').onclick = () => this.startRun();
+    $('#btn-play').onclick = () => { this.renderLevels(); this.show('levels'); };
     $('#btn-collection').onclick = () => { this.renderCollection(); this.show('collection'); };
     $('#btn-howto').onclick = () => $('#overlay-help').hidden = false;
     $('#btn-help-close').onclick = () => { $('#overlay-help').hidden = true; Save.data.seenHelp = true; Save.flush(); };
     $$('[data-back]').forEach((b) => (b.onclick = () => this.show('menu')));
+    $('#btn-res-again').onclick = () => { $('#overlay-result').hidden = true; this.startRun(); };
 
     /* ---- collection ---- */
     $('#btn-open-crate').onclick = () => this.openCrate();
@@ -54,8 +55,46 @@ const UI = {
     $('#menu-roster-max').textContent = HEROES.length;
   },
 
-  startRun() {
-    this.game.reset();
+  /* =================== campaign =================== */
+  renderLevels() {
+    $('#lvl-gems').textContent = Save.gems;
+    $('#lvl-progress').textContent = Save.clearedLevels();
+    const grid = $('#level-grid');
+    grid.innerHTML = '';
+
+    for (const lv of LEVELS) {
+      const unlocked = Save.isUnlocked(lv.n);
+      const cleared = lv.n <= Save.clearedLevels();
+      const next = unlocked && !cleared;
+      const map = MAP_BY_ID[lv.map];
+      const mods = lv.mods || {};
+
+      const card = document.createElement('button');
+      card.className = 'level-card'
+        + (cleared ? ' cleared' : '') + (!unlocked ? ' locked' : '') + (next ? ' next' : '');
+      card.innerHTML = `
+        ${cleared ? '<span class="lv-done">✔</span>' : ''}
+        <span class="lv-n">LEVEL ${lv.n}</span>
+        <span class="lv-name">${unlocked ? lv.name : 'Locked'}</span>
+        <span class="lv-map">${map.name}</span>
+        <span class="lv-meta">
+          <span class="tag">${lv.rounds} rounds</span>
+          ${lv.boss ? `<span class="tag boss">${lv.boss.length}× Dreadnought</span>` : ''}
+          ${mods.swift ? '<span class="tag swift">Runners</span>' : ''}
+          ${mods.shield ? '<span class="tag shield">Shielded</span>' : ''}
+          <span class="tag gems">+${levelReward(lv)} gems</span>
+        </span>`;
+      card.onclick = () => {
+        if (!unlocked) { Sfx.deny(); return; }
+        Sfx.click();
+        this.startRun(lv.n);
+      };
+      grid.appendChild(card);
+    }
+  },
+
+  startRun(levelNo) {
+    this.game.reset(levelNo || this.game.levelNo || 1);
     this.buildShop();
     this.syncHud(true);
     this.show('game');
@@ -64,8 +103,9 @@ const UI = {
   },
 
   quitRun() {
-    this.game.reset();
-    this.show('menu');
+    this.game.reset(this.game.levelNo);
+    this.renderLevels();
+    this.show('levels');
   },
 
   /* =================== shop =================== */
@@ -124,15 +164,19 @@ const UI = {
     for (const it of this.shopItems) {
       const owned = !it.isHero || Save.owns(it.def.id);
       const placed = it.isHero && g.heroesPlaced.has(it.def.id);
+      const noSlot = it.isHero && !placed && g.heroSlotsFree <= 0;
       const poor = !it.isHero && g.cash < it.def.cost;
-      const disabled = !owned || placed || poor;
+      const disabled = !owned || placed || poor || noSlot;
       it.el.classList.toggle('disabled', disabled);
       it.el.classList.toggle('selected', !!g.placing && g.placing.def === it.def);
       if (it.isHero && owned) {
         const cost = it.el.querySelector('.si-cost');
-        if (cost) cost.textContent = placed ? 'HERO · deployed' : 'HERO · free';
+        if (cost) cost.textContent = placed ? 'HERO · deployed'
+          : noSlot ? 'no slot free' : 'HERO · free';
       }
     }
+    const slots = $('#hero-slots');
+    if (slots) slots.textContent = `${g.heroSlotsUsed} / ${HERO_SLOTS} deployed`;
   },
 
   syncInspect() {
@@ -173,15 +217,17 @@ const UI = {
     const g = this.game;
     $('#hud-lives').textContent = g.lives;
     $('#hud-cash').textContent = g.cash;
-    $('#hud-round').textContent = `${g.round}/${WAVES.length}`;
+    $('#hud-round').textContent = `${g.round}/${g.waves.length}`;
+    $('#hud-level').textContent = `LEVEL ${g.levelNo}`;
+    $('#hud-map').textContent = CURRENT_MAP.name;
 
     const go = $('#btn-start-round');
     go.classList.toggle('running', g.running);
     go.disabled = g.running || g.over;
     go.querySelector('.go-label').textContent = g.running ? 'Round running…' : 'Start Round';
     go.querySelector('#go-sub').textContent = g.running
-      ? `${g.bloons.length} balloons on the map`
-      : g.round === 0 ? `${WAVES.length} rounds to win` : `Next: round ${g.round + 1}`;
+      ? `${g.enemies.length} hostiles on the field`
+      : g.round === 0 ? `${g.waves.length} rounds to clear` : `Next: round ${g.round + 1}`;
   },
 
   toggleSpeed() {
@@ -206,18 +252,41 @@ const UI = {
       case 'round-end': this.syncShop(); break;
       case 'shop': this.syncShop(); this.syncInspect(); break;
       case 'victory': setTimeout(() => this.showResult(true, payload), 900); break;
-      case 'defeat': setTimeout(() => this.showResult(false, payload), 900); break;
+      case 'defeat': setTimeout(() => this.showResult(false, payload), 1100); break;
     }
   },
 
-  showResult(win, gems) {
+  showResult(win, payload) {
+    const g = this.game;
+    const gems = payload.gems || 0;
     const card = $('#overlay-result').firstElementChild;
     card.classList.toggle('defeat', !win);
-    $('#res-title').textContent = win ? 'Victory!' : 'Overrun!';
-    $('#res-sub').textContent = win
-      ? `All ${WAVES.length} rounds cleared with ${this.game.lives} lives left.`
-      : `The bastion fell on round ${this.game.round}.`;
+
+    const done = win && Save.campaignComplete() && g.levelNo === LEVEL_COUNT;
+    $('#res-title').textContent = done ? 'Campaign Complete!' : win ? 'Level Clear!' : 'Overrun!';
+    $('#res-sub').textContent = done
+      ? 'The Void Legion is broken on every front.'
+      : win
+        ? `Level ${g.levelNo} — ${g.level.name} held with ${g.lives} lives left.`
+          + (payload.first ? ' First clear bonus!' : '')
+        : `The bastion fell on round ${g.round} of ${g.waves.length}.`;
     $('#res-gems').textContent = `+${gems}`;
+
+    /* offer the next level straight from the result card */
+    const again = $('#btn-res-again');
+    const hasNext = win && g.levelNo < LEVEL_COUNT;
+    again.textContent = hasNext ? `Level ${g.levelNo + 1} →` : win ? 'Play again' : 'Retry level';
+    again.onclick = () => {
+      $('#overlay-result').hidden = true;
+      this.startRun(hasNext ? g.levelNo + 1 : g.levelNo);
+    };
+    $('#btn-res-menu').textContent = 'Campaign';
+    $('#btn-res-menu').onclick = () => {
+      $('#overlay-result').hidden = true;
+      this.renderLevels();
+      this.show('levels');
+    };
+
     $('#overlay-result').hidden = false;
     this.refreshMenu();
   },

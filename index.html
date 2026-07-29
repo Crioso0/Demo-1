@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Balloon Bastion — Hero Collector Demo</title>
+<title>Void Bastion — Hero Collector Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -17,13 +17,13 @@
   </div>
   <div class="menu-inner">
     <h1 class="logo">
-      <span class="logo-top">BALLOON</span>
+      <span class="logo-top">VOID</span>
       <span class="logo-bot">BASTION</span>
     </h1>
-    <p class="tagline">Round-based defense &middot; Collect all 4 heroes &middot; <em>demo build</em></p>
+    <p class="tagline">10-level campaign &middot; 4 maps &middot; Collect all 6 heroes &middot; <em>demo build</em></p>
 
     <div class="menu-buttons">
-      <button class="btn btn-primary big" id="btn-play">Play</button>
+      <button class="btn btn-primary big" id="btn-play">Campaign</button>
       <button class="btn big" id="btn-collection">Heroes</button>
       <button class="btn ghost" id="btn-howto">How to play</button>
     </div>
@@ -61,6 +61,17 @@
   </div>
 </section>
 
+<!-- ===================== LEVEL SELECT ===================== -->
+<section class="screen" id="screen-levels">
+  <header class="sub-head">
+    <button class="btn small" data-back>&larr; Back</button>
+    <h2>Campaign</h2>
+    <span class="progress-chip"><b id="lvl-progress">0</b>/10 cleared</span>
+    <span class="gem-chip"><i class="gem"></i><span id="lvl-gems">0</span></span>
+  </header>
+  <div class="level-grid" id="level-grid"><!-- built by JS --></div>
+</section>
+
 <!-- ===================== GAME ===================== -->
 <section class="screen" id="screen-game">
   <div class="game-wrap">
@@ -68,7 +79,8 @@
       <div class="hud">
         <div class="hud-item lives"><i class="ico-heart"></i><span id="hud-lives">100</span></div>
         <div class="hud-item cash"><i class="ico-coin"></i><span id="hud-cash">650</span></div>
-        <div class="hud-item round"><span class="lbl">ROUND</span><span id="hud-round">0/15</span></div>
+        <div class="hud-item round"><span class="lbl">ROUND</span><span id="hud-round">0/6</span></div>
+        <div class="hud-item mission"><span class="lbl" id="hud-level">LEVEL 1</span><span id="hud-map">Sentry Ridge</span></div>
         <button class="btn small ghost hud-quit" id="btn-quit">Quit</button>
       </div>
 
@@ -84,7 +96,7 @@
         <div class="shop-grid" id="shop-towers"></div>
       </div>
       <div class="shop-section">
-        <h4>Heroes <span class="hint">one each</span></h4>
+        <h4>Heroes <span class="hint" id="hero-slots">0 / 2 deployed</span></h4>
         <div class="shop-grid heroes" id="shop-heroes"></div>
       </div>
 
@@ -152,12 +164,14 @@
     <h2>How to play</h2>
     <ol>
       <li>Pick a tower or hero from the right panel, then click the grass to place it. You can't build on the track.</li>
-      <li>Press <b>Start Round</b> to send the balloons. Survive all <b>15</b> rounds.</li>
-      <li>Every balloon that reaches the end costs you lives. Popping earns cash for more towers.</li>
+      <li>Press <b>Start Round</b> to send in the legion. Clear every round to finish the level.</li>
+      <li>Every trooper that reaches the bastion costs you lives. Kills earn cash for more towers.</li>
+      <li>You may deploy only <b>2 heroes per mission</b> — choose them to suit the map.</li>
       <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it.</li>
       <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other heroes.</li>
-      <li><b>Verdant</b> has a clickable ultimate: click him on the map to roll a giant sawblade down
-          the whole track. He gets 1 use per round, 2 once upgraded, and 3 at max level.</li>
+      <li><b>Verdant</b>, <b>Streak</b> and <b>Paragon</b> have clickable ultimates — click them on the
+          map to fire. Each gets 1 use per round, 2 once upgraded, and 3 at max level.</li>
+      <li>Beat all <b>10 levels</b> across four maps to finish the campaign.</li>
     </ol>
     <button class="btn btn-primary" id="btn-help-close">Got it</button>
   </div>

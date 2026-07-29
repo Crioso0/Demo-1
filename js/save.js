@@ -4,7 +4,7 @@
 const SAVE_KEY = 'balloon-bastion-demo-v1';
 
 const Save = {
-  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false },
+  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0 },
 
   load() {
     try {
@@ -46,4 +46,12 @@ const Save = {
   recordRound(r) {
     if (r > this.data.bestRound) { this.data.bestRound = r; this.flush(); }
   },
+
+  /* ---- campaign progress ---- */
+  clearedLevels() { return this.data.levels || 0; },
+  isUnlocked(n) { return n <= this.clearedLevels() + 1; },
+  clearLevel(n) {
+    if (n > this.clearedLevels()) { this.data.levels = n; this.flush(); }
+  },
+  campaignComplete() { return this.clearedLevels() >= LEVEL_COUNT; },
 };

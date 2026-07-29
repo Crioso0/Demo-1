@@ -105,10 +105,10 @@ const Sfx = {
   /* ---------------- balloons ---------------- */
 
   /**
-   * A real pop is a near-instant broadband crack (the skin tearing) over a
-   * short low thump (the air cavity). Bigger balloons crack lower and longer.
+   * A trooper going down: armour cracking apart over a short low thud, with a
+   * fizz off the ruptured power core. Heavier grades crack lower and duller.
    */
-  pop(tier = 0) {
+  kill(tier = 0) {
     const c = this.ready();
     if (!c || this.muted) return;
     /* a pink balloon cascades five layers in one frame — thin the stack */
@@ -118,10 +118,15 @@ const Sfx = {
     this._popTimes.push(now);
 
     const t = clamp(tier, 0, 4);
-    const crack = 2200 - t * 210;
-    this.noise({ dur: .05, gain: .2, type: 'bandpass', freq: crack, freqTo: crack * .28, q: .9, attack: .0006 });
-    this.noise({ dur: .022, gain: .13, type: 'highpass', freq: 4300, attack: .0005 });
-    this.tone({ freq: 205 - t * 21, to: 62, dur: .08, type: 'sine', gain: .13, attack: .001 });
+    const crack = 2000 - t * 190;
+    /* the plate splitting */
+    this.noise({ dur: .06, gain: .22, type: 'bandpass', freq: crack, freqTo: crack * .3, q: 1.1, attack: .0006 });
+    /* metal debris scatter */
+    this.noise({ dur: .09, gain: .1, type: 'highpass', freq: 3600, attack: .0005 });
+    /* body thud */
+    this.tone({ freq: 190 - t * 20, to: 58, dur: .1, type: 'sine', gain: .13, attack: .001 });
+    /* core fizz */
+    this.tone({ freq: 1500 + t * 120, to: 400, dur: .07, type: 'sawtooth', gain: .03, attack: .001 });
   },
 
   /** a balloon reaching the bastion: the squeal of one deflating away */
@@ -179,10 +184,76 @@ const Sfx = {
 
   /* ---------------- the ring construct ---------------- */
 
+  /** a light electric jab — Streak and Verdant's passive shots */
+  spark() {
+    this.noise({ dur: .07, gain: .16, type: 'bandpass', freq: 4200, freqTo: 1800, q: 2.4, attack: .0006 });
+    this.tone({ freq: 1900, to: 700, dur: .07, type: 'sawtooth', gain: .022, attack: .001 });
+  },
+
+  /** Overdrive kicking in: a sonic-boom crack into a electric whine */
+  overdrive() {
+    this.noise({ dur: .12, gain: .3, type: 'highpass', freq: 1800, attack: .0006 });
+    this.tone({ freq: 220, to: 2400, dur: .35, type: 'sawtooth', gain: .06, attack: .01 });
+    this.tone({ freq: 2400, to: 1800, dur: .8, type: 'square', gain: .022, delay: .3, attack: .05, hold: .3 });
+    this.noise({ dur: .7, gain: .05, type: 'bandpass', freq: 3000, freqTo: 6000, q: 1.6, delay: .25, attack: .08 });
+  },
+
   /** Verdant winding up: a rising charge with an energy rush behind it */
   ultCharge() {
     this.tone({ freq: 170, to: 1450, dur: .45, type: 'sawtooth', gain: .05, attack: .06 });
     this.noise({ dur: .45, gain: .06, type: 'bandpass', freq: 600, freqTo: 5200, q: 1.4, attack: .05 });
+  },
+
+  /** the lance igniting: a deep charge and a bright ignition crack */
+  lanceStart() {
+    this.tone({ freq: 90, to: 700, dur: .3, type: 'sawtooth', gain: .07, attack: .02 });
+    this.noise({ dur: .16, gain: .3, type: 'highpass', freq: 2200, attack: .001, delay: .16 });
+  },
+
+  /**
+   * The solar lance while it burns: a searing sustained voice — a bright
+   * detuned pair over a wide band of roaring noise.
+   */
+  startLance() {
+    const c = this.ready();
+    const noop = { stop() {} };
+    if (!c || this.muted) return noop;
+    const t0 = c.currentTime;
+
+    const out = c.createGain();
+    out.gain.setValueAtTime(.0001, t0);
+    out.gain.linearRampToValueAtTime(.13, t0 + .1);
+    out.connect(this.master);
+
+    const a = c.createOscillator(); a.type = 'sawtooth'; a.frequency.setValueAtTime(320, t0);
+    const b = c.createOscillator(); b.type = 'sawtooth'; b.frequency.setValueAtTime(324, t0);
+    const og = c.createGain(); og.gain.value = .22;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 3;
+    a.connect(og); b.connect(og); og.connect(lp); lp.connect(out);
+
+    const roar = c.createBufferSource(); roar.buffer = this.noiseBuf; roar.loop = true;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = .7;
+    const rg = c.createGain(); rg.gain.value = .5;
+    roar.connect(bp); bp.connect(rg); rg.connect(out);
+
+    a.start(t0); b.start(t0); roar.start(t0, Math.random() * 1.5);
+
+    const voice = {
+      stopped: false,
+      bite() {},
+      stop() {
+        if (voice.stopped) return;
+        voice.stopped = true;
+        const n = c.currentTime;
+        out.gain.cancelScheduledValues(n);
+        out.gain.setValueAtTime(Math.max(.0001, out.gain.value), n);
+        out.gain.exponentialRampToValueAtTime(.0001, n + .25);
+        a.stop(n + .3); b.stop(n + .3); roar.stop(n + .3);
+        Sfx._voices.delete(voice);
+      },
+    };
+    this._voices.add(voice);
+    return voice;
   },
 
   /**
@@ -289,11 +360,24 @@ const Sfx = {
     this.tone({ freq: 720, to: 1080, dur: .12, type: 'triangle', gain: .04, delay: .035 });
   },
 
-  /** money: inharmonic partials ring like struck metal */
+  /** money: a bright metallic ding over a register clunk, then coins settling */
   coin() {
-    [1480, 2130, 3080].forEach((f, i) =>
-      this.tone({ freq: f, to: f * .985, dur: .28, type: 'triangle', gain: .033, delay: i * .02, attack: .001 }));
-    this.noise({ dur: .04, gain: .03, type: 'highpass', freq: 5200, attack: .0008 });
+    this.noise({ dur: .05, gain: .16, type: 'bandpass', freq: 5200, q: 2, attack: .0005 });
+    [1568, 2349, 3136].forEach((f, i) =>
+      this.tone({ freq: f, to: f * .99, dur: .34, type: 'triangle', gain: .04, delay: i * .015, attack: .001 }));
+    this.tone({ freq: 320, to: 180, dur: .12, type: 'sine', gain: .07, delay: .01, attack: .002 });
+    for (let i = 0; i < 4; i++) {
+      this.noise({ dur: .05, gain: .05, type: 'bandpass', freq: rand(3200, 6200), q: 4,
+        delay: .09 + i * .045, attack: .0006 });
+    }
+  },
+
+  /** a round or level payout: the same ka-ching with a rising cash flourish */
+  cash() {
+    this.coin();
+    [1046, 1319, 1568, 2093].forEach((f, i) =>
+      this.tone({ freq: f, dur: .3, type: 'triangle', gain: .045, delay: .05 + i * .06, attack: .002 }));
+    this.tone({ freq: 262, to: 392, dur: .35, type: 'sine', gain: .05, delay: .05, attack: .01 });
   },
 
   click() {

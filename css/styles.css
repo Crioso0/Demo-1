@@ -196,6 +196,42 @@ button{font-family:inherit}
 .crate-panel .crate{animation:crateIdle 3.4s ease-in-out infinite}
 @keyframes crateIdle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-7px) rotate(-2deg)}}
 
+/* ============ LEVEL SELECT ============ */
+#screen-levels{flex-direction:column; padding:24px 34px; overflow:auto}
+.progress-chip{
+  background:rgba(20,30,60,.7); border:1px solid var(--line);
+  padding:7px 14px; border-radius:999px; font-weight:800; font-size:14px; color:var(--muted);
+}
+.progress-chip b{color:var(--green)}
+.level-grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:16px; align-content:start; padding-bottom:24px;
+}
+.level-card{
+  position:relative; text-align:left; padding:14px 16px 16px;
+  border-radius:16px; border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  box-shadow:var(--shadow); cursor:pointer; color:var(--txt);
+  transition:transform .15s ease, border-color .15s ease;
+  display:flex; flex-direction:column; gap:3px;
+}
+.level-card:hover:not(.locked){transform:translateY(-3px); border-color:#4b60a8}
+.level-card .lv-n{font-size:11px; letter-spacing:.18em; color:var(--muted); font-weight:800}
+.level-card .lv-name{font-size:17px; font-weight:900}
+.level-card .lv-map{font-size:12px; color:var(--muted)}
+.level-card .lv-meta{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; font-size:11px; font-weight:800}
+.level-card .tag{padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.09); color:#cdd8f6}
+.level-card .tag.boss{background:rgba(255,90,110,.2); color:#ff97a6}
+.level-card .tag.swift{background:rgba(255,210,63,.18); color:#ffd977}
+.level-card .tag.shield{background:rgba(120,220,255,.18); color:#9fe4ff}
+.level-card .tag.gems{background:rgba(90,180,255,.16); color:#9fd0ff}
+.level-card.cleared{border-color:#2f7a4d}
+.level-card .lv-done{
+  position:absolute; top:12px; right:12px; font-size:15px; color:var(--green); font-weight:900;
+}
+.level-card.locked{opacity:.45; cursor:not-allowed; filter:grayscale(.6)}
+.level-card.next{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,207,92,.22), var(--shadow)}
+
 /* ============ GAME ============ */
 #screen-game{flex-direction:column}
 .game-wrap{display:flex; width:100%; height:100%; gap:0}
@@ -214,6 +250,9 @@ button{font-family:inherit}
 .hud-item .lbl{font-size:11px; color:var(--muted); letter-spacing:.14em}
 .hud-item.lives span{color:#ff8a98}
 .hud-item.cash span{color:var(--gold)}
+.hud-item.mission{flex-direction:column; align-items:flex-start; gap:0; padding:5px 14px}
+.hud-item.mission .lbl{font-size:10px}
+.hud-item.mission span:last-child{font-size:13px; color:#c3cdf0}
 .hud-quit{margin-left:auto}
 .ico-heart{width:16px;height:15px;background:var(--red);
   clip-path:path("M8 15C8 15 0 9.6 0 4.8 0 2.1 1.9 0 4.3 0 5.9 0 7.2 .9 8 2.2 8.8 .9 10.1 0 11.7 0 14.1 0 16 2.1 16 4.8 16 9.6 8 15 8 15Z");
