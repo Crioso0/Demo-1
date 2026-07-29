@@ -66,6 +66,12 @@ const Sfx = {
       this.tone({ freq: f, dur: .3, type: 'triangle', gain: .06, delay: i * .11 }));
   },
   crate() { this.noise({ dur: .5, gain: .08, filter: 1400 }); this.tone({ freq: 200, to: 1200, dur: .5, type: 'sine', gain: .05 }); },
+  /* the ring construct: a rising charge into a grinding saw */
+  saw() {
+    this.tone({ freq: 180, to: 900, dur: .35, type: 'sawtooth', gain: .05 });
+    this.tone({ freq: 900, to: 620, dur: .9, type: 'sawtooth', gain: .035, delay: .3 });
+    this.noise({ dur: .9, gain: .05, filter: 2200, delay: .3 });
+  },
   defeat() {
     [440, 370, 294, 220].forEach((f, i) =>
       this.tone({ freq: f, dur: .35, type: 'sawtooth', gain: .05, delay: i * .16 }));

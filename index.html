@@ -20,7 +20,7 @@
       <span class="logo-top">BALLOON</span>
       <span class="logo-bot">BASTION</span>
     </h1>
-    <p class="tagline">Round-based defense &middot; Collect all 3 heroes &middot; <em>demo build</em></p>
+    <p class="tagline">Round-based defense &middot; Collect all 4 heroes &middot; <em>demo build</em></p>
 
     <div class="menu-buttons">
       <button class="btn btn-primary big" id="btn-play">Play</button>
@@ -30,7 +30,7 @@
 
     <div class="menu-foot">
       <span class="gem-chip"><i class="gem"></i><span id="menu-gems">0</span></span>
-      <span class="roster-chip">Heroes unlocked: <b id="menu-roster">1</b>/3</span>
+      <span class="roster-chip">Heroes unlocked: <b id="menu-roster">1</b>/<span id="menu-roster-max">4</span></span>
     </div>
   </div>
 </section>
@@ -94,6 +94,10 @@
           <span class="lvl" id="ins-level">Lv 1</span>
         </div>
         <div class="inspect-stats" id="ins-stats"></div>
+        <button class="btn small btn-ult" id="btn-ult" hidden>
+          <span id="ult-name">Unleash</span>
+          <span class="ult-charges" id="ult-charges">1 / 1</span>
+        </button>
         <div class="inspect-actions">
           <button class="btn small btn-primary" id="btn-upgrade">Upgrade</button>
           <button class="btn small danger" id="btn-sell">Sell</button>
@@ -151,7 +155,9 @@
       <li>Press <b>Start Round</b> to send the balloons. Survive all <b>15</b> rounds.</li>
       <li>Every balloon that reaches the end costs you lives. Popping earns cash for more towers.</li>
       <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it.</li>
-      <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other two heroes.</li>
+      <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other heroes.</li>
+      <li><b>Verdant</b> has a clickable ultimate: click him on the map to roll a giant sawblade down
+          the whole track. He gets 1 use per round, 2 once upgraded, and 3 at max level.</li>
     </ol>
     <button class="btn btn-primary" id="btn-help-close">Got it</button>
   </div>

@@ -189,9 +189,14 @@ class Tower {
     this.pops = 0;
     this.spent = def.cost || 0;
     this.placeAnim = 0;
+    /* activated-ability state (only Verdant has one so far) */
+    this.charges = this.maxCharges;
+    this.ultAnim = 0;
   }
 
   get mods() { return levelMods(this.level); }
+  get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
+  get ultReady() { return !!this.def.ability && this.charges > 0; }
   get range() { return this.def.range * this.mods.range; }
   get rate() { return this.def.cooldown * this.mods.rate; }
   get damage() { return this.def.damage + this.mods.damage; }
@@ -199,6 +204,7 @@ class Tower {
 
   update(dt, game) {
     this.placeAnim = Math.min(1, this.placeAnim + dt * 3.2);
+    if (this.ultAnim > 0) this.ultAnim = Math.max(0, this.ultAnim - dt);
     if (this.recoil > 0) this.recoil = Math.max(0, this.recoil - dt * 26);
     this.cd -= dt;
 
@@ -311,6 +317,17 @@ class Tower {
         Sfx.slam();
         break;
       }
+      case 'ray': {
+        /* weak but constant green energy beam */
+        game.beams.push({
+          pts: [{ x: this.x + this.facing * 15, y: this.y - 3 }, { x: target.x, y: target.y }],
+          life: .15, maxLife: .15, color: '#5cff9e', width: 3, straight: true,
+        });
+        game.damage(target, this.damage, { source: this, x: target.x, y: target.y });
+        game.spark(target.x, target.y, '#9dffc6', 5);
+        Sfx.tone({ freq: 1150, to: 720, dur: .09, type: 'sine', gain: .022 });
+        break;
+      }
     }
   }
 
@@ -327,22 +344,63 @@ class Tower {
       this.def.art(ctx, this.level, time);
       ctx.restore();
     } else if (this.isHero) {
+      /* mid-ultimate the hero swells and blazes */
+      const ult = this.ultAnim > 0 ? Math.sin((1 - this.ultAnim / ULT_ANIM_TIME) * Math.PI) : 0;
+      if (ult > 0) ctx.scale(1 + ult * .9, 1 + ult * .9);
+
       /* heroes stay upright and simply face their target */
       if (this.def.glow) {
-        const gl = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
-        gl.addColorStop(0, this.def.glow); gl.addColorStop(1, 'rgba(0,0,0,0)');
+        const r = 34 + ult * 26;
+        const gl = ctx.createRadialGradient(0, 0, 4, 0, 0, r);
+        gl.addColorStop(0, ult > 0 ? `rgba(90,255,150,${.45 + ult * .5})` : this.def.glow);
+        gl.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gl;
-        ctx.beginPath(); ctx.arc(0, 0, 34, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
       }
+
+      /* a charged ability advertises itself with a slow pulsing ring */
+      if (this.ultReady && ult === 0) {
+        const p = .5 + Math.sin(time * 3.4) * .5;
+        ctx.strokeStyle = `rgba(92,255,158,${.25 + p * .45})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, 26 + p * 4, 0, TAU); ctx.stroke();
+      }
+
       ctx.save();
       ctx.scale(this.facing, 1);
       this.def.art(ctx, this.level, time);
       ctx.restore();
+
+      if (ult > 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(70,255,140,${ult * .16})`;
+        ctx.beginPath(); ctx.arc(0, -4, 20, 0, TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = `rgba(180,255,210,${ult * .8})`;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(0, -4, 22 + ult * 4, 0, TAU); ctx.stroke();
+      }
+
       /* level pips */
       ctx.fillStyle = '#ffd977';
       for (let i = 0; i < this.level; i++) {
         starPath(ctx, -6 + i * 6, 20, 5, 3.2, 1.4);
         ctx.fill();
+      }
+
+      /* ability charges, one pip per use left */
+      if (this.def.ability) {
+        const n = this.maxCharges;
+        for (let i = 0; i < n; i++) {
+          const cx = -(n - 1) * 4.5 + i * 9;
+          const lit = i < this.charges;
+          ctx.beginPath(); ctx.arc(cx, -32, 3.4, 0, TAU);
+          ctx.fillStyle = lit ? '#5cff9e' : 'rgba(255,255,255,.16)';
+          ctx.fill();
+          if (lit) {
+            ctx.strokeStyle = 'rgba(180,255,210,.9)'; ctx.lineWidth = 1.2; ctx.stroke();
+          }
+        }
       }
     } else {
       this.def.art(ctx, this.level, time);
@@ -436,6 +494,139 @@ class Projectile {
   }
 }
 
+/* =============================== SAW CONSTRUCT =============================== */
+/* Verdant's ultimate: a ring-construct sawblade that rolls the whole track. */
+const ULT_ANIM_TIME = 1.1;
+
+class Saw {
+  constructor(level) {
+    this.level = level;
+    this.d = 0;
+    this.speed = 400 + (level - 1) * 80;
+    this.r = 32 + (level - 1) * 7;
+    this.damage = level >= 3 ? 14 : level === 2 ? 11 : 9;
+    this.spin = 0;
+    this.age = 0;
+    this.dead = false;
+    this.x = PATH.at(0).x; this.y = PATH.at(0).y;
+    /* brief per-balloon cooldown so a blimp is chewed, not one-shot */
+    this.hitAt = new Map();
+  }
+
+  update(dt, game) {
+    this.age += dt;
+    this.spin += dt * 15;
+    this.d += this.speed * dt;
+    const p = PATH.at(this.d);
+    this.x = p.x; this.y = p.y;
+
+    /* sparks off the track */
+    for (let i = 0; i < 2; i++) {
+      const a = rand(0, TAU);
+      game.particles.push(new Particle(this.x, this.y, {
+        vx: Math.cos(a) * rand(50, 220), vy: Math.sin(a) * rand(50, 220),
+        life: rand(.2, .5), size: rand(1.5, 3.5),
+        color: pick(['#5cff9e', '#bfffd8', '#1fbf6a']), kind: 'spark', gravity: 60,
+      }));
+    }
+
+    for (const b of game.bloons) {
+      if (b.dead) continue;
+      const rr = this.r + b.r;
+      if (distSq(b.x, b.y, this.x, this.y) > rr * rr) continue;
+      if ((this.hitAt.get(b) || 0) > this.age) continue;
+      this.hitAt.set(b, this.age + .12);
+      game.damage(b, this.damage, { source: this, x: b.x, y: b.y, silent: true });
+      game.spark(b.x, b.y, '#9dffc6', 6);
+    }
+
+    if (this.d >= PATH.length) {
+      this.dead = true;
+      game.explodeFx(this.x, this.y, 70, '#5cff9e');
+      game.shake = Math.max(game.shake, 6);
+    }
+  }
+
+  draw(ctx, time) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+
+    /* construct glow */
+    const gl = ctx.createRadialGradient(0, 0, this.r * .3, 0, 0, this.r * 1.75);
+    gl.addColorStop(0, 'rgba(92,255,158,.55)');
+    gl.addColorStop(1, 'rgba(92,255,158,0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(0, 0, this.r * 1.75, 0, TAU); ctx.fill();
+
+    const blade = (radius, spin, alpha) => {
+      ctx.save();
+      ctx.rotate(spin);
+      const ri = radius * .82;
+      const teeth = 12;
+      const w = (TAU / teeth) * .38;
+
+      /* raked teeth around the rim */
+      ctx.fillStyle = `rgba(200,255,222,${.85 * alpha})`;
+      for (let i = 0; i < teeth; i++) {
+        const a = (i / teeth) * TAU;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a - w) * ri, Math.sin(a - w) * ri);
+        ctx.lineTo(Math.cos(a - w * .25) * radius, Math.sin(a - w * .25) * radius);
+        ctx.lineTo(Math.cos(a + w * .55) * radius, Math.sin(a + w * .55) * radius);
+        ctx.lineTo(Math.cos(a + w) * ri, Math.sin(a + w) * ri);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      /* the disc itself */
+      const g = ctx.createRadialGradient(0, 0, ri * .15, 0, 0, ri);
+      g.addColorStop(0, `rgba(225,255,238,${.9 * alpha})`);
+      g.addColorStop(.55, `rgba(70,240,135,${.8 * alpha})`);
+      g.addColorStop(1, `rgba(20,150,78,${.9 * alpha})`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, ri, 0, TAU); ctx.fill();
+      ctx.strokeStyle = `rgba(225,255,238,${.95 * alpha})`;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(0, 0, ri, 0, TAU); ctx.stroke();
+
+      /* spokes sell the spin */
+      ctx.strokeStyle = `rgba(12,110,58,${.55 * alpha})`;
+      ctx.lineWidth = 2.6;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * ri * .32, Math.sin(a) * ri * .32);
+        ctx.lineTo(Math.cos(a) * ri * .88, Math.sin(a) * ri * .88);
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    blade(this.r, this.spin, 1);
+    /* the level-3 construct runs a second counter-rotating blade */
+    if (this.level >= 3) blade(this.r * .72, -this.spin * 1.4, .8);
+
+    /* hub */
+    ctx.fillStyle = 'rgba(230,255,240,.9)';
+    ctx.beginPath(); ctx.arc(0, 0, this.r * .22, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,255,180,.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, this.r * .38, 0, TAU); ctx.stroke();
+
+    if (this.level >= 3) {
+      ctx.strokeStyle = `rgba(180,255,210,${.5 + Math.sin(time * 20) * .3})`;
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < 3; i++) {
+        const a = time * 6 + (i * TAU) / 3;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * this.r * 1.05, Math.sin(a) * this.r * 1.05);
+        ctx.lineTo(Math.cos(a + .4) * this.r * 1.5, Math.sin(a + .4) * this.r * 1.5);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+}
+
 /* =============================== PARTICLE =============================== */
 class Particle {
   constructor(x, y, o) {
@@ -503,6 +694,7 @@ class Game {
     this.bloons = [];
     this.towers = [];
     this.projectiles = [];
+    this.saws = [];
     this.particles = [];
     this.rings = [];
     this.beams = [];
@@ -711,6 +903,7 @@ class Game {
     t.spent += cost;
     t.level++;
     t.placeAnim = .55;
+    if (t.def.ability) t.charges = t.maxCharges;   // a new tier hands back a full set
     this.floatText(t.x, t.y - 26, `LV ${t.level}`, '#8fe6ff');
     for (let i = 0; i < 18; i++) {
       const a = rand(0, TAU);
@@ -723,6 +916,44 @@ class Game {
     this.onEvent('shop');
   }
 
+  /* ---------------- activated abilities ---------------- */
+  canUseUlt(t) {
+    return !!(t && t.def.ability && !this.over && t.charges > 0
+      && (this.running || this.bloons.length > 0));
+  }
+
+  activateUlt(t) {
+    if (!t || !t.def.ability || this.over) return false;
+    if (t.charges <= 0) {
+      this.floatText(t.x, t.y - 40, 'No charges left', '#ff5a6e', 1, 14);
+      Sfx.tone({ freq: 200, to: 120, dur: .12, type: 'square', gain: .04 });
+      return false;
+    }
+    if (!this.running && !this.bloons.length) {
+      this.floatText(t.x, t.y - 40, 'Start a round first', '#ffcf5c', 1, 14);
+      Sfx.tone({ freq: 260, to: 180, dur: .12, type: 'square', gain: .035 });
+      return false;
+    }
+
+    t.charges--;
+    t.ultAnim = ULT_ANIM_TIME;
+    this.saws.push(new Saw(t.level));
+    this.rings.push({ x: t.x, y: t.y, r: 12, max: 150, life: .55, maxLife: .55, color: '#5cff9e', thick: 7 });
+    for (let i = 0; i < 26; i++) {
+      const a = rand(0, TAU);
+      this.particles.push(new Particle(t.x, t.y, {
+        vx: Math.cos(a) * rand(80, 260), vy: Math.sin(a) * rand(80, 260) - 40,
+        life: rand(.4, .9), size: rand(2, 5), color: pick(['#5cff9e', '#bfffd8', '#1fbf6a']),
+        kind: 'spark', gravity: 90,
+      }));
+    }
+    this.floatText(t.x, t.y - 46, t.def.ability.name.toUpperCase() + '!', '#5cff9e', 1.5, 20);
+    this.shake = Math.max(this.shake, 9);
+    Sfx.saw();
+    this.onEvent('shop');
+    return true;
+  }
+
   /* ---------------- rounds ---------------- */
   startRound() {
     if (this.running || this.over) return;
@@ -730,6 +961,8 @@ class Game {
     this.round++;
     this.running = true;
     this.roundTime = 0;
+    /* ability charges are per round, so every round starts fully loaded */
+    for (const t of this.towers) if (t.def.ability) t.charges = t.maxCharges;
     this.queue = [];
     for (const grp of WAVES[this.round - 1]) {
       for (let i = 0; i < grp.count; i++) {
@@ -744,7 +977,7 @@ class Game {
     this.running = false;
     const bonus = 95 + this.round * 14;
     this.cash += bonus;
-    const gems = this.round === WAVES.length ? 60 : 10;
+    const gems = this.round === WAVES.length ? 75 : 12;
     this.runGems += gems;
     Save.addGems(gems);
     Save.recordRound(this.round);
@@ -919,6 +1152,7 @@ class Game {
     for (const b of this.bloons) if (!b.dead) b.update(dt, this);
     for (const t of this.towers) t.update(dt, this);
     for (const p of this.projectiles) if (!p.dead) p.update(dt, this);
+    for (const sw of this.saws) if (!sw.dead) sw.update(dt, this);
 
     for (const p of this.particles) p.update(dt);
     for (const r of this.rings) { r.life -= dt; r.r = lerp(r.r, r.max, dt * 9); }
@@ -927,6 +1161,7 @@ class Game {
 
     this.bloons = this.bloons.filter((b) => !b.dead);
     this.projectiles = this.projectiles.filter((p) => !p.dead);
+    this.saws = this.saws.filter((sw) => !sw.dead);
     this.particles = this.particles.filter((p) => p.life > 0);
     this.rings = this.rings.filter((r) => r.life > 0);
     this.beams = this.beams.filter((b) => b.life > 0);
@@ -934,7 +1169,7 @@ class Game {
 
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 26);
 
-    if (this.running && !this.over && !this.queue.length && !this.bloons.length) this.finishRound();
+    if (this.running && !this.over && !this.queue.length && !this.bloons.length && !this.saws.length) this.finishRound();
   }
 
   /* ---------------- draw ---------------- */
@@ -976,6 +1211,7 @@ class Game {
 
     for (const b of this.bloons) b.draw(ctx, this.time);
     for (const p of this.projectiles) p.draw(ctx);
+    for (const sw of this.saws) sw.draw(ctx, this.time);
 
     /* lightning beams */
     for (const bm of this.beams) {
@@ -989,6 +1225,7 @@ class Game {
       ctx.beginPath();
       bm.pts.forEach((p, i) => {
         if (i === 0) { ctx.moveTo(p.x, p.y); return; }
+        if (bm.straight) { ctx.lineTo(p.x, p.y); return; }
         const prev = bm.pts[i - 1];
         /* jagged mid point for a lightning feel */
         const mx = (prev.x + p.x) / 2 + rand(-9, 9);

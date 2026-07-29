@@ -292,6 +292,22 @@ canvas#game.placing{cursor:none}
 .inspect-head .lvl{font-size:11px; background:rgba(255,255,255,.1); padding:3px 8px; border-radius:999px}
 .inspect-stats{display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:12px; color:var(--muted); margin-bottom:10px}
 .inspect-stats b{color:var(--txt); float:right}
+/* activated ability — the one green control in a blue panel */
+.btn-ult{
+  display:flex; width:100%; align-items:center; justify-content:space-between; gap:8px;
+  margin-bottom:8px;
+  background:linear-gradient(#4bf08e,#17a558);
+  border-color:#0f7a3f; color:#04240f;
+  box-shadow:0 3px 0 #0c6633, inset 0 1px 0 rgba(255,255,255,.5);
+  text-shadow:0 1px 0 rgba(255,255,255,.3);
+}
+.btn-ult:active{box-shadow:0 1px 0 #0c6633}
+.btn-ult .ult-charges{
+  font-size:11px; font-weight:900; letter-spacing:.06em;
+  background:rgba(4,36,15,.28); padding:3px 7px; border-radius:999px;
+}
+.btn-ult:disabled{filter:grayscale(.65) brightness(.8)}
+
 .inspect-actions{display:flex; gap:8px}
 .inspect-actions .btn{flex:1}
 

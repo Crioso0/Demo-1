@@ -30,6 +30,7 @@ const UI = {
     $('#btn-quit').onclick = () => this.quitRun();
     $('#btn-upgrade').onclick = () => this.game.selected && this.game.upgrade(this.game.selected);
     $('#btn-sell').onclick = () => this.game.selected && this.game.sell(this.game.selected);
+    $('#btn-ult').onclick = () => this.game.selected && this.game.activateUlt(this.game.selected);
 
     /* ---- results ---- */
     $('#btn-res-again').onclick = () => { $('#overlay-result').hidden = true; this.startRun(); };
@@ -50,6 +51,7 @@ const UI = {
   refreshMenu() {
     $('#menu-gems').textContent = Save.gems;
     $('#menu-roster').textContent = Save.data.heroes.length;
+    $('#menu-roster-max').textContent = HEROES.length;
   },
 
   startRun() {
@@ -146,6 +148,16 @@ const UI = {
       <div>Range <b>${Math.round(t.range)}</b></div>
       <div>Rate <b>${rate}/s</b></div>
       <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`;
+    const ult = $('#btn-ult');
+    if (t.def.ability) {
+      ult.hidden = false;
+      $('#ult-name').textContent = t.def.ability.name;
+      $('#ult-charges').textContent = `${t.charges} / ${t.maxCharges}`;
+      ult.disabled = !this.game.canUseUlt(t);
+    } else {
+      ult.hidden = true;
+    }
+
     const up = $('#btn-upgrade');
     if (t.level >= MAX_LEVEL) {
       up.disabled = true; up.textContent = 'Max level';
@@ -337,6 +349,9 @@ const UI = {
       let hit = null;
       for (const t of g.towers) if (distSq(t.x, t.y, p.x, p.y) < 26 * 26) hit = t;
       g.selected = hit;
+      /* a charged hero fires on the same click that selects him, so the
+         inspect panel is still reachable for upgrading and selling */
+      if (hit && hit.def.ability && g.canUseUlt(hit)) g.activateUlt(hit);
       this.syncInspect();
     });
 
@@ -357,6 +372,12 @@ const UI = {
         if (def) { g.beginPlacing(def, false); this.syncShop(); }
       }
       if (ev.key.toLowerCase() === 'f') this.toggleSpeed();
+      if (ev.key.toLowerCase() === 'q') {
+        /* fire the selected hero's ability, or whichever one is charged */
+        const t = (g.selected && g.selected.def.ability) ? g.selected
+          : g.towers.find((x) => g.canUseUlt(x));
+        if (t) g.activateUlt(t);
+      }
     });
   },
 };

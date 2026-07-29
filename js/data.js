@@ -258,6 +258,79 @@ const Art = {
     ctx.restore();
     ctx.restore();
   },
+  verdant(ctx, lvl, t) {
+    const bob = Math.sin(t * 2.2) * 1.8;
+    const pulse = .75 + Math.sin(t * 4) * .25;
+    ctx.save(); ctx.translate(0, bob);
+
+    /* he hovers, so the ground gets a glow instead of a shadow */
+    const hover = ctx.createRadialGradient(0, 15, 1, 0, 15, 19);
+    hover.addColorStop(0, `rgba(70,255,140,${.45 * pulse})`);
+    hover.addColorStop(1, 'rgba(70,255,140,0)');
+    ctx.fillStyle = hover;
+    ctx.beginPath(); ctx.ellipse(0, 15, 19, 7, 0, 0, TAU); ctx.fill();
+
+    /* legs */
+    ctx.fillStyle = '#0d1a13';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    /* torso */
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#4dff9b'); g.addColorStop(1, '#0e8b4c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+    /* black shoulders */
+    ctx.fillStyle = '#101c16';
+    roundRect(ctx, -12.5, -11.5, 5.5, 11, 2.5); ctx.fill();
+    roundRect(ctx, 7, -11.5, 5.5, 11, 2.5); ctx.fill();
+
+    /* chest emblem — a ring construct glyph */
+    ctx.strokeStyle = '#eafff2'; ctx.lineWidth = 1.7;
+    ctx.beginPath(); ctx.arc(0, -4, 4, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#eafff2';
+    ctx.fillRect(-5.4, -4.85, 10.8, 1.7);
+
+    /* head: jaw, mask, visor slit */
+    ctx.fillStyle = '#f0c49b';
+    ctx.beginPath(); ctx.arc(0, -16, 6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#15a15a';
+    ctx.beginPath(); ctx.arc(0, -16, 6, Math.PI * .94, Math.PI * 2.06); ctx.fill();
+    ctx.fillStyle = '#2a1a10';
+    ctx.beginPath(); ctx.arc(0, -20.5, 6, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    ctx.fillStyle = '#eafff2';
+    ctx.beginPath(); ctx.ellipse(2.6, -17.2, 2.1, 1.2, -.12, 0, TAU); ctx.fill();
+
+    /* extended fist with the power ring */
+    ctx.fillStyle = '#101c16';
+    roundRect(ctx, 8, -6, 10, 7.5, 3.2); ctx.fill();
+    const orb = ctx.createRadialGradient(20, -2.2, 0, 20, -2.2, 8 * pulse);
+    orb.addColorStop(0, 'rgba(220,255,235,.95)');
+    orb.addColorStop(.4, `rgba(80,255,150,${.75 * pulse})`);
+    orb.addColorStop(1, 'rgba(60,240,130,0)');
+    ctx.fillStyle = orb;
+    ctx.beginPath(); ctx.arc(20, -2.2, 8 * pulse, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#bfffd8'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(18.5, -2.2, 3.2, 0, TAU); ctx.stroke();
+
+    /* level 3 gets orbiting construct sparks */
+    if (lvl > 2) {
+      ctx.fillStyle = '#9dffc6';
+      for (let i = 0; i < 4; i++) {
+        const a = t * 2.2 + (i * TAU) / 4;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 20, -4 + Math.sin(a) * 9, 1.9, 0, TAU);
+        ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(120,255,180,.45)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(0, -4, 20, 9, 0, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
@@ -306,6 +379,19 @@ const HEROES = [
     range: 118, cooldown: 1.8, damage: 3, kind: 'slam', knockback: 46,
     slow: .35, slowTime: 1.4, color: '#9bbf78',
     desc: 'Shatters the ground, damaging every nearby balloon and shoving them backwards.',
+  },
+  {
+    id: 'verdant', name: 'Verdant', role: 'Ring Bearer', art: Art.verdant,
+    rarity: 'Legendary', rarityColor: '#3ef07a', glow: 'rgba(60,240,130,.45)',
+    range: 150, cooldown: .72, damage: 1, kind: 'ray', color: '#3ef07a',
+    /* the only hero with a player-triggered ability */
+    ability: {
+      name: 'Buzzsaw Construct',
+      charges: [1, 2, 3],   // by hero level
+      hint: 'Click Verdant to unleash',
+    },
+    desc: 'A weak ring beam chips away on its own — click him to grow huge and roll a giant '
+        + 'sawblade construct down the whole track.',
   },
 ];
 
