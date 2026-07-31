@@ -12,80 +12,235 @@ const TRACK_WIDTH = 46;
 /* how many heroes may be deployed in a single run */
 const HERO_SLOTS = 2;
 
-/* ---------------- maps ---------------- */
-/* Each map is a route plus a palette; scenery is scattered procedurally
-   from a fixed seed, so a map looks identical every time you play it. */
-const MAPS = [
+/* ---------------- chapters ----------------
+   Six cities, five missions each. Every mission gets its own procedurally
+   generated route, so all thirty maps are distinct but a city still reads as
+   one place. Clearing a mission opens the next; taking all three stars on
+   every mission in a city is what opens the next city. */
+const CHAPTERS = [
   {
-    id: 'ridge', name: 'Sentry Ridge', blurb: 'Open woodland with long firing lines.',
-    seed: 1337, decor: 'forest',
+    id: 'solaris', name: 'Solaris City', tag: 'The shining city',
+    blurb: 'Deco towers and open plazas. The legion tests the brightest city on the map first.',
+    accent: '#4fa8ff', decor: 'city',
     theme: {
-      ground: ['#3f7a41', '#357038', '#2b5c30'],
-      tuftLight: '150,205,125', tuftDark: '46,96,52',
-      trackEdge: '#5b4a2e', track: '#8d7146', trackMid: '#9b7f52',
-      grit: ['120,98,62', '176,152,110'],
+      ground: ['#3f5a86', '#33496e', '#26375a'],
+      tuftLight: '150,200,255', tuftDark: '30,48,84',
+      trackEdge: '#1e2b47', track: '#6a7fa8', trackMid: '#7d92bd',
+      grit: ['70,95,140', '190,215,255'],
     },
-    points: [
-      { x: -50, y: 132 }, { x: 292, y: 132 }, { x: 292, y: 330 }, { x: 806, y: 330 },
-      { x: 806, y: 148 }, { x: 1042, y: 148 }, { x: 1042, y: 520 }, { x: 186, y: 520 },
-      { x: 186, y: 700 },
-    ],
+    boss: {
+      id: 'magnate', name: 'The Magnate', color: '#7fd4ff',
+      hp: 260, speed: 40, reward: 120,
+      power: { kind: 'summon', interval: 6, count: 3 },
+      line: 'Deploys a drone screen — kill the escorts or drown in them.',
+    },
   },
   {
-    id: 'ashfall', name: 'Ashfall Crater', blurb: 'Cinder flats. The legion moves faster here.',
-    seed: 24601, decor: 'volcanic',
+    id: 'grimhaven', name: 'Grimhaven', tag: 'The rain city',
+    blurb: 'Gargoyles, gas lamps and permanent drizzle. Something in the dark is laughing.',
+    accent: '#a97bff', decor: 'gothic',
+    theme: {
+      ground: ['#2b2c3d', '#232433', '#191a26'],
+      tuftLight: '130,140,190', tuftDark: '18,18,28',
+      trackEdge: '#12131c', track: '#3d4055', trackMid: '#4b4f67',
+      grit: ['70,72,100', '150,155,195'],
+    },
+    boss: {
+      id: 'grin', name: 'Mister Grin', color: '#b06cf0',
+      hp: 320, speed: 52, reward: 150,
+      power: { kind: 'gas', interval: 5.5, radius: 210, duration: 3 },
+      line: 'Laughing gas: whichever hero is closest simply stops working.',
+    },
+  },
+  {
+    id: 'tempest', name: 'Tempest Bay', tag: 'The storm coast',
+    blurb: 'A drowned harbour under permanent thunderheads. The water is not the problem.',
+    accent: '#38d9c0', decor: 'coast',
+    theme: {
+      ground: ['#1f5a63', '#18464f', '#11333a'],
+      tuftLight: '140,240,230', tuftDark: '10,50,58',
+      trackEdge: '#0d2b31', track: '#4d7d84', trackMid: '#5d9199',
+      grit: ['40,90,98', '170,225,230'],
+    },
+    boss: {
+      id: 'maelstrom', name: 'Maelstrom', color: '#5bc8ff',
+      hp: 420, speed: 48, reward: 180,
+      power: { kind: 'emp', interval: 7, radius: 240, duration: 2.4 },
+      line: 'Surge pulse: every tower in reach goes dark for a few seconds.',
+    },
+  },
+  {
+    id: 'ashfall', name: 'Ashfall Reach', tag: 'The burning flats',
+    blurb: 'Cinder plains where the ground itself is still cooling. Fire is useless here.',
+    accent: '#ff7a3d', decor: 'volcanic',
     theme: {
       ground: ['#4a3634', '#3a2926', '#2a1d1b'],
       tuftLight: '196,104,58', tuftDark: '60,38,32',
       trackEdge: '#2a1c18', track: '#5d4038', trackMid: '#6d4c41',
       grit: ['96,60,48', '190,110,70'],
     },
-    points: [
-      { x: -50, y: 520 }, { x: 224, y: 520 }, { x: 224, y: 236 }, { x: 524, y: 236 },
-      { x: 524, y: 484 }, { x: 824, y: 484 }, { x: 824, y: 176 }, { x: 1170, y: 176 },
-    ],
+    boss: {
+      id: 'cinderlord', name: 'The Cinderlord', color: '#ff9a3d',
+      hp: 520, speed: 44, reward: 210,
+      power: { kind: 'regen', interval: 3, amount: 22 },
+      line: 'Burns hotter as it takes hits, and knits its own plating back together.',
+    },
   },
   {
-    id: 'frost', name: 'Frostline Outpost', blurb: 'A tight spiral through the snowfields.',
-    seed: 90210, decor: 'ice',
+    id: 'frostline', name: 'Frostline Expanse', tag: 'The white silence',
+    blurb: 'Whiteout country. Machinery seizes, and so does anything you have built.',
+    accent: '#9fe4ff', decor: 'ice',
     theme: {
       ground: ['#dfe9f5', '#c6d6e8', '#aabdd4'],
       tuftLight: '255,255,255', tuftDark: '140,164,192',
       trackEdge: '#4a5a72', track: '#6d7f97', trackMid: '#7e91aa',
       grit: ['70,90,115', '210,225,245'],
     },
-    points: [
-      { x: 560, y: -50 }, { x: 560, y: 140 }, { x: 180, y: 140 }, { x: 180, y: 420 },
-      { x: 720, y: 420 }, { x: 720, y: 258 }, { x: 960, y: 258 }, { x: 960, y: 560 },
-      { x: 120, y: 560 }, { x: 120, y: 700 },
-    ],
+    boss: {
+      id: 'rimewarden', name: 'The Rimewarden', color: '#c8f0ff',
+      hp: 640, speed: 40, reward: 250,
+      power: { kind: 'freeze', interval: 6.5, radius: 280, duration: 3 },
+      line: 'Flash-freezes everything you own inside a huge radius.',
+    },
   },
   {
-    id: 'rift', name: 'The Rift', blurb: 'A switchback gauntlet at the edge of the void.',
-    seed: 777, decor: 'void',
+    id: 'reach', name: 'The Emerald Reach', tag: 'The cosmos',
+    blurb: 'Past the last beacon, where the ring-light fails. The Sovereign is waiting.',
+    accent: '#3ef07a', decor: 'void',
     theme: {
       ground: ['#2b2450', '#221c42', '#181432'],
       tuftLight: '150,120,255', tuftDark: '60,44,120',
       trackEdge: '#140f2c', track: '#3b3168', trackMid: '#4a3d80',
       grit: ['90,72,160', '180,150,255'],
     },
-    points: [
-      { x: -50, y: 320 }, { x: 160, y: 320 }, { x: 160, y: 118 }, { x: 420, y: 118 },
-      { x: 420, y: 430 }, { x: 680, y: 430 }, { x: 680, y: 118 }, { x: 940, y: 118 },
-      { x: 940, y: 430 }, { x: 1170, y: 430 },
-    ],
+    boss: {
+      id: 'sovereign', name: 'The Void Sovereign', color: '#9dff6b',
+      hp: 900, speed: 36, reward: 400,
+      power: { kind: 'null', interval: 8, radius: 340, duration: 4, count: 4 },
+      line: 'Null pulse: every hero on the field goes offline, and more keep coming.',
+    },
   },
 ];
+const CHAPTER_BY_ID = Object.fromEntries(CHAPTERS.map((c) => [c.id, c]));
+const MISSIONS_PER_CHAPTER = 5;
+
+/* ---------------- procedural routes ----------------
+   Four route families, each guaranteed not to cross itself so towers always
+   have somewhere legal to stand. The seed picks the family and its shape, so
+   every mission has its own map and that map never changes. */
+function generateRoute(seed) {
+  const rng = mulberry32(seed);
+  const pickOne = (arr) => arr[(rng() * arr.length) | 0];
+  const M = 96;                       // keep turns off the very edge
+  const family = pickOne(['serpentine', 'vertical', 'comb', 'spiral']);
+  const pts = [];
+
+  if (family === 'serpentine') {
+    const bands = 3 + ((rng() * 3) | 0);                 // 3..5 horizontal legs
+    const top = M + rng() * 40;
+    const gap = (CANVAS_H - top - M) / (bands - 1);
+    let leftToRight = rng() < .5;
+    pts.push({ x: leftToRight ? -50 : CANVAS_W + 50, y: top });
+    for (let i = 0; i < bands; i++) {
+      const y = top + gap * i;
+      const near = M + rng() * 70;
+      const far = CANVAS_W - M - rng() * 70;
+      const a = leftToRight ? near : far;
+      const b = leftToRight ? far : near;
+      pts.push({ x: a, y }, { x: b, y });
+      if (i < bands - 1) pts.push({ x: b, y: y + gap });
+      leftToRight = !leftToRight;
+    }
+    const last = pts[pts.length - 1];
+    pts.push({ x: last.x, y: CANVAS_H + 60 });
+
+  } else if (family === 'vertical') {
+    const bands = 3 + ((rng() * 3) | 0);                 // vertical legs
+    const left = M + rng() * 40;
+    const gap = (CANVAS_W - left - M) / (bands - 1);
+    let topToBottom = rng() < .5;
+    pts.push({ x: left, y: topToBottom ? -50 : CANVAS_H + 50 });
+    for (let i = 0; i < bands; i++) {
+      const x = left + gap * i;
+      const near = M + rng() * 50;
+      const far = CANVAS_H - M - rng() * 50;
+      const a = topToBottom ? near : far;
+      const b = topToBottom ? far : near;
+      pts.push({ x, y: a }, { x, y: b });
+      if (i < bands - 1) pts.push({ x: x + gap, y: b });
+      topToBottom = !topToBottom;
+    }
+    const last = pts[pts.length - 1];
+    pts.push({ x: CANVAS_W + 60, y: last.y });
+
+  } else if (family === 'comb') {
+    const teeth = 3 + ((rng() * 2) | 0);                 // up-down switchbacks
+    const spine = rng() < .5 ? M + 40 + rng() * 60 : CANVAS_H - M - 40 - rng() * 60;
+    const other = spine < CANVAS_H / 2 ? CANVAS_H - M - rng() * 60 : M + rng() * 60;
+    const step = (CANVAS_W - M * 2) / (teeth * 2 - 1);
+    pts.push({ x: -50, y: spine });
+    let up = true;
+    for (let i = 0; i < teeth * 2; i++) {
+      const x = M + step * i;
+      const y = up ? spine : other;
+      pts.push({ x, y });
+      up = !up;
+      if (i < teeth * 2 - 1) pts.push({ x, y: up ? spine : other });
+    }
+    const last = pts[pts.length - 1];
+    pts.push({ x: CANVAS_W + 60, y: last.y });
+
+  } else {
+    /* spiral inward — long route, lots of adjacency for towers */
+    let l = M - 20 + rng() * 30, r = CANVAS_W - M + 20 - rng() * 30;
+    let t = M - 20 + rng() * 30, b = CANVAS_H - M + 20 - rng() * 30;
+    const inset = 100 + rng() * 30;
+    pts.push({ x: -50, y: t });
+    for (let i = 0; i < 2; i++) {
+      pts.push({ x: r, y: t });
+      pts.push({ x: r, y: b });
+      pts.push({ x: l, y: b });
+      if (i === 1) break;
+      t += inset; l += inset;
+      pts.push({ x: l, y: t });
+      r -= inset; b -= inset;
+    }
+    const last = pts[pts.length - 1];
+    pts.push({ x: last.x, y: -60 });
+  }
+
+  return pts;
+}
+
+/* ---------------- the 30 maps ---------------- */
+const MAPS = [];
+CHAPTERS.forEach((ch, ci) => {
+  for (let i = 0; i < MISSIONS_PER_CHAPTER; i++) {
+    const seed = 9000 + ci * 137 + i * 29;
+    MAPS.push({
+      id: `${ch.id}-${i + 1}`,
+      name: `${ch.name} ${['I', 'II', 'III', 'IV', 'V'][i]}`,
+      chapter: ch.id,
+      seed,
+      decor: ch.decor,
+      theme: ch.theme,
+      points: generateRoute(seed),
+    });
+  }
+});
 const MAP_BY_ID = Object.fromEntries(MAPS.map((m) => [m.id, m]));
 
-/* scattered rocks, trees and so on — kept clear of the route */
+/* scattered scenery — kept clear of the route */
 function generateScenery(path, map, count = 30) {
-  const rng = mulberry32(map.seed);
+  const rng = mulberry32(map.seed ^ 0x2f1d);
   const kinds = {
     forest: ['tree', 'tree', 'tree', 'rock', 'bush', 'bush'],
     volcanic: ['rock', 'rock', 'lava', 'deadtree', 'lava'],
     ice: ['pine', 'pine', 'ice', 'rock', 'ice'],
     void: ['crystal', 'crystal', 'rock', 'rift'],
+    city: ['building', 'building', 'planter', 'lamp', 'building'],
+    gothic: ['spire', 'deadtree', 'lamp', 'spire', 'rock'],
+    coast: ['water', 'rock', 'palm', 'water', 'palm'],
   }[map.decor];
 
   const out = [];
@@ -94,7 +249,6 @@ function generateScenery(path, map, count = 30) {
     const x = 40 + rng() * (CANVAS_W - 80);
     const y = 40 + rng() * (CANVAS_H - 80);
     if (path.distanceTo(x, y) < 62) continue;
-    /* keep the breach point and the bastion gate readable */
     const a = path.at(0), b = path.at(path.length);
     if (distSq(x, y, a.x, a.y) < 110 * 110) continue;
     if (distSq(x, y, b.x, b.y) < 130 * 130) continue;
@@ -163,54 +317,78 @@ const SPECIAL_LIST = Object.values(SPECIALS);
 const SWIFT_MUL = 1.45;   // faster runners
 const SHIELD_SOAK = 1;    // shielded troopers shrug off this much of every hit
 
-/* ---------------- campaign ---------------- */
-const LEVELS = [
-  { n: 1,  name: 'First Contact',   map: 'ridge',   rounds: 6,  tiers: 2, cash: 650, lives: 100 },
-  { n: 2,  name: 'Ridge Patrol',    map: 'ridge',   rounds: 8,  tiers: 3, cash: 650, lives: 100 },
-  { n: 3,  name: 'Ashfall Landing', map: 'ashfall', rounds: 8,  tiers: 3, cash: 700, lives: 100,
-    mods: { speed: 1.06 }, specials: ['dampener'] },
-  { n: 4,  name: 'Crater Push',     map: 'ashfall', rounds: 10, tiers: 4, cash: 700, lives: 100,
-    boss: [8], mods: { speed: 1.06 }, specials: ['riftstone'] },
-  { n: 5,  name: 'Frostline Watch', map: 'frost',   rounds: 10, tiers: 4, cash: 750, lives: 90,
-    mods: { swift: true }, specials: ['amber'] },
-  { n: 6,  name: 'Deep Freeze',     map: 'frost',   rounds: 12, tiers: 5, cash: 750, lives: 90,
-    boss: [10], mods: { shield: true }, specials: ['shroud'] },
-  { n: 7,  name: 'Ridge Assault',   map: 'ridge',   rounds: 12, tiers: 5, cash: 800, lives: 85,
-    boss: [9, 12], mods: { swift: true }, specials: ['dampener', 'riftstone'] },
-  { n: 8,  name: 'Molten Siege',    map: 'ashfall', rounds: 14, tiers: 5, cash: 800, lives: 85,
-    boss: [10, 13], mods: { speed: 1.1, shield: true }, specials: ['amber', 'shroud'] },
-  { n: 9,  name: 'Whiteout',        map: 'frost',   rounds: 14, tiers: 5, cash: 850, lives: 80,
-    boss: [9, 12, 14], mods: { speed: 1.12, swift: true },
-    specials: ['riftstone', 'dampener', 'amber'] },
-  { n: 10, name: 'The Rift',        map: 'rift',    rounds: 16, tiers: 5, cash: 900, lives: 75,
-    boss: [8, 12, 15, 16], mods: { speed: 1.15, swift: true, shield: true },
-    specials: ['riftstone', 'amber', 'dampener', 'shroud'] },
-];
+/* ---------------- campaign ----------------
+   30 missions: six cities of five. Difficulty is driven by the global mission
+   number, so the thirtieth fight is a very different animal from the first. */
+const LEVELS = [];
+CHAPTERS.forEach((ch, ci) => {
+  for (let i = 0; i < MISSIONS_PER_CHAPTER; i++) {
+    const n = ci * MISSIONS_PER_CHAPTER + i + 1;
+    const last = i === MISSIONS_PER_CHAPTER - 1;
+    /* counter escorts start in the second city and stack up from there */
+    const pool = ['dampener', 'riftstone', 'amber', 'shroud'];
+    const specials = ci === 0 ? [] : pool.slice(0, clamp(ci, 1, 4));
+    LEVELS.push({
+      n,
+      chapter: ch.id,
+      mission: i + 1,
+      map: `${ch.id}-${i + 1}`,
+      name: `${ch.name} — ${['Landfall', 'Push', 'Crossfire', 'Siege', 'Showdown'][i]}`,
+      rounds: 6 + ci + Math.floor(i * 1.5),
+      tiers: clamp(2 + ci, 2, TROOPS.length),
+      cash: 650 + ci * 60,
+      lives: Math.max(60, 100 - ci * 6),
+      specials,
+      /* every city's fifth mission is its boss fight */
+      chapterBoss: last ? ch.boss : null,
+      boss: last ? [Math.max(3, 6 + ci)] : (i >= 2 ? [4 + i] : null),
+      mods: {
+        speed: 1 + ci * .035,
+        swift: ci >= 1 && i >= 1,
+        shield: ci >= 2 && i >= 1,
+      },
+    });
+  }
+});
 const LEVEL_COUNT = LEVELS.length;
+const LEVEL_BY_N = Object.fromEntries(LEVELS.map((l) => [l.n, l]));
 
-/** gems paid out for finishing a level (first clear pays double) */
-function levelReward(lv) { return 20 + lv.n * 8; }
+/** gems paid out for finishing a mission (first clear pays double) */
+function levelReward(lv) { return 18 + lv.n * 4; }
+
+/** stars are earned on how much of the bastion survived */
+const STAR_THRESHOLDS = [0, .55, .9];      // 1★ clear, 2★ 55% lives, 3★ 90%
+function starsFor(livesLeft, livesStart) {
+  const k = livesStart > 0 ? livesLeft / livesStart : 0;
+  if (k >= STAR_THRESHOLDS[2]) return 3;
+  if (k >= STAR_THRESHOLDS[1]) return 2;
+  return 1;
+}
 
 /**
- * Waves are generated rather than hand-authored — deterministic, so a level
- * always plays the same, but escalating with both round and level number.
+ * Waves are generated rather than hand-authored — deterministic, so a mission
+ * always plays the same, but escalating hard with the global mission number.
  */
 function buildLevelWaves(lv) {
   const waves = [];
   const mods = lv.mods || {};
-  const diff = 1 + (lv.n - 1) * .1;
+  const diff = 1 + (lv.n - 1) * .085;
 
   for (let r = 1; r <= lv.rounds; r++) {
     const p = lv.rounds > 1 ? (r - 1) / (lv.rounds - 1) : 1;
     const top = clamp(Math.round(p * (lv.tiers - 1)), 0, TROOPS.length - 1);
     const groups = [];
 
+    /* the city boss headlines the final round of a showdown */
+    if (lv.chapterBoss && r === lv.rounds) {
+      groups.push({ tier: 'chapterBoss', count: 1, gap: 1, delay: 1.5 });
+    }
     if (lv.boss && lv.boss.includes(r)) {
-      groups.push({ tier: 'boss', count: 1 + Math.floor((lv.n - 1) / 4), gap: 3.4, delay: 0 });
+      groups.push({ tier: 'boss', count: 1 + Math.floor(lv.n / 9), gap: 3.2, delay: 0 });
     }
 
-    const count = Math.round((9 + r * 2.3) * diff);
-    const gap = Math.max(.17, .58 - p * .26 - lv.n * .008);
+    const count = Math.round((9 + r * 2.2) * diff);
+    const gap = Math.max(.16, .58 - p * .24 - lv.n * .004);
     groups.push({
       tier: top, count, gap, delay: groups.length ? 2.5 : 0,
       swift: !!mods.swift && r % 3 === 0,
@@ -229,14 +407,13 @@ function buildLevelWaves(lv) {
       });
     }
 
-    /* counter escorts: they start showing up a third of the way in and get
-       thicker as the level runs on, so the roster you picked stops working */
-    if (lv.specials && lv.specials.length && r >= Math.max(2, Math.ceil(lv.rounds * .3))) {
+    /* counter escorts thicken as the mission runs on */
+    if (lv.specials.length && r >= Math.max(2, Math.ceil(lv.rounds * .3))) {
       lv.specials.forEach((sid, i) => {
         if ((r + i) % 2) return;
         groups.push({
           tier: clamp(top - 1, 1, TROOPS.length - 1),
-          count: 2 + Math.floor(p * 4) + Math.floor(lv.n / 4),
+          count: 2 + Math.floor(p * 4) + Math.floor(lv.n / 8),
           gap: 1.5, delay: 6 + i * 3.5, special: sid,
           shield: !!mods.shield && p > .6,
         });
@@ -872,6 +1049,269 @@ const Art = {
     ctx.restore();
     ctx.restore();
   },
+  webline(ctx, lvl, t) {
+    const bob = Math.sin(t * 3) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 13, 4.5, 0, 0, TAU); ctx.fill();
+
+    /* crouched, coiled */
+    ctx.fillStyle = '#1d3f8f';
+    roundRect(ctx, -8, 3, 6.5, 11, 3); ctx.fill();
+    roundRect(ctx, 1.5, 3, 6.5, 11, 3); ctx.fill();
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#e0433f'); g.addColorStop(1, '#95201f');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -10); ctx.lineTo(8.5, -10);
+    ctx.quadraticCurveTo(11, -1, 8, 6); ctx.lineTo(-8, 6);
+    ctx.quadraticCurveTo(-11, -1, -8.5, -10);
+    ctx.fill();
+    /* web lines across the chest */
+    ctx.strokeStyle = 'rgba(20,25,45,.75)'; ctx.lineWidth = .8;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath(); ctx.moveTo(i * 3.4, -10); ctx.lineTo(i * 2, 6); ctx.stroke();
+    }
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.arc(0, -12, 5 + i * 4.5, .5, Math.PI - .5); ctx.stroke();
+    }
+    /* mask with big lenses */
+    ctx.fillStyle = '#d0392f';
+    ctx.beginPath(); ctx.arc(0, -15, 6.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f2f6ff';
+    ctx.beginPath();
+    ctx.ellipse(-2.6, -15.6, 3, 2.1, .35, 0, TAU);
+    ctx.ellipse(2.6, -15.6, 3, 2.1, -.35, 0, TAU);
+    ctx.fill();
+    /* a line of web trailing from the wrist */
+    ctx.strokeStyle = 'rgba(240,246,255,.7)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(10, -2);
+    ctx.quadraticCurveTo(17, -6 + Math.sin(t * 4) * 2, 22, -1);
+    ctx.stroke();
+    ctx.restore();
+  },
+  skyforge(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.9) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 16, 5.5, 0, 0, TAU); ctx.fill();
+
+    /* cape */
+    ctx.fillStyle = '#8f1f2e';
+    ctx.beginPath();
+    ctx.moveTo(-7, -11);
+    ctx.quadraticCurveTo(-19 - Math.sin(t * 2) * 3, 2, -12, 15);
+    ctx.lineTo(-1, 7); ctx.lineTo(-4, -10);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#2a2f3d';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#9aa6bd'); g.addColorStop(1, '#4a5468');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -11); ctx.lineTo(9, -11);
+    ctx.quadraticCurveTo(11.5, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11.5, -2, -9, -11);
+    ctx.fill();
+    /* armour discs */
+    ctx.fillStyle = '#cfd8ea';
+    for (const dx of [-4.5, 4.5]) {
+      ctx.beginPath(); ctx.arc(dx, -5, 2.6, 0, TAU); ctx.fill();
+    }
+
+    /* winged helm */
+    ctx.fillStyle = '#f0d9a8';
+    ctx.beginPath(); ctx.arc(0, -15, 6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#b8c3d8';
+    ctx.beginPath(); ctx.arc(0, -17, 6.2, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillStyle = '#e8eefc';
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * 5, -18);
+      ctx.lineTo(s2 * 12, -25 + Math.sin(t * 3) * 1.2);
+      ctx.lineTo(s2 * 5, -15);
+      ctx.closePath(); ctx.fill();
+    }
+
+    /* hammer, wreathed in current */
+    ctx.save(); ctx.translate(15, 0); ctx.rotate(Math.sin(t * 2) * .15);
+    ctx.fillStyle = '#6b5a44';
+    roundRect(ctx, -1.6, -2, 3.2, 15, 1.4); ctx.fill();
+    ctx.fillStyle = '#aeb8ca';
+    roundRect(ctx, -6, -12, 12, 10, 2.5); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.strokeStyle = `rgba(150,230,255,${.5 + Math.sin(t * 18) * .4})`;
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 3; i++) {
+      const a = t * 7 + i * 2.1;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 8, -7 + Math.sin(a) * 8);
+      ctx.lineTo(Math.cos(a) * 13, -7 + Math.sin(a) * 13);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.restore();
+  },
+  bulwark(ctx, lvl, t) {
+    const bob = Math.sin(t * 2) * 1.2;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#1b2a52';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3f6fd0'); g.addColorStop(1, '#1c3576');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+    /* chest star */
+    ctx.fillStyle = '#f2f6ff';
+    starPath(ctx, 0, -5, 5, 4.6, 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -15, 5.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3f6fd0';
+    ctx.beginPath(); ctx.arc(0, -17, 6, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillStyle = '#f2f6ff';
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * 5, -18.5); ctx.lineTo(s2 * 9.5, -21); ctx.lineTo(s2 * 5, -15.5);
+      ctx.closePath(); ctx.fill();
+    }
+
+    /* the shield, held out and spinning slowly */
+    ctx.save(); ctx.translate(13, 0); ctx.rotate(t * 1.4);
+    const rings = ['#d8443f', '#f2f6ff', '#d8443f', '#2f5fc0'];
+    rings.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(0, 0, 9 - i * 2.1, 0, TAU); ctx.fill();
+    });
+    ctx.fillStyle = '#f2f6ff';
+    starPath(ctx, 0, 0, 5, 2.6, 1.1);
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  },
+  valkyra(ctx, lvl, t) {
+    const bob = Math.sin(t * 2.2) * 1.3;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    /* skirt + boots */
+    ctx.fillStyle = '#2f4fa8';
+    ctx.beginPath();
+    ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.lineTo(10, 12); ctx.lineTo(-10, 12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#a8202c';
+    roundRect(ctx, -7.5, 10, 6, 5, 2); ctx.fill();
+    roundRect(ctx, 1.5, 10, 6, 5, 2); ctx.fill();
+
+    /* bodice */
+    const g = ctx.createLinearGradient(0, -12, 0, 2);
+    g.addColorStop(0, '#d84a3c'); g.addColorStop(1, '#8e1d24');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10, -4, 7, 1); ctx.lineTo(-7, 1);
+    ctx.quadraticCurveTo(-10, -4, -8, -11);
+    ctx.fill();
+    ctx.fillStyle = '#e8b93f';
+    ctx.beginPath();
+    ctx.moveTo(0, -9); ctx.lineTo(4, -5); ctx.lineTo(0, -2); ctx.lineTo(-4, -5);
+    ctx.closePath(); ctx.fill();
+
+    /* head, dark hair, tiara */
+    ctx.fillStyle = '#1c1620';
+    ctx.beginPath(); ctx.arc(0, -14, 7.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f2d2b0';
+    ctx.beginPath(); ctx.arc(.5, -15, 5.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#e8b93f';
+    roundRect(ctx, -5, -21, 10, 2.4, 1); ctx.fill();
+    ctx.fillStyle = '#d84a3c';
+    ctx.beginPath(); ctx.arc(.5, -20.4, 1.5, 0, TAU); ctx.fill();
+
+    /* bracers + glowing lasso */
+    ctx.fillStyle = '#dfe6f5';
+    roundRect(ctx, -13, -5, 5, 6, 2); ctx.fill();
+    roundRect(ctx, 8, -5, 5, 6, 2); ctx.fill();
+    ctx.strokeStyle = `rgba(255,200,90,${.6 + Math.sin(t * 5) * .3})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(17, 2, 7, 4.5, Math.sin(t * 2) * .3, 0, TAU);
+    ctx.stroke();
+    ctx.restore();
+  },
+  arcanist(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.7) * 2;
+    ctx.save(); ctx.translate(0, bob);
+
+    /* he hovers over a faint sigil */
+    ctx.strokeStyle = `rgba(255,140,60,${.35 + Math.sin(t * 2) * .2})`;
+    ctx.lineWidth = 1.4;
+    ctx.save(); ctx.translate(0, 15); ctx.scale(1, .38); ctx.rotate(t * .8);
+    ctx.beginPath(); ctx.arc(0, 0, 17, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 12, 0, TAU); ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12);
+      ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    /* cloak */
+    ctx.fillStyle = '#a8202c';
+    ctx.beginPath();
+    ctx.moveTo(-7, -11);
+    ctx.quadraticCurveTo(-20 - Math.sin(t * 1.8) * 4, 2, -13, 14);
+    ctx.lineTo(13, 14);
+    ctx.quadraticCurveTo(20 + Math.sin(t * 1.8) * 4, 2, 7, -11);
+    ctx.closePath(); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3d4a6b'); g.addColorStop(1, '#1c2338');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-7.5, -11); ctx.lineTo(7.5, -11);
+    ctx.quadraticCurveTo(10, -2, 7, 6); ctx.lineTo(-7, 6);
+    ctx.quadraticCurveTo(-10, -2, -7.5, -11);
+    ctx.fill();
+
+    /* amulet */
+    const pulse = .7 + Math.sin(t * 3.5) * .3;
+    ctx.fillStyle = `rgba(140,240,180,${pulse})`;
+    ctx.beginPath(); ctx.ellipse(0, -5, 2.6, 3.4, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -15, 5.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#20242f';
+    ctx.beginPath(); ctx.arc(0, -17.5, 6, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillStyle = '#c8ccd8';
+    roundRect(ctx, -6.5, -14.5, 2.6, 4, 1); ctx.fill();
+
+    /* a conjured ring in the raised hand */
+    ctx.save(); ctx.translate(15, -6); ctx.rotate(t * 2.2);
+    ctx.strokeStyle = `rgba(255,150,60,${.75 + Math.sin(t * 6) * .25})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, 0, 7, .3, TAU - .3); ctx.stroke();
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, 0, 4, .8, TAU - .2); ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
@@ -1024,6 +1464,83 @@ const HEROES = [
     desc: 'Fans out razor cards for wildly inconsistent damage. Wild Card deals every hostile on '
         + 'the field a random fate — blown up, stunned, sent marching backwards, or shaken down '
         + 'for pocket money.',
+  },
+  {
+    id: 'webline', name: 'Webline', role: 'Wall-Crawler', art: Art.webline,
+    rarity: 'Epic', rarityColor: '#e0433f', glow: 'rgba(224,67,63,.4)',
+    range: 158, cooldown: .34, damage: 1, pierce: 2, projSpeed: 700, kind: 'dart',
+    color: '#e0433f', tags: ['agility'],
+    web: { slow: .45, time: 2.2 },
+    ability: {
+      kind: 'webzone',
+      name: 'Web Zone',
+      charges: [1, 2, 3],
+      duration: [5, 7, 9],
+      radius: [140, 165, 195],
+      hint: 'Click Webline to string the route',
+    },
+    desc: 'Quick web-shots that gum troopers up as they run. Web Zone strings the whole area and '
+        + 'anything crossing it crawls.',
+  },
+  {
+    id: 'skyforge', name: 'Skyforge', role: 'Storm Smith', art: Art.skyforge,
+    rarity: 'Legendary', rarityColor: '#b8c3d8', glow: 'rgba(170,215,255,.45)',
+    range: 176, cooldown: 1.15, damage: 3, kind: 'chain', chains: 3,
+    color: '#aeb8ca', tags: ['electric', 'storm'],
+    ability: {
+      kind: 'stormcall',
+      name: 'Storm Call',
+      charges: [1, 2, 3],
+      strikes: [10, 16, 24],
+      hint: 'Click Skyforge to call the sky down',
+    },
+    desc: 'A thrown hammer that arcs between targets. Storm Call drops a barrage of lightning '
+        + 'bolts across the whole route, one after another.',
+  },
+  {
+    id: 'bulwark', name: 'Bulwark', role: 'Shield Bearer', art: Art.bulwark,
+    rarity: 'Epic', rarityColor: '#3f6fd0', glow: 'rgba(90,150,235,.42)',
+    range: 168, cooldown: .95, damage: 2, pierce: 6, projSpeed: 480, kind: 'dart',
+    color: '#3f6fd0', tags: ['kinetic'],
+    ability: {
+      kind: 'rally',
+      name: 'Rally',
+      charges: [1, 2, 3],
+      duration: [6, 8, 10],
+      hint: 'Click Bulwark to rally the line',
+    },
+    desc: 'A ricocheting shield that cuts through a whole column. Rally hardens the whole '
+        + 'defence: every tower and hero fires far faster while it holds.',
+  },
+  {
+    id: 'valkyra', name: 'Valkyra', role: 'Warrior Princess', art: Art.valkyra,
+    rarity: 'Legendary', rarityColor: '#e8b93f', glow: 'rgba(232,185,63,.45)',
+    range: 132, cooldown: .55, damage: 4, kind: 'smash',
+    color: '#d84a3c', tags: ['kinetic', 'mystic'],
+    ability: {
+      kind: 'lasso',
+      name: 'Lasso of Truth',
+      charges: [1, 2, 3],
+      duration: [4, 5.5, 7],
+      hint: 'Click Valkyra to bind the line',
+    },
+    desc: 'Sword and bracers at close quarters, hitting everything in reach. The lasso binds every '
+        + 'hostile on the field in place and drags them backwards.',
+  },
+  {
+    id: 'arcanist', name: 'Arcanist', role: 'Sorcerer Supreme', art: Art.arcanist,
+    rarity: 'Legendary', rarityColor: '#ff8a3d', glow: 'rgba(255,150,80,.45)',
+    range: 190, cooldown: 1.35, damage: 3, pierce: 3, projSpeed: 560, kind: 'dart',
+    color: '#ff8a3d', tags: ['mystic'],
+    ability: {
+      kind: 'portal',
+      name: 'Mirror Portal',
+      charges: [1, 2, 3],
+      send: [.35, .5, .68],
+      hint: 'Click Arcanist to fold the route',
+    },
+    desc: 'Bolts of raw spellwork that punch through ranks. Mirror Portal opens a gate under the '
+        + 'legion and drops every hostile a long way back down the route.',
   },
 ];
 

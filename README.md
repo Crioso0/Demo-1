@@ -1,7 +1,8 @@
 # Void Bastion — hero collector demo
 
-A round-based tower-defense demo that runs in the browser. Ten levels across four
-maps, six collectible heroes, and the Void Legion marching on your bastion.
+A round-based tower-defense campaign that runs in the browser. **Six cities, 30
+missions, 30 maps, 15 collectible heroes**, counter escorts built to shut your
+roster down, and a warlord waiting at the end of every city.
 
 **Play it:** open `index.html` in any modern browser. No build step, no server,
 no dependencies, no asset files — every sprite is drawn procedurally on canvas
@@ -20,25 +21,24 @@ and all sound is synthesised with WebAudio.
 
 ## The campaign
 
-Ten levels, escalating across four maps. Later levels add **Dreadnought**
-walkers, **Runners** (faster troopers) and **Shielded** troopers that shrug off
-part of every hit.
+Six cities of five missions each. Clearing a mission opens the next one;
+**taking all three stars on every mission in a city is what opens the next
+city**, so the campaign asks you to go back and play well, not just play on.
 
-| # | Level | Map | Rounds | Threats |
-|---|---|---|---|---|
-| 1 | First Contact | Sentry Ridge | 6 | — |
-| 2 | Ridge Patrol | Sentry Ridge | 8 | — |
-| 3 | Ashfall Landing | Ashfall Crater | 8 | faster legion |
-| 4 | Crater Push | Ashfall Crater | 10 | Dreadnought |
-| 5 | Frostline Watch | Frostline Outpost | 10 | runners |
-| 6 | Deep Freeze | Frostline Outpost | 12 | shielded, Dreadnought |
-| 7 | Ridge Assault | Sentry Ridge | 12 | runners, 2× Dreadnought |
-| 8 | Molten Siege | Ashfall Crater | 14 | shielded, 2× Dreadnought |
-| 9 | Whiteout | Frostline Outpost | 14 | runners, 3× Dreadnought |
-| 10 | The Rift | The Rift | 16 | everything, 4× Dreadnought |
+| City | Theme | Warlord | Its trick |
+|---|---|---|---|
+| **Solaris City** | the shining city | The Magnate | Deploys a drone screen on a timer |
+| **Grimhaven** | the rain city | Mister Grin | Laughing gas: the nearest hero stops working |
+| **Tempest Bay** | the storm coast | Maelstrom | Surge pulse: every tower in reach goes dark |
+| **Ashfall Reach** | the burning flats | The Cinderlord | Knits its own plating back together |
+| **Frostline Expanse** | the white silence | The Rimewarden | Flash-freezes everything you own |
+| **The Emerald Reach** | the cosmos | The Void Sovereign | Null pulse: every hero offline, and reinforcements |
 
-Waves are generated deterministically from the level definition, so a level
-always plays the same way but escalates with both round and level number.
+**Stars** come from how much of the bastion survived: 3★ needs 90% of your
+lives, 2★ needs 55%, 1★ is any clear. Every mission's route is generated from
+its own seed — 30 distinct maps that never change between plays — and difficulty
+is driven by the global mission number, so mission 30 fields roughly ten times
+the legion of mission 1.
 
 ## The Void Legion
 
@@ -83,6 +83,11 @@ level.
 | **Ironclad** | Arc Armorer | tech | Repulsor bolts + **Micro-Missile Barrage** |
 | **Havoc** | Rage Titan | kinetic | Arm's-length smash + **Thunderclap** |
 | **Jester** | Chaos Agent | mind, chaos | Razor cards + **Wild Card** |
+| **Webline** | Wall-Crawler | agility | Web-shots that slow + **Web Zone** |
+| **Skyforge** | Storm Smith | electric, storm | Arcing hammer + **Storm Call** |
+| **Bulwark** | Shield Bearer | kinetic | Ricochet shield + **Rally** |
+| **Valkyra** | Warrior Princess | kinetic, mystic | Close-quarters sweep + **Lasso of Truth** |
+| **Arcanist** | Sorcerer Supreme | mystic | Piercing bolts + **Mirror Portal** |
 
 Ember is the starter; every other hero comes out of crates.
 
@@ -106,8 +111,18 @@ press `Q`, or use the green button in the inspect panel.
   everything caught and throws it back down the route.
 - **Wild Card** (Jester) — every hostile draws its own fate: blown up, stunned,
   turned around to march backwards, or shaken down for pocket money.
+- **Web Zone** (Webline) — strings a stretch of the route; anything crossing it
+  crawls.
+- **Storm Call** (Skyforge) — a walking barrage of lightning bolts down the
+  whole route.
+- **Rally** (Bulwark) — every tower and hero on the field fires at **double
+  rate** while it holds.
+- **Lasso of Truth** (Valkyra) — binds every hostile in place and drags them
+  backwards.
+- **Mirror Portal** (Arcanist) — folds the route and drops the entire legion up
+  to two thirds of the way back.
 
-All seven scale the same way: **1 use at level 1, 2 at level 2, 3 at level 3**,
+All twelve scale the same way: **1 use at level 1, 2 at level 2, 3 at level 3**,
 refilled at the start of every round. Charge pips float above the hero.
 
 ## Towers
@@ -172,11 +187,11 @@ Console handle for tinkering: `BB.game`, `BB.Save`, `BB.UI`.
 
 ## Demo scope
 
-10 levels, 4 maps, 10 heroes, 4 towers, 5 troop grades, 4 counter escorts and
-Dreadnought walkers that get tougher as the campaign runs. No meta progression
-beyond crate unlocks and level unlocks; hero levels reset each run.
+30 missions across 6 cities on 30 generated maps, 15 heroes, 4 towers, 5 troop
+grades, 4 counter escorts, 6 city warlords and Dreadnought walkers that get
+tougher as the campaign runs. No meta progression beyond crate unlocks, stars
+and city unlocks; hero levels reset each run.
 
-Every hero here is an original character built for this demo — a ring-construct
-bearer, a speedster, a solar sentinel, a gadget detective, an armoured
-industrialist, a rage titan and a chaos agent — not licensed ones. The Void
-Legion and its escorts are likewise this demo's own.
+Every hero, warlord and city here is an original built for this demo — not a
+licensed one. The Void Legion, its counter escorts and the six cities are
+likewise this demo's own.

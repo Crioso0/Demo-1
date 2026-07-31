@@ -11,26 +11,40 @@
 
 <!-- ===================== MENU ===================== -->
 <section class="screen active" id="screen-menu">
-  <div class="menu-bg">
-    <span class="floaty b1"></span><span class="floaty b2"></span><span class="floaty b3"></span>
-    <span class="floaty b4"></span><span class="floaty b5"></span><span class="floaty b6"></span>
+  <div class="skyline">
+    <div class="stars"></div>
+    <div class="beam b-a"></div><div class="beam b-b"></div>
+    <div class="city far"><i style="--w:54px;--h:47px"></i><i style="--w:62px;--h:79px"></i><i style="--w:38px;--h:42px"></i><i style="--w:70px;--h:44px"></i><i style="--w:54px;--h:75px"></i><i style="--w:38px;--h:96px"></i><i style="--w:70px;--h:51px"></i><i style="--w:38px;--h:43px"></i><i style="--w:62px;--h:64px"></i><i style="--w:38px;--h:53px"></i><i style="--w:38px;--h:73px"></i><i style="--w:62px;--h:41px"></i><i style="--w:70px;--h:45px"></i><i style="--w:46px;--h:78px"></i><i style="--w:70px;--h:41px"></i><i style="--w:70px;--h:75px"></i><i style="--w:62px;--h:41px"></i><i style="--w:46px;--h:40px"></i><i style="--w:70px;--h:92px"></i><i style="--w:46px;--h:56px"></i><i style="--w:62px;--h:47px"></i><i style="--w:70px;--h:45px"></i><i style="--w:70px;--h:57px"></i><i style="--w:70px;--h:90px"></i><i style="--w:46px;--h:44px"></i><i style="--w:70px;--h:74px"></i></div>
+    <div class="city near"><i style="--w:68px;--h:117px"></i><i style="--w:56px;--h:140px"></i><i style="--w:56px;--h:142px"></i><i style="--w:56px;--h:149px"></i><i style="--w:68px;--h:133px"></i><i style="--w:104px;--h:124px"></i><i style="--w:78px;--h:129px"></i><i style="--w:104px;--h:188px"></i><i style="--w:90px;--h:116px"></i><i style="--w:78px;--h:101px"></i><i style="--w:68px;--h:159px"></i><i style="--w:68px;--h:80px"></i><i style="--w:104px;--h:108px"></i><i style="--w:104px;--h:133px"></i><i style="--w:78px;--h:163px"></i><i style="--w:90px;--h:106px"></i></div>
+    <div class="haze"></div>
   </div>
+
   <div class="menu-inner">
+    <div class="crest">
+      <span class="crest-ring"></span>
+      <span class="crest-core"></span>
+    </div>
     <h1 class="logo">
       <span class="logo-top">VOID</span>
       <span class="logo-bot">BASTION</span>
     </h1>
-    <p class="tagline">10-level campaign &middot; 4 maps &middot; Collect all 6 heroes &middot; <em>demo build</em></p>
+    <p class="tagline">Six cities &middot; 30 missions &middot; 15 heroes &middot; <em>hold the line</em></p>
 
     <div class="menu-buttons">
-      <button class="btn btn-primary big" id="btn-play">Campaign</button>
-      <button class="btn big" id="btn-collection">Heroes</button>
-      <button class="btn ghost" id="btn-howto">How to play</button>
+      <button class="btn btn-primary big" id="btn-play">
+        <span class="go-label" id="menu-play-label">Begin Campaign</span>
+        <span class="go-sub" id="menu-play-sub">Solaris City · Mission 1</span>
+      </button>
+      <div class="menu-row">
+        <button class="btn" id="btn-collection">Heroes</button>
+        <button class="btn ghost" id="btn-howto">How to play</button>
+      </div>
     </div>
 
     <div class="menu-foot">
-      <span class="gem-chip"><i class="gem"></i><span id="menu-gems">0</span></span>
-      <span class="roster-chip">Heroes unlocked: <b id="menu-roster">1</b>/<span id="menu-roster-max">4</span></span>
+      <span class="stat-chip"><i class="gem"></i><b id="menu-gems">0</b><span>gems</span></span>
+      <span class="stat-chip"><i class="ico-star"></i><b id="menu-stars">0</b><span>/ <span id="menu-stars-max">90</span> stars</span></span>
+      <span class="stat-chip"><i class="ico-cape"></i><b id="menu-roster">1</b><span>/ <span id="menu-roster-max">15</span> heroes</span></span>
     </div>
   </div>
 </section>
@@ -61,14 +75,26 @@
   </div>
 </section>
 
-<!-- ===================== LEVEL SELECT ===================== -->
+<!-- ===================== CHAPTER SELECT ===================== -->
+<section class="screen" id="screen-chapters">
+  <header class="sub-head">
+    <button class="btn small" data-back>&larr; Menu</button>
+    <h2>Campaign</h2>
+    <span class="progress-chip"><i class="ico-star"></i><b id="ch-stars">0</b> stars</span>
+    <span class="gem-chip"><i class="gem"></i><span id="ch-gems">0</span></span>
+  </header>
+  <div class="chapter-grid" id="chapter-grid"><!-- built by JS --></div>
+</section>
+
+<!-- ===================== MISSION SELECT ===================== -->
 <section class="screen" id="screen-levels">
   <header class="sub-head">
-    <button class="btn small" data-back>&larr; Back</button>
-    <h2>Campaign</h2>
-    <span class="progress-chip"><b id="lvl-progress">0</b>/10 cleared</span>
+    <button class="btn small" id="btn-back-chapters">&larr; Cities</button>
+    <h2 id="lvl-chapter-name">Solaris City</h2>
+    <span class="progress-chip" id="lvl-gate">0/15 stars</span>
     <span class="gem-chip"><i class="gem"></i><span id="lvl-gems">0</span></span>
   </header>
+  <p class="chapter-blurb" id="lvl-blurb"></p>
   <div class="level-grid" id="level-grid"><!-- built by JS --></div>
 </section>
 
@@ -132,6 +158,7 @@
 <div class="overlay" id="overlay-result" hidden>
   <div class="result-card">
     <h2 id="res-title">Victory!</h2>
+    <div class="res-stars" id="res-stars" hidden><span></span><span></span><span></span></div>
     <p id="res-sub">You defended the bastion.</p>
     <div class="reward-row"><i class="gem"></i><span id="res-gems">+0</span> gems earned</div>
     <div class="result-actions">

@@ -460,6 +460,62 @@ const Sfx = {
     }
   },
 
+  /* ---------------- city bosses ---------------- */
+  bossSummon() {
+    this.tone({ freq: 180, to: 90, dur: .4, type: 'square', gain: .06, attack: .006, hold: .08 });
+    this.noise({ dur: .35, gain: .1, type: 'bandpass', freq: 900, freqTo: 2600, q: 1.2, attack: .01 });
+  },
+  bossGas() {
+    this.tone({ freq: 700, to: 240, dur: .7, type: 'sine', gain: .05, attack: .04, hold: .2 });
+    this.noise({ dur: .8, gain: .09, type: 'lowpass', freq: 1800, freqTo: 400, attack: .06, hold: .2 });
+    [660, 784, 587].forEach((f, i) =>
+      this.tone({ freq: f, dur: .16, type: 'square', gain: .03, delay: .1 + i * .12 }));
+  },
+  bossEmp() {
+    this.tone({ freq: 2400, to: 60, dur: .5, type: 'sawtooth', gain: .07, attack: .002 });
+    this.noise({ dur: .5, gain: .12, type: 'lowpass', freq: 4000, freqTo: 200, attack: .002 });
+  },
+  bossFreeze() {
+    this.noise({ dur: .7, gain: .1, type: 'highpass', freq: 1500, freqTo: 8000, attack: .02 });
+    [1400, 1900, 2600, 3300].forEach((f, i) =>
+      this.tone({ freq: f, to: f * .82, dur: .6, type: 'sine', gain: .028, delay: i * .04, attack: .01 }));
+    this.tone({ freq: 200, to: 80, dur: .5, type: 'sine', gain: .07, attack: .01 });
+  },
+  bossRegen() {
+    [523, 659, 784].forEach((f, i) =>
+      this.tone({ freq: f, to: f * 1.06, dur: .3, type: 'triangle', gain: .035, delay: i * .06, attack: .01 }));
+  },
+  bossNull() {
+    this.tone({ freq: 90, to: 34, dur: 1.1, type: 'sine', gain: .2, attack: .004, hold: .2 });
+    this.noise({ dur: 1, gain: .16, type: 'lowpass', freq: 2600, freqTo: 120, attack: .004, hold: .12 });
+    this.tone({ freq: 1600, to: 200, dur: .7, type: 'sawtooth', gain: .05, attack: .002 });
+  },
+
+  /* ---------------- new hero abilities ---------------- */
+  web() {
+    this.noise({ dur: .3, gain: .14, type: 'bandpass', freq: 2600, freqTo: 900, q: 1.6, attack: .004 });
+    this.tone({ freq: 900, to: 300, dur: .28, type: 'triangle', gain: .035, attack: .004 });
+  },
+  stormcall() {
+    this.tone({ freq: 70, to: 44, dur: 1.2, type: 'sine', gain: .16, attack: .02, hold: .3 });
+    this.noise({ dur: 1.1, gain: .12, type: 'lowpass', freq: 900, freqTo: 200, attack: .03, hold: .2 });
+  },
+  rally() {
+    [392, 523, 659, 784].forEach((f, i) =>
+      this.tone({ freq: f, dur: .35, type: 'triangle', gain: .055, delay: i * .07, attack: .004 }));
+    this.noise({ dur: .3, gain: .07, type: 'highpass', freq: 3000, attack: .01 });
+  },
+  lasso() {
+    this.tone({ freq: 500, to: 1500, dur: .35, type: 'sine', gain: .05, attack: .006 });
+    this.noise({ dur: .3, gain: .1, type: 'bandpass', freq: 1800, freqTo: 4200, q: 2, attack: .006 });
+    this.tone({ freq: 240, to: 160, dur: .4, type: 'triangle', gain: .05, delay: .18, attack: .008 });
+  },
+  portal() {
+    this.tone({ freq: 220, to: 1100, dur: .4, type: 'sine', gain: .06, attack: .01 });
+    this.tone({ freq: 1100, to: 180, dur: .5, type: 'sine', gain: .05, delay: .3, attack: .01 });
+    this.noise({ dur: .8, gain: .09, type: 'bandpass', freq: 700, freqTo: 3600, q: 1, attack: .04 });
+  },
+
   /** can't afford it / can't do that */
   deny() {
     this.tone({ freq: 225, to: 155, dur: .12, type: 'square', gain: .05, attack: .002 });

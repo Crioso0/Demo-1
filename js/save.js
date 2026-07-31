@@ -4,7 +4,7 @@
 const SAVE_KEY = 'balloon-bastion-demo-v1';
 
 const Save = {
-  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0 },
+  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0, stars: {} },
 
   load() {
     try {
@@ -49,9 +49,36 @@ const Save = {
 
   /* ---- campaign progress ---- */
   clearedLevels() { return this.data.levels || 0; },
-  isUnlocked(n) { return n <= this.clearedLevels() + 1; },
-  clearLevel(n) {
-    if (n > this.clearedLevels()) { this.data.levels = n; this.flush(); }
+  starsOn(n) { return (this.data.stars && this.data.stars[n]) || 0; },
+  totalStars() {
+    return Object.values(this.data.stars || {}).reduce((a, b) => a + b, 0);
   },
-  campaignComplete() { return this.clearedLevels() >= LEVEL_COUNT; },
+
+  /** every mission in a chapter three-starred? that is what opens the next city */
+  chapterMastered(chapterId) {
+    return LEVELS.filter((l) => l.chapter === chapterId).every((l) => this.starsOn(l.n) >= 3);
+  },
+  chapterUnlocked(chapterId) {
+    const idx = CHAPTERS.findIndex((c) => c.id === chapterId);
+    if (idx <= 0) return true;
+    return this.chapterMastered(CHAPTERS[idx - 1].id);
+  },
+
+  isUnlocked(n) {
+    const lv = LEVEL_BY_N[n];
+    if (!lv) return false;
+    if (!this.chapterUnlocked(lv.chapter)) return false;
+    if (lv.mission === 1) return true;              // first mission of an open city
+    return this.starsOn(n - 1) >= 1;                // otherwise clear the one before
+  },
+
+  clearLevel(n, stars) {
+    if (n > this.clearedLevels()) this.data.levels = n;
+    if (!this.data.stars) this.data.stars = {};
+    if (stars > this.starsOn(n)) this.data.stars[n] = stars;
+    this.flush();
+  },
+  campaignComplete() {
+    return LEVELS.every((l) => this.starsOn(l.n) >= 1);
+  },
 };

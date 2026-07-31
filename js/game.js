@@ -5,8 +5,9 @@
 /* =============================== VOID LEGION TROOPER =============================== */
 class Enemy {
   constructor(tier, opts = {}) {
-    this.tier = tier;                 // 0..4 or 'boss'
-    this.boss = tier === 'boss';
+    this.tier = tier;                 // 0..4, 'boss' or 'chapterBoss'
+    this.chapterBoss = tier === 'chapterBoss' ? opts.bossDef : null;
+    this.boss = tier === 'boss' || !!this.chapterBoss;
     this.d = 0;                       // distance marched along the route
     this.x = 0; this.y = 0; this.ang = 0;
     this.seed = rand(0, TAU);
@@ -21,13 +22,15 @@ class Enemy {
     this.special = opts.special ? SPECIALS[opts.special] : null;   // counter escort
     this.marked = 0;                  // Nocturne's prep work: takes double damage
     this.backward = 0;                // Jester's confusion: marches the wrong way
-    this.hp = this.boss ? Math.round(DREAD.hp * (opts.hpMul || 1)) : 1;
+    this.hp = this.chapterBoss ? this.chapterBoss.hp
+      : this.boss ? Math.round(DREAD.hp * (opts.hpMul || 1)) : 1;
     this.maxHp = this.hp;
-    this.r = this.boss ? DREAD.r : TROOPS[tier].r;
+    this.r = this.chapterBoss ? 46 : this.boss ? DREAD.r : TROOPS[tier].r;
+    this.powerCd = this.chapterBoss ? this.chapterBoss.power.interval * .6 : 0;
     this.step = rand(0, TAU);         // walk cycle offset
   }
 
-  get info() { return this.boss ? DREAD : TROOPS[this.tier]; }
+  get info() { return this.chapterBoss || (this.boss ? DREAD : TROOPS[this.tier]); }
   get color() { return this.info.color; }
   get speed() {
     return this.info.speed * this.slowF * this.speedMul * (this.swift ? SWIFT_MUL : 1);
@@ -60,6 +63,13 @@ class Enemy {
     }
 
     if (this.marked > 0) this.marked -= dt;
+    if (this.chapterBoss) {
+      this.powerCd -= dt;
+      if (this.powerCd <= 0) {
+        this.powerCd = this.chapterBoss.power.interval;
+        game.bossPower(this);
+      }
+    }
 
     const v = this.speed;
     if (this.backward > 0) {
@@ -96,7 +106,8 @@ class Enemy {
     ctx.ellipse(2, this.r * .82 + 4, this.r * .74, this.r * .3, 0, 0, TAU);
     ctx.fill();
 
-    if (this.boss) this.drawDread(ctx, time, grow);
+    if (this.chapterBoss) this.drawChapterBoss(ctx, time, grow);
+    else if (this.boss) this.drawDread(ctx, time, grow);
     else this.drawTrooper(ctx, time, grow);
 
     ctx.restore();
@@ -236,6 +247,84 @@ class Enemy {
     ctx.restore();
   }
 
+  /** a city's warlord: bigger, lit in its own colour, with a named health bar */
+  drawChapterBoss(ctx, time, grow) {
+    const bd = this.chapterBoss;
+    ctx.scale(grow, grow);
+    if (Math.cos(this.ang) < 0) ctx.scale(-1, 1);
+    const gait = Math.sin(this.step * 1.4) * 2.5;
+    const charge = clamp(1 - this.powerCd / bd.power.interval, 0, 1);
+
+    /* aura, brighter as the next power comes round */
+    const halo = ctx.createRadialGradient(0, 0, 8, 0, 0, 62);
+    halo.addColorStop(0, rgba(bd.color, .18 + charge * .32));
+    halo.addColorStop(1, rgba(bd.color, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, 62, 0, TAU); ctx.fill();
+
+    /* legs */
+    ctx.strokeStyle = '#14161f'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * 18, 10);
+      ctx.lineTo(s2 * 24 + gait * s2, 26);
+      ctx.lineTo(s2 * 17 + gait * s2, 40);
+      ctx.stroke();
+    }
+
+    /* hull */
+    const w = 86, h = 56;
+    const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    g.addColorStop(0, shade(bd.color, .1));
+    g.addColorStop(.5, '#2b3145');
+    g.addColorStop(1, '#12151f');
+    ctx.fillStyle = g;
+    roundRect(ctx, -w / 2, -h / 2, w, h, 16); ctx.fill();
+    ctx.strokeStyle = rgba(bd.color, .8); ctx.lineWidth = 3; ctx.stroke();
+
+    /* shoulder mounts */
+    ctx.fillStyle = '#1b2030';
+    roundRect(ctx, -w / 2 - 8, -h / 2 + 4, 12, 20, 5); ctx.fill();
+    roundRect(ctx, w / 2 - 4, -h / 2 + 4, 12, 20, 5); ctx.fill();
+
+    /* core, winding up between powers */
+    const pulse = .5 + Math.sin(time * 6) * .5;
+    const core = ctx.createRadialGradient(0, 0, 1, 0, 0, 20 + charge * 8);
+    core.addColorStop(0, 'rgba(255,255,255,.95)');
+    core.addColorStop(.4, rgba(bd.color, .85));
+    core.addColorStop(1, rgba(bd.color, 0));
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 0, (20 + charge * 8) * (.85 + pulse * .15), 0, TAU); ctx.fill();
+
+    /* crown of spikes so it reads as the boss at a glance */
+    ctx.fillStyle = rgba(bd.color, .95);
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 12 - 4, -h / 2);
+      ctx.lineTo(i * 12, -h / 2 - 14 - Math.abs(i) * -3);
+      ctx.lineTo(i * 12 + 4, -h / 2);
+      ctx.closePath(); ctx.fill();
+    }
+
+    /* name plate + health */
+    const p = clamp(this.hp / this.maxHp, 0, 1);
+    ctx.fillStyle = 'rgba(0,0,0,.6)';
+    roundRect(ctx, -52, -h / 2 - 40, 104, 10, 5); ctx.fill();
+    const hg = ctx.createLinearGradient(-52, 0, 52, 0);
+    hg.addColorStop(0, '#ff5a6e'); hg.addColorStop(1, bd.color);
+    ctx.fillStyle = hg;
+    roundRect(ctx, -50.5, -h / 2 - 38.5, 101 * p, 7, 3.5); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px Trebuchet MS, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(bd.name.toUpperCase(), 0, -h / 2 - 46);
+
+    if (this.hitFlash > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${clamp(this.hitFlash, 0, .8)})`;
+      roundRect(ctx, -w / 2, -h / 2, w, h, 16); ctx.fill();
+    }
+  }
+
   drawDread(ctx, time, grow) {
     ctx.scale(grow, grow);
     if (Math.cos(this.ang) < 0) ctx.scale(-1, 1);
@@ -311,6 +400,7 @@ class Tower {
     this.charges = this.maxCharges;
     this.ultAnim = 0;
     this.overdrive = 0;      // Streak's supersonic window
+    this.disabled = 0;       // knocked offline by a boss power
   }
 
   get mods() { return levelMods(this.level); }
@@ -320,8 +410,12 @@ class Tower {
   get rate() { return this.def.cooldown * this.mods.rate; }
   get damage() { return this.def.damage + this.mods.damage; }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
-  /** Overdrive collapses the cooldown to a fraction of normal */
-  get firingRate() { return this.overdrive > 0 ? this.rate * .17 : this.rate; }
+  /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
+  firingRateIn(game) {
+    let r = this.overdrive > 0 ? this.rate * .17 : this.rate;
+    if (game && game.rally > 0) r *= .5;
+    return r;
+  }
 
   update(dt, game) {
     this.placeAnim = Math.min(1, this.placeAnim + dt * 3.2);
@@ -339,6 +433,11 @@ class Tower {
     if (this.recoil > 0) this.recoil = Math.max(0, this.recoil - dt * 26);
     this.cd -= dt;
 
+    if (this.disabled > 0) {
+      this.disabled -= dt;
+      this.cd = Math.max(this.cd, .15);
+      return;
+    }
     if (this.suppressed) { this.cd = Math.max(this.cd, .15); return; }
 
     const target = game.firstInRange(this.x, this.y, this.range);
@@ -353,9 +452,9 @@ class Tower {
     if (this.cd <= 0) {
       const kind = this.def.kind;
       if (kind === 'frost' || kind === 'slam') {
-        if (game.anyInRange(this.x, this.y, this.range)) { this.fire(game, null); this.cd = this.firingRate; }
+        if (game.anyInRange(this.x, this.y, this.range)) { this.fire(game, null); this.cd = this.firingRateIn(game); }
       } else if (target) {
-        this.fire(game, target); this.cd = this.firingRate;
+        this.fire(game, target); this.cd = this.firingRateIn(game);
       }
     }
   }
@@ -385,7 +484,7 @@ class Tower {
           vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
           damage: this.damage, pierce: this.pierce, life: this.range / d.projSpeed + .12,
           kind: 'dart', color: this.isHero ? (d.color || '#ffb15c') : '#e9eeff',
-          burn: d.burn ? d.burn.time : 0, size: 4, tags: d.tags,
+          burn: d.burn ? d.burn.time : 0, size: 4, tags: d.tags, web: d.web || null,
         }));
         Sfx.shoot();
         break;
@@ -520,6 +619,28 @@ class Tower {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.scale(pop, pop);
+
+    if (this.disabled > 0) {
+      ctx.save();
+      ctx.filter = 'grayscale(1) brightness(.7)';
+      if (this.def.rotates) { ctx.save(); ctx.rotate(this.angle); this.def.art(ctx, this.level, time); ctx.restore(); }
+      else if (this.isHero) { ctx.save(); ctx.scale(this.facing, 1); this.def.art(ctx, this.level, time); ctx.restore(); }
+      else this.def.art(ctx, this.level, time);
+      ctx.restore();
+      const p = .5 + Math.sin(time * 14) * .5;
+      ctx.strokeStyle = `rgba(150,220,255,${.5 + p * .4})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, -2, 22, 0, TAU); ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const a = time * 3 + (i * TAU) / 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 16, -2 + Math.sin(a) * 16);
+        ctx.lineTo(Math.cos(a) * 26, -2 + Math.sin(a) * 26);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
 
     if (this.def.rotates) {
       ctx.save();
@@ -724,6 +845,7 @@ class Projectile {
       }
       this.hits.add(b);
       if (this.burn) b.ignite(this.burn);
+      if (this.web) b.chill(this.web.slow, this.web.time);
       game.damage(b, this.damage, { source: this.owner, x: this.x, y: this.y, tags: this.tags });
       if (--this.pierce <= 0) { this.dead = true; return; }
     }
@@ -1150,6 +1272,9 @@ class Game {
     this.saws = [];
     this.lances = [];
     this.coins = [];
+    this.webs = [];
+    this.strikes = [];
+    this.rally = 0;
     this.streak = 0;
     this.streakT = 0;
     this.particles = [];
@@ -1385,6 +1510,103 @@ class Game {
         break;
       }
 
+      case 'building': {
+        shadow(24, 16);
+        const h = 34 + rng() * 26;
+        const w = 26 + rng() * 14;
+        const bg = g.createLinearGradient(0, -h, 0, 14);
+        bg.addColorStop(0, '#5b7099'); bg.addColorStop(1, '#28344f');
+        g.fillStyle = bg;
+        roundRect(g, -w / 2, -h, w, h + 14, 3); g.fill();
+        g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1.6; g.stroke();
+        /* lit windows */
+        g.fillStyle = 'rgba(255,214,130,.75)';
+        for (let yy = -h + 7; yy < 6; yy += 9) {
+          for (let xx = -w / 2 + 5; xx < w / 2 - 4; xx += 8) {
+            if (rng() < .45) continue;
+            g.fillRect(xx, yy, 3.4, 4.4);
+          }
+        }
+        /* deco crown */
+        g.fillStyle = '#7f95bd';
+        roundRect(g, -w / 2 - 2, -h - 4, w + 4, 5, 2); g.fill();
+        break;
+      }
+
+      case 'planter': {
+        shadow(16, 10);
+        g.fillStyle = '#3c4a68';
+        roundRect(g, -13, 0, 26, 11, 3); g.fill();
+        for (let i = 0; i < 3; i++) {
+          g.fillStyle = ['#2f7a3c', '#3a8f47', '#46a552'][i];
+          g.beginPath(); g.arc(-7 + i * 7, -5 + rng() * 3, 7, 0, TAU); g.fill();
+        }
+        break;
+      }
+
+      case 'lamp': {
+        shadow(9, 14);
+        g.strokeStyle = '#1d2334'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(0, 14); g.lineTo(0, -18); g.stroke();
+        const lg = g.createRadialGradient(0, -22, 1, 0, -22, 16);
+        lg.addColorStop(0, 'rgba(255,224,150,.9)');
+        lg.addColorStop(1, 'rgba(255,200,110,0)');
+        g.fillStyle = lg;
+        g.beginPath(); g.arc(0, -22, 16, 0, TAU); g.fill();
+        g.fillStyle = '#ffe6a8';
+        g.beginPath(); g.arc(0, -22, 4, 0, TAU); g.fill();
+        break;
+      }
+
+      case 'spire': {
+        shadow(18, 16);
+        const sg = g.createLinearGradient(0, -40, 0, 16);
+        sg.addColorStop(0, '#4a4f6b'); sg.addColorStop(1, '#20233a');
+        g.fillStyle = sg;
+        g.beginPath();
+        g.moveTo(0, -42); g.lineTo(11, -12); g.lineTo(13, 16); g.lineTo(-13, 16); g.lineTo(-11, -12);
+        g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 1.6; g.stroke();
+        /* a gargoyle silhouette perched on the ledge */
+        g.fillStyle = '#171a2a';
+        g.beginPath();
+        g.arc(0, -14, 5, Math.PI, TAU);
+        g.lineTo(7, -8); g.lineTo(-7, -8); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(255,110,110,.75)';
+        g.beginPath(); g.arc(-2, -15, 1.1, 0, TAU); g.arc(2, -15, 1.1, 0, TAU); g.fill();
+        break;
+      }
+
+      case 'water': {
+        const wg = g.createRadialGradient(0, 0, 2, 0, 0, 26);
+        wg.addColorStop(0, 'rgba(150,240,230,.55)');
+        wg.addColorStop(.6, 'rgba(60,160,170,.4)');
+        wg.addColorStop(1, 'rgba(30,90,110,0)');
+        g.fillStyle = wg;
+        g.beginPath(); g.ellipse(0, 0, 26, 14, 0, 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(190,255,250,.5)'; g.lineWidth = 1.2;
+        for (let i = 0; i < 3; i++) {
+          g.beginPath(); g.ellipse(0, 1 + i * 3, 18 - i * 5, 8 - i * 2.5, 0, .2, Math.PI - .2); g.stroke();
+        }
+        break;
+      }
+
+      case 'palm': {
+        shadow(14, 18);
+        g.strokeStyle = '#6b5637'; g.lineWidth = 4; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(0, 18); g.quadraticCurveTo(-4, 0, 2, -18); g.stroke();
+        g.fillStyle = '#2f7a5c';
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i - 2) * .55;
+          g.save(); g.translate(2, -18); g.rotate(a);
+          g.beginPath();
+          g.moveTo(0, 0); g.quadraticCurveTo(11, -5, 20, 2); g.quadraticCurveTo(11, 3, 0, 3);
+          g.closePath(); g.fill();
+          g.restore();
+        }
+        break;
+      }
+
       case 'rift': {
         const rg2 = g.createRadialGradient(0, 0, 1, 0, 0, 26);
         rg2.addColorStop(0, 'rgba(220,180,255,.85)');
@@ -1485,12 +1707,17 @@ class Game {
 
   /* ---------------- activated abilities ---------------- */
   canUseUlt(t) {
-    return !!(t && t.def.ability && !this.over && t.charges > 0 && !t.suppressed
+    return !!(t && t.def.ability && !this.over && t.charges > 0 && !t.suppressed && !(t.disabled > 0)
       && (this.running || this.enemies.length > 0));
   }
 
   activateUlt(t) {
     if (!t || !t.def.ability || this.over) return false;
+    if (t.disabled > 0) {
+      this.floatText(t.x, t.y - 40, 'Offline', '#ff5a6e', 1.1, 13);
+      Sfx.deny();
+      return false;
+    }
     if (t.suppressed) {
       this.floatText(t.x, t.y - 40, `${t.suppressed.short} is jamming him`, '#ff5a6e', 1.3, 13);
       Sfx.deny();
@@ -1600,6 +1827,82 @@ class Game {
         break;
       }
 
+      case 'webzone': {
+        const r = ab.radius[t.level - 1];
+        const p = PATH.at(clamp(this.leadDistance() + 60, 0, PATH.length));
+        this.webs.push({
+          x: p.x, y: p.y, r, life: ab.duration[t.level - 1],
+          maxLife: ab.duration[t.level - 1], slow: .3, seed: rand(0, TAU),
+        });
+        burst('#e8eefc', 20);
+        this.floatText(t.x, t.y - 66, 'WEB ZONE', '#e8eefc', 1.2, 15);
+        Sfx.web();
+        break;
+      }
+
+      case 'stormcall': {
+        /* bolts walk down the route one after another */
+        const strikes = ab.strikes[t.level - 1];
+        const targets = [...this.enemies].filter((e) => !e.dead).sort((a, b) => b.d - a.d);
+        for (let i = 0; i < strikes; i++) {
+          const e = targets[i % Math.max(1, targets.length)];
+          const at = e ? { x: e.x, y: e.y } : PATH.at(rand(0, PATH.length));
+          this.strikes.push({ x: at.x, y: at.y, delay: i * .09, life: .3, maxLife: .3,
+            damage: 3 + t.level, done: false, tags: t.def.tags });
+        }
+        burst('#cfe6ff', 26);
+        this.flash = Math.max(this.flash, .3);
+        Sfx.stormcall();
+        break;
+      }
+
+      case 'rally': {
+        this.rally = Math.max(this.rally, ab.duration[t.level - 1]);
+        burst('#7fb0ff', 30);
+        for (const other of this.towers) {
+          this.rings.push({ x: other.x, y: other.y, r: 6, max: 40, life: .5, maxLife: .5,
+            color: '#7fb0ff', thick: 3 });
+        }
+        this.floatText(t.x, t.y - 66, 'RALLY — DOUBLE RATE', '#9fc4ff', 1.6, 16);
+        Sfx.rally();
+        break;
+      }
+
+      case 'lasso': {
+        const dur = ab.duration[t.level - 1];
+        let n = 0;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          e.chill(0, dur);                       // bound in place
+          e.d = Math.max(0, e.d - 40);
+          n++;
+        }
+        burst('#ffc85a', 28);
+        this.floatText(t.x, t.y - 66, `${n} bound`, '#ffd77a', 1.4, 16);
+        Sfx.lasso();
+        break;
+      }
+
+      case 'portal': {
+        const frac = ab.send[t.level - 1];
+        let n = 0;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          const before = e.d;
+          e.d = Math.max(0, e.d - PATH.length * frac);
+          if (e.d < before) n++;
+          const p2 = PATH.at(e.d);
+          this.rings.push({ x: p2.x, y: p2.y, r: 4, max: 26, life: .4, maxLife: .4,
+            color: '#ff9a4d', thick: 3 });
+          e.x = p2.x; e.y = p2.y;
+        }
+        burst('#ff9a4d', 34);
+        this.flash = Math.max(this.flash, .3);
+        this.floatText(t.x, t.y - 66, `${n} sent back`, '#ffb37a', 1.5, 16);
+        Sfx.portal();
+        break;
+      }
+
       case 'wildcard': {
         /* every hostile draws a card and lives with it */
         let blown = 0, stunned = 0, turned = 0, robbed = 0;
@@ -1657,6 +1960,7 @@ class Game {
           tier: grp.tier, t: grp.delay + i * grp.gap,
           opts: {
             swift: !!grp.swift, shield: !!grp.shield, speedMul, special: grp.special,
+            bossDef: grp.tier === 'chapterBoss' ? this.level.chapterBoss : null,
             /* Dreadnoughts get tougher as the campaign goes on */
             hpMul: 1 + (this.levelNo - 1) * .13,
           },
@@ -1688,12 +1992,14 @@ class Game {
     Sfx.stopAll();
     this.running = false;
     if (win) {
-      const first = Save.clearedLevels() < this.levelNo;
-      this.runGems = levelReward(this.level) * (first ? 2 : 1);
+      const first = Save.starsOn(this.levelNo) === 0;
+      const stars = starsFor(this.lives, this.level.lives);
+      const best = stars > Save.starsOn(this.levelNo);
+      this.runGems = levelReward(this.level) * (first ? 2 : 1) + (stars - 1) * 10;
       Save.addGems(this.runGems);
-      Save.clearLevel(this.levelNo);
+      Save.clearLevel(this.levelNo, stars);
       Sfx.fanfare();
-      this.onEvent('victory', { gems: this.runGems, first, level: this.levelNo });
+      this.onEvent('victory', { gems: this.runGems, first, level: this.levelNo, stars, best });
     } else {
       /* a failed run still pays for the rounds that were held */
       this.runGems = Math.max(0, (this.round - 1) * 4);
@@ -1713,6 +2019,94 @@ class Game {
     this.floatText(exit.x, Math.min(exit.y, CANVAS_H - 46), `-${dmg}`, '#ff5a6e', 1.1, 20);
     Sfx.leak();
     if (this.lives <= 0) { this.lives = 0; this.end(false); }
+  }
+
+  /* ---------------- boss powers ---------------- */
+  /**
+   * Each city warlord has one trick, fired on a timer. Tower lockouts are
+   * always brief and always telegraphed by the boss's charging core.
+   */
+  bossPower(b) {
+    const pw = b.chapterBoss.power;
+    const col = b.chapterBoss.color;
+    this.rings.push({ x: b.x, y: b.y, r: 20, max: pw.radius || 180,
+      life: .6, maxLife: .6, color: col, thick: 9 });
+    this.shake = Math.max(this.shake, 7);
+
+    switch (pw.kind) {
+      case 'summon': {
+        for (let i = 0; i < pw.count; i++) {
+          const e = new Enemy(clamp(2 + Math.floor(this.levelNo / 10), 0, 4), {
+            speedMul: b.speedMul,
+          });
+          e.d = Math.max(0, b.d - 20 - i * 16);
+          e.spawnAnim = .2;
+          this.enemies.push(e);
+        }
+        this.floatText(b.x, b.y - 66, 'DRONE SCREEN', col, 1.3, 15);
+        Sfx.bossSummon();
+        break;
+      }
+      case 'gas': {
+        /* the nearest hero simply stops working for a moment */
+        let best = null, bd = Infinity;
+        for (const t of this.towers) {
+          if (!t.isHero) continue;
+          const d2 = distSq(t.x, t.y, b.x, b.y);
+          if (d2 < bd && d2 <= pw.radius * pw.radius) { bd = d2; best = t; }
+        }
+        if (best) {
+          best.disabled = Math.max(best.disabled || 0, pw.duration);
+          this.floatText(best.x, best.y - 44, 'LAUGHING GAS', col, 1.3, 14);
+        }
+        Sfx.bossGas();
+        break;
+      }
+      case 'emp':
+      case 'freeze': {
+        let n = 0;
+        for (const t of this.towers) {
+          if (distSq(t.x, t.y, b.x, b.y) > pw.radius * pw.radius) continue;
+          t.disabled = Math.max(t.disabled || 0, pw.duration);
+          n++;
+        }
+        this.floatText(b.x, b.y - 66,
+          pw.kind === 'freeze' ? `FLASH FREEZE · ${n}` : `SURGE PULSE · ${n}`, col, 1.4, 16);
+        this.flash = Math.max(this.flash, .2);
+        if (pw.kind === 'freeze') Sfx.bossFreeze(); else Sfx.bossEmp();
+        break;
+      }
+      case 'regen': {
+        b.hp = Math.min(b.maxHp, b.hp + pw.amount);
+        this.floatText(b.x, b.y - 66, `+${pw.amount}`, '#7dff9c', 1, 15);
+        for (let i = 0; i < 10; i++) {
+          const a = rand(0, TAU);
+          this.particles.push(new Particle(b.x + Math.cos(a) * 40, b.y + Math.sin(a) * 40, {
+            vx: -Math.cos(a) * 90, vy: -Math.sin(a) * 90, life: .45, size: rand(2, 4),
+            color: '#ffb15c', kind: 'spark',
+          }));
+        }
+        Sfx.bossRegen();
+        break;
+      }
+      case 'null': {
+        for (const t of this.towers) {
+          if (!t.isHero) continue;
+          if (distSq(t.x, t.y, b.x, b.y) > pw.radius * pw.radius) continue;
+          t.disabled = Math.max(t.disabled || 0, pw.duration);
+        }
+        for (let i = 0; i < pw.count; i++) {
+          const e = new Enemy(4, { speedMul: b.speedMul, shield: true });
+          e.d = Math.max(0, b.d - 24 - i * 18);
+          e.spawnAnim = .2;
+          this.enemies.push(e);
+        }
+        this.floatText(b.x, b.y - 70, 'NULL PULSE', col, 1.6, 18);
+        this.flash = Math.max(this.flash, .4);
+        Sfx.bossNull();
+        break;
+      }
+    }
   }
 
   /* ---------------- counter escorts ---------------- */
@@ -1755,6 +2149,12 @@ class Game {
     return best;
   }
 
+  leadDistance() {
+    let best = 0;
+    for (const e of this.enemies) if (!e.dead && e.d > best) best = e.d;
+    return best;
+  }
+
   anyInRange(x, y, r) {
     const r2 = r * r;
     for (const b of this.enemies) if (!b.dead && distSq(b.x, b.y, x, y) <= r2) return true;
@@ -1787,11 +2187,20 @@ class Game {
       this.spark(b.x, b.y, '#ffb0a0', 3);
       if (b.hp <= 0) {
         b.dead = true;
-        this.cash += DREAD.reward;
-        this.spawnCoins(b.x, b.y, 4, DREAD.reward);
+        const reward = b.chapterBoss ? b.chapterBoss.reward : DREAD.reward;
+        this.cash += reward;
+        if (b.chapterBoss) {
+          this.floatText(CANVAS_W / 2, 140, `${b.chapterBoss.name} DOWN`, b.chapterBoss.color, 2.6, 30);
+          this.flash = Math.max(this.flash, .5);
+          this.shake = Math.max(this.shake, 18);
+          for (let i = 0; i < 3; i++) {
+            this.explodeFx(b.x + rand(-30, 30), b.y + rand(-30, 30), 90, b.chapterBoss.color);
+          }
+        }
+        this.spawnCoins(b.x, b.y, 4, reward);
         this.cashChime();
         this.explodeFx(b.x, b.y, 70, '#ff7a4d');
-        this.floatText(b.x, b.y - 40, `+$${DREAD.reward}`, '#ffcf5c', 1.2, 18);
+        this.floatText(b.x, b.y - 40, `+$${reward}`, '#ffcf5c', 1.2, 18);
         this.shake = Math.max(this.shake, 10);
         Sfx.boom();
         /* a wrecked walker spills the squad riding inside it */
@@ -1918,6 +2327,7 @@ class Game {
       for (const b of this.beams) b.life -= dt;
       for (const t of this.texts) { t.life -= dt; t.y -= dt * 26; }
       for (const c of this.coins) c.update(dt);
+      this.webs = []; this.strikes = [];
       this.particles = this.particles.filter((p) => p.life > 0);
       this.coins = this.coins.filter((c) => !c.dead);
       this.rings = this.rings.filter((r) => r.life > 0);
@@ -1943,6 +2353,32 @@ class Game {
     for (const p of this.projectiles) if (!p.dead) p.update(dt, this);
     for (const sw of this.saws) if (!sw.dead) sw.update(dt, this);
     for (const ln of this.lances) if (!ln.dead) ln.update(dt, this);
+    if (this.rally > 0) this.rally -= dt;
+    for (const w of this.webs) {
+      w.life -= dt;
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        if (distSq(e.x, e.y, w.x, w.y) <= w.r * w.r) e.chill(w.slow, .3);
+      }
+    }
+    this.webs = this.webs.filter((w) => w.life > 0);
+
+    for (const st of this.strikes) {
+      if (st.delay > 0) { st.delay -= dt; continue; }
+      if (!st.done) {
+        st.done = true;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          if (distSq(e.x, e.y, st.x, st.y) > 46 * 46) continue;
+          this.damage(e, st.damage, { x: e.x, y: e.y, silent: true, tags: st.tags });
+        }
+        this.spark(st.x, st.y, '#cfe6ff', 8);
+        this.shake = Math.max(this.shake, 3);
+        Sfx.zap();
+      }
+      st.life -= dt;
+    }
+    this.strikes = this.strikes.filter((st) => st.delay > 0 || st.life > 0);
 
     for (const c of this.coins) c.update(dt);
     if (this.streakT > 0) {
@@ -1968,7 +2404,7 @@ class Game {
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.4);
 
     if (this.running && !this.over && !this.queue.length && !this.enemies.length
-        && !this.saws.length && !this.lances.length) this.finishRound();
+        && !this.saws.length && !this.lances.length && !this.strikes.length) this.finishRound();
   }
 
   /* ---------------- draw ---------------- */
@@ -1993,6 +2429,30 @@ class Game {
       ctx.restore();
     }
 
+    /* web zones sit under everything */
+    for (const w of this.webs) {
+      const k = clamp(w.life / w.maxLife, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = .18 + k * .22;
+      ctx.fillStyle = '#e8eefc';
+      ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(240,246,255,.8)';
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU + w.seed;
+        ctx.beginPath();
+        ctx.moveTo(w.x, w.y);
+        ctx.lineTo(w.x + Math.cos(a) * w.r, w.y + Math.sin(a) * w.r);
+        ctx.stroke();
+      }
+      for (let ring = 1; ring <= 3; ring++) {
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, (w.r / 3) * ring, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     /* rings (ground fx) */
     for (const r of this.rings) {
       const t = r.life / r.maxLife;
@@ -2012,6 +2472,27 @@ class Game {
     for (const p of this.projectiles) p.draw(ctx);
     for (const sw of this.saws) sw.draw(ctx, this.time);
     for (const ln of this.lances) ln.draw(ctx, this.time);
+
+    /* Storm Call bolts */
+    for (const st of this.strikes) {
+      if (st.delay > 0 || st.life <= 0) continue;
+      const k = st.life / st.maxLife;
+      ctx.save();
+      ctx.globalAlpha = k;
+      ctx.strokeStyle = '#e8f4ff';
+      ctx.lineWidth = 3 * k + 1;
+      ctx.shadowColor = '#9fd0ff'; ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(st.x + rand(-14, 14), 0);
+      let y = 0;
+      while (y < st.y - 10) {
+        y += 26;
+        ctx.lineTo(st.x + rand(-16, 16), Math.min(y, st.y));
+      }
+      ctx.lineTo(st.x, st.y);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     /* lightning beams */
     for (const bm of this.beams) {

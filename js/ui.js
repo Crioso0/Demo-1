@@ -14,7 +14,8 @@ const UI = {
     game.onEvent = (type, payload) => this.onGameEvent(type, payload);
 
     /* ---- menu ---- */
-    $('#btn-play').onclick = () => { this.renderLevels(); this.show('levels'); };
+    $('#btn-play').onclick = () => { this.renderChapters(); this.show('chapters'); };
+    $('#btn-back-chapters').onclick = () => { this.renderChapters(); this.show('chapters'); };
     $('#btn-collection').onclick = () => { this.renderCollection(); this.show('collection'); };
     $('#btn-howto').onclick = () => $('#overlay-help').hidden = false;
     $('#btn-help-close').onclick = () => { $('#overlay-help').hidden = true; Save.data.seenHelp = true; Save.flush(); };
@@ -53,32 +54,89 @@ const UI = {
     $('#menu-gems').textContent = Save.gems;
     $('#menu-roster').textContent = Save.data.heroes.length;
     $('#menu-roster-max').textContent = HEROES.length;
+    $('#menu-stars').textContent = Save.totalStars();
+    $('#menu-stars-max').textContent = LEVEL_COUNT * 3;
+
+    /* the play button points at wherever you left off */
+    const next = LEVELS.find((l) => Save.isUnlocked(l.n) && Save.starsOn(l.n) === 0) || LEVELS[0];
+    const ch = CHAPTER_BY_ID[next.chapter];
+    $('#menu-play-label').textContent = Save.totalStars() ? 'Continue' : 'Begin Campaign';
+    $('#menu-play-sub').textContent = `${ch.name} · Mission ${next.mission}`;
+  },
+
+  /* =================== chapters =================== */
+  renderChapters() {
+    $('#ch-gems').textContent = Save.gems;
+    $('#ch-stars').textContent = `${Save.totalStars()} / ${LEVEL_COUNT * 3}`;
+    const grid = $('#chapter-grid');
+    grid.innerHTML = '';
+
+    CHAPTERS.forEach((ch, i) => {
+      const unlocked = Save.chapterUnlocked(ch.id);
+      const levels = LEVELS.filter((l) => l.chapter === ch.id);
+      const stars = levels.reduce((a, l) => a + Save.starsOn(l.n), 0);
+      const max = levels.length * 3;
+      const mastered = stars >= max;
+      const prev = i > 0 ? CHAPTERS[i - 1] : null;
+
+      const card = document.createElement('button');
+      card.className = 'chapter-card' + (unlocked ? '' : ' locked') + (mastered ? ' done' : '');
+      card.style.setProperty('--accent', ch.accent);
+      card.innerHTML = `
+        <span class="ch-n">CITY ${i + 1}${mastered ? ' · MASTERED' : ''}</span>
+        <span class="ch-name">${unlocked ? ch.name : '???'}</span>
+        <span class="ch-tag">${unlocked ? ch.tag : 'sealed'}</span>
+        <span class="ch-blurb">${unlocked ? ch.blurb : `Take every star in ${prev ? prev.name : 'the previous city'} to open this one.`}</span>
+        ${unlocked ? `<span class="ch-boss"><b>${ch.boss.name}</b> — ${ch.boss.line}</span>` : ''}
+        <span class="ch-bar"><i style="width:${max ? (stars / max) * 100 : 0}%"></i></span>
+        <span class="ch-stat"><span>${levels.length} missions</span><b>${stars} / ${max} ★</b></span>
+        ${unlocked || !prev ? '' : `<span class="ch-lock">🔒 needs ${
+          levels.length * 3 - LEVELS.filter((l) => l.chapter === prev.id)
+            .reduce((a, l) => a + Save.starsOn(l.n), 0)} more stars in ${prev.name}</span>`}`;
+      card.onclick = () => {
+        if (!unlocked) { Sfx.deny(); return; }
+        Sfx.click();
+        this.renderLevels(ch.id);
+        this.show('levels');
+      };
+      grid.appendChild(card);
+    });
   },
 
   /* =================== campaign =================== */
-  renderLevels() {
+  renderLevels(chapterId) {
+    this.chapterId = chapterId || this.chapterId || CHAPTERS[0].id;
+    const ch = CHAPTER_BY_ID[this.chapterId];
+    const levels = LEVELS.filter((l) => l.chapter === ch.id);
+    const stars = levels.reduce((a, l) => a + Save.starsOn(l.n), 0);
+    const max = levels.length * 3;
+
     $('#lvl-gems').textContent = Save.gems;
-    $('#lvl-progress').textContent = Save.clearedLevels();
+    $('#lvl-chapter-name').textContent = ch.name;
+    $('#lvl-blurb').textContent = stars >= max
+      ? `${ch.name} is fully mastered — the next city is open.`
+      : `${ch.blurb} Take all ${max} stars here to open the next city.`;
+    $('#lvl-gate').innerHTML = `<b>${stars}</b>/${max} stars`;
+
     const grid = $('#level-grid');
     grid.innerHTML = '';
 
-    for (const lv of LEVELS) {
+    for (const lv of levels) {
       const unlocked = Save.isUnlocked(lv.n);
-      const cleared = lv.n <= Save.clearedLevels();
-      const next = unlocked && !cleared;
-      const map = MAP_BY_ID[lv.map];
+      const got = Save.starsOn(lv.n);
+      const next = unlocked && got === 0;
       const mods = lv.mods || {};
 
       const card = document.createElement('button');
-      card.className = 'level-card'
-        + (cleared ? ' cleared' : '') + (!unlocked ? ' locked' : '') + (next ? ' next' : '');
+      card.className = 'level-card' + (got ? ' cleared' : '')
+        + (!unlocked ? ' locked' : '') + (next ? ' next' : '');
       card.innerHTML = `
-        ${cleared ? '<span class="lv-done">✔</span>' : ''}
-        <span class="lv-n">LEVEL ${lv.n}</span>
-        <span class="lv-name">${unlocked ? lv.name : 'Locked'}</span>
-        <span class="lv-map">${map.name}</span>
+        <span class="lv-stars">${[1, 2, 3].map((k) =>
+          `<i class="${got >= k ? 'on' : ''}"></i>`).join('')}</span>
+        <span class="lv-n">MISSION ${lv.mission}</span>
+        <span class="lv-name">${unlocked ? lv.name.split(' — ')[1] : 'Locked'}</span>
+        <span class="lv-map">${lv.rounds} rounds · ${lv.lives} lives</span>
         <span class="lv-meta">
-          <span class="tag">${lv.rounds} rounds</span>
           ${lv.boss ? `<span class="tag boss">${lv.boss.length}× Dreadnought</span>` : ''}
           ${mods.swift ? '<span class="tag swift">Runners</span>' : ''}
           ${mods.shield ? '<span class="tag shield">Shielded</span>' : ''}
@@ -86,7 +144,8 @@ const UI = {
             `<span class="tag counter" style="--c:${SPECIALS[sid].color}"
                    title="${SPECIALS[sid].desc}">${SPECIALS[sid].short}</span>`).join('')}
           <span class="tag gems">+${levelReward(lv)} gems</span>
-        </span>`;
+        </span>
+        ${lv.chapterBoss ? `<span class="lv-boss-name">☠ ${lv.chapterBoss.name}</span>` : ''}`;
       card.onclick = () => {
         if (!unlocked) { Sfx.deny(); return; }
         Sfx.click();
@@ -106,8 +165,9 @@ const UI = {
   },
 
   quitRun() {
+    const lv = LEVEL_BY_N[this.game.levelNo];
     this.game.reset(this.game.levelNo);
-    this.renderLevels();
+    this.renderLevels(lv ? lv.chapter : undefined);
     this.show('levels');
   },
 
@@ -237,8 +297,8 @@ const UI = {
     $('#hud-lives').textContent = g.lives;
     $('#hud-cash').textContent = g.cash;
     $('#hud-round').textContent = `${g.round}/${g.waves.length}`;
-    $('#hud-level').textContent = `LEVEL ${g.levelNo}`;
-    $('#hud-map').textContent = CURRENT_MAP.name;
+    $('#hud-level').textContent = `MISSION ${g.level.mission} · ${g.levelNo}/${LEVEL_COUNT}`;
+    $('#hud-map').textContent = CHAPTER_BY_ID[g.level.chapter].name;
 
     const go = $('#btn-start-round');
     go.classList.toggle('running', g.running);
@@ -281,14 +341,34 @@ const UI = {
     const card = $('#overlay-result').firstElementChild;
     card.classList.toggle('defeat', !win);
 
-    const done = win && Save.campaignComplete() && g.levelNo === LEVEL_COUNT;
-    $('#res-title').textContent = done ? 'Campaign Complete!' : win ? 'Level Clear!' : 'Overrun!';
+    const done = win && Save.campaignComplete();
+    const ch = CHAPTER_BY_ID[g.level.chapter];
+    const chapterDone = win && Save.chapterMastered(ch.id);
+
+    $('#res-title').textContent = done ? 'Campaign Complete!'
+      : chapterDone ? `${ch.name} Mastered!`
+      : win ? 'Mission Clear!' : 'Overrun!';
+
+    const starRow = $('#res-stars');
+    starRow.hidden = !win;
+    if (win) {
+      const kids = Array.from(starRow.children);
+      kids.forEach((el, i) => {
+        el.className = '';
+        void el.offsetWidth;
+        el.className = (i < payload.stars ? 'on ' : '') + 'show';
+      });
+      if (payload.stars === 3) setTimeout(() => Sfx.coin(), 500);
+    }
+
     $('#res-sub').textContent = done
-      ? 'The Void Legion is broken on every front.'
+      ? 'Every city is held. The Void Legion is broken on every front.'
       : win
-        ? `Level ${g.levelNo} — ${g.level.name} held with ${g.lives} lives left.`
-          + (payload.first ? ' First clear bonus!' : '')
-        : `The bastion fell on round ${g.round} of ${g.waves.length}.`;
+        ? `${g.level.name} held with ${g.lives}/${g.level.lives} lives.`
+          + (payload.best ? ' New best!' : '')
+          + (chapterDone ? ` The next city is open.` : '')
+        : `The bastion fell on round ${g.round} of ${g.waves.length}. `
+          + `Three stars needs ${Math.ceil(g.level.lives * .9)} lives left.`;
     $('#res-gems').textContent = `+${gems}`;
 
     /* offer the next level straight from the result card */
@@ -299,10 +379,10 @@ const UI = {
       $('#overlay-result').hidden = true;
       this.startRun(hasNext ? g.levelNo + 1 : g.levelNo);
     };
-    $('#btn-res-menu').textContent = 'Campaign';
+    $('#btn-res-menu').textContent = 'Missions';
     $('#btn-res-menu').onclick = () => {
       $('#overlay-result').hidden = true;
-      this.renderLevels();
+      this.renderLevels(g.level.chapter);
       this.show('levels');
     };
 
