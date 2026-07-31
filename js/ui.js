@@ -190,12 +190,14 @@ const UI = {
 
     $('#lo-title').textContent = lv.name.split(' — ')[1] || lv.name;
     const escorts = (lv.specials || []).map((s) => SPECIALS[s].short);
-    $('#lo-sub').textContent =
+    $('#lo-sub').innerHTML =
       `Mission ${lv.mission} of ${CHAPTER_BY_ID[lv.chapter].name} — `
-      + `${slots} hero slot${slots > 1 ? 's' : ''} on this map. `
+      + `<b>${slots} hero slot${slots > 1 ? 's' : ''}</b> on this map. `
       + (escorts.length
-        ? `Counter escorts on the field: ${escorts.join(', ')} — tags they shut down are marked in red.`
-        : 'No counter escorts on this one.');
+        ? `Counter escorts on the field: <b>${escorts.join(', ')}</b> — tags they shut down are marked in red. `
+        : 'No counter escorts on this one. ')
+      + CLASS_LIST.map((c) =>
+        `<span class="lo-legend" style="--c:${c.color}" title="${c.blurb}">${c.name}</span>`).join('');
 
     this.renderLoadout();
     this.show('loadout');
@@ -231,6 +233,13 @@ const UI = {
       const rar = document.createElement('i');
       rar.className = 'lo-rar';
       card.appendChild(rar);
+      if (def.apex) {
+        card.classList.add('apex');
+        const flag = document.createElement('span');
+        flag.className = 'lo-apex';
+        flag.textContent = 'RAREST';
+        card.appendChild(flag);
+      }
       card.appendChild(icon);
 
       const name = document.createElement('span');
@@ -241,6 +250,18 @@ const UI = {
       role.textContent = owned ? def.role : 'Locked — found in cases';
       card.appendChild(name);
       card.appendChild(role);
+
+      if (owned) {
+        const cls = classOf(def);
+        if (cls) {
+          const chip = document.createElement('span');
+          chip.className = 'lo-class';
+          chip.textContent = cls.name;
+          chip.style.setProperty('--c', cls.color);
+          chip.title = cls.blurb;
+          card.appendChild(chip);
+        }
+      }
 
       if (owned && def.ability) {
         const ult = document.createElement('span');
@@ -427,6 +448,15 @@ const UI = {
     panel.hidden = false;
     $('#ins-name').textContent = t.def.name;
     $('#ins-level').textContent = `Lv ${t.level}`;
+    /* a hero wears its class here — it is what the numbers below are shaped by */
+    const cls = classOf(t.def);
+    const chip = $('#ins-class');
+    chip.hidden = !cls;
+    if (cls) {
+      chip.textContent = `${cls.name} — ${cls.blurb}`;
+      chip.style.setProperty('--c', cls.color);
+    }
+
     const support = t.def.kind === 'support';
     const rate = (1 / t.rate).toFixed(1);
     $('#ins-stats').innerHTML = support
@@ -612,11 +642,14 @@ const UI = {
       card.insertAdjacentHTML('beforeend', `
         <h3>${owned ? h.name : '???'}</h3>
         <div class="role">${h.role}</div>
-        <div class="desc">${owned ? h.desc : 'Locked. Open a hero crate for a chance to recruit.'}</div>
+        ${classOf(h) ? `<div class="hero-class" style="--c:${classOf(h).color}">
+          <b>${classOf(h).name}</b> — ${classOf(h).blurb}</div>` : ''}
+        <div class="desc">${owned ? h.desc : 'Locked. Open a case for a chance to recruit.'}</div>
         ${owned && h.tags ? `<div class="hero-tags">${h.tags
           .map((t) => `<span>${t}</span>`).join('')}</div>` : ''}
         <span class="state ${owned ? 'owned' : 'locked'}">${owned ? '✔ UNLOCKED' : '🔒 LOCKED'}</span>
-        ${h.starter ? '<span class="starter">STARTER</span>' : ''}`);
+        ${h.starter ? '<span class="starter">STARTER</span>' : ''}
+        ${h.apex ? '<span class="apex">RAREST IN THE GAME</span>' : ''}`);
       wrap.appendChild(card);
     }
 

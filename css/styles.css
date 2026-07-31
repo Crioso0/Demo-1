@@ -250,6 +250,11 @@ button{font-family:inherit}
 .hero-card .state.locked{color:var(--muted)}
 .hero-card .starter{position:absolute; top:10px; right:10px; font-size:10px; letter-spacing:.1em;
   background:rgba(255,255,255,.12); padding:3px 8px; border-radius:999px}
+.hero-card .apex{position:absolute; top:10px; right:10px; font-size:9.5px; font-weight:900;
+  letter-spacing:.1em; color:#0b1020; padding:3px 9px; border-radius:999px;
+  background:linear-gradient(120deg,#ffd23f,#ff8a3d); box-shadow:0 0 16px -2px #ffb03f}
+.hero-card .hero-class{font-size:10.5px; line-height:1.4; margin:2px 0 6px; color:var(--c)}
+.hero-card .hero-class b{letter-spacing:.06em; text-transform:uppercase}
 
 .crate-panel{
   width:300px; text-align:center; padding:22px;
@@ -415,6 +420,34 @@ button{font-family:inherit}
 .lo-card canvas{margin-top:2px}
 .lo-card .lo-name{font-size:13.5px; font-weight:900}
 .lo-card .lo-role{font-size:10.5px; color:var(--muted); text-align:center}
+.lo-card.apex{border-color:rgba(255,210,63,.55); box-shadow:0 0 26px -10px #ffd23f}
+.lo-card .lo-apex{
+  position:absolute; top:-1px; right:-1px; font-size:8px; font-weight:900;
+  letter-spacing:.1em; color:#0b1020; padding:2px 7px; border-radius:0 13px 0 10px;
+  background:linear-gradient(120deg,#ffd23f,#ff8a3d);
+}
+.lo-card.apex .lo-tick{top:22px}
+.lo-card .lo-class{
+  margin-top:5px; font-size:9px; font-weight:900; letter-spacing:.09em;
+  text-transform:uppercase; padding:2px 8px; border-radius:999px;
+  color:var(--c); border:1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  background:color-mix(in srgb, var(--c) 14%, transparent);
+}
+.lo-legend{
+  display:inline-flex; align-items:center; gap:5px; margin-left:8px;
+  font-size:10.5px; font-weight:900; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--c);
+}
+.lo-legend::before{
+  content:''; width:7px; height:7px; border-radius:2px; background:var(--c);
+  box-shadow:0 0 8px var(--c);
+}
+.ins-class{
+  font-size:11px; line-height:1.35; color:var(--c); margin:2px 0 6px;
+  padding:5px 8px; border-radius:8px;
+  border:1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  background:color-mix(in srgb, var(--c) 12%, transparent);
+}
 .lo-card .lo-ult{
   font-size:10px; font-weight:800; letter-spacing:.03em; margin-top:4px;
   color:var(--r); opacity:.9; text-align:center;

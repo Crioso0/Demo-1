@@ -60,8 +60,14 @@ the legion of mission 1.
 
 Five grades of trooper — Grunt, Scout, Ranger, Shocker, Elite — where each tier
 is a heavier grade of armour. Damage strips one grade at a time, so an Elite
-sheds plating down through the ranks before it drops. **Dreadnought** walkers
+sheds armour down through the ranks before it drops. **Dreadnought** walkers
 take sustained fire and spill a squad of Shockers when they break.
+
+From the third city the legion starts welding **plating** on: extra layers,
+drawn as rings around the trooper, that have to come off *before* its armour
+grades do. Plating grows with the mission number, so the late campaign is heavy
+because every trooper is heavy — not because there is simply more of them. It is
+also what stops one big hit deleting a pack: plating wants sustained fire.
 
 ## Counter escorts
 
@@ -83,36 +89,59 @@ colour, stops firing and can't use its ultimate until the escort is dead or out
 of range. `kinetic` heroes — **Terra**, **Havoc**, **Breaker** — are never
 countered, so brute force always has a seat.
 
+## Classes
+
+There are two ways for a hero to be worth a slot, and one kind that is both.
+
+| Class | On the field | On the button |
+|---|---|---|
+| **Vanguard** | +30% damage, ~18% faster cycle, a little more reach | ultimate lands at 75% |
+| **Specialist** | −15% damage, ~15% slower cycle | ultimate lands at **150%** |
+| **Icon** | +15% damage, slightly faster, slightly longer | ultimate lands at 120% |
+
+**Every Legendary is an Icon** — no trade-off at all, which is what the case
+chase is for. Everything below Legendary is one or the other, so a good squad
+usually pairs someone who holds the line with someone who breaks it.
+
 ## Heroes
 
 The squad is chosen **before** the mission on the loadout screen, up to the
 mission's slot count, so the roster choice is a decision you make with the map's
-escorts in front of you rather than a rail of twenty icons mid-fight.
+escorts in front of you rather than a rail of twenty icons mid-fight. Each card
+carries the hero's class, tags and ultimate.
 
-| Hero | Role | Tags | Ability |
-|---|---|---|---|
-| **Ember** | Flame Archer | fire | Fast arrows that ignite troopers |
-| **Volt** | Storm Caller | electric | Forked lightning across four targets |
-| **Terra** | Stone Warden | kinetic | Ground slam: area damage, knockback, slow |
-| **Verdant** | Ring Bearer | construct | Ring beam + **Buzzsaw Construct** |
-| **Streak** | Speedster | electric, speed | Lightning jabs + **Overdrive** |
-| **Paragon** | Solar Sentinel | solar | Solar bolts + **Solar Lance** |
-| **Nocturne** | Dark Detective | mind, kinetic | Piercing batarang + **Prep Time** |
-| **Ironclad** | Arc Armorer | tech | Repulsor bolts + **Micro-Missile Barrage** |
-| **Havoc** | Rage Titan | kinetic | Arm's-length smash + **Thunderclap** |
-| **Jester** | Chaos Agent | mind, chaos | Razor cards + **Wild Card** |
-| **Webline** | Wall-Crawler | agility | Web-shots that slow + **Web Zone** |
-| **Skyforge** | Storm Smith | electric, storm | Arcing hammer + **Storm Call** |
-| **Bulwark** | Shield Bearer | kinetic | Ricochet shield + **Rally** |
-| **Valkyra** | Warrior Princess | kinetic, mystic | Close-quarters sweep + **Lasso of Truth** |
-| **Arcanist** | Sorcerer Supreme | mystic | Piercing bolts + **Mirror Portal** |
-| **Quiver** | Marksman | kinetic | Longest-reach heavy arrows + **Full Quiver** |
-| **Tempest** | Weather Witch | storm | A standing cold front + **Downpour** |
-| **Sable** | Infiltrator | kinetic, tech | Fast close-range baton work + **Expose** |
-| **Adamant** | Storm Tyrant | electric, storm | Chained lightning + **Judgement** |
-| **Breaker** | Engine of Ruin | kinetic | Bone-crushing smash + **Rampage** |
+| Hero | Class | Role | Tags | Ability |
+|---|---|---|---|---|
+| **Ember** | Vanguard | Flame Archer | fire | Fast arrows that ignite troopers |
+| **Volt** | Vanguard | Storm Caller | electric | Forked lightning across four targets |
+| **Terra** | Vanguard | Stone Warden | kinetic | Ground slam: area damage, knockback, slow |
+| **Verdant** | Icon | Ring Bearer | construct | Ring beam + **Buzzsaw Construct** |
+| **Streak** | Specialist | Speedster | electric, speed | Lightning jabs + **Overdrive** |
+| **Paragon** | Icon | Solar Sentinel | solar | Constant eye beams + **Solar Lance** |
+| **Nocturne** | Specialist | Dark Detective | mind, kinetic | Piercing batarang + **Prep Time** |
+| **Ironclad** | Icon | Arc Armorer | tech | Repulsor bolts + **Micro-Missile Barrage** |
+| **Havoc** | Icon | Rage Titan | kinetic | Arm's-length smash + **Thunderclap** |
+| **Jester** | Icon | Chaos Agent | mind, chaos | Razor cards + **Wild Card** |
+| **Webline** | Vanguard | Wall-Crawler | agility | Web-shots that slow + **Web Zone** |
+| **Skyforge** | Icon | Storm Smith | electric, storm | Arcing hammer + **Storm Call** |
+| **Bulwark** | Specialist | Shield Bearer | kinetic | Ricochet shield + **Rally** |
+| **Valkyra** | Icon | Warrior Princess | kinetic, mystic | Close-quarters sweep + **Lasso of Truth** |
+| **Arcanist** | Icon | Sorcerer Supreme | mystic | Piercing bolts + **Mirror Portal** |
+| **Quiver** | Vanguard | Marksman | kinetic | Longest-reach heavy arrows + **Full Quiver** |
+| **Tempest** | Specialist | Weather Witch | storm | A standing cold front + **Downpour** |
+| **Sable** | Vanguard | Infiltrator | kinetic, tech | Fast close-range baton work + **Expose** |
+| **Adamant** | Icon | Storm Tyrant | electric, storm | Chained lightning + **Judgement** |
+| **Breaker** | Icon | Engine of Ruin | kinetic | Bone-crushing smash + **Rampage** |
 
 Ember is the starter; every other hero comes out of cases.
+
+**Paragon is the rarest thing in the game.** He pulls at roughly a quarter
+the rate of any other Legendary, and he is built to feel unfair when you get
+him: no projectile at all, just a pair of heat beams straight out of his eyes
+that connect the instant they fire — nothing to lead, nothing to dodge. Every
+few seconds he comes down on the road in a shockwave, or freezes the whole
+field with a breath, both on their own timers with nothing to click. The lance
+is only the part you aim.
 
 ### Clickable ultimates
 

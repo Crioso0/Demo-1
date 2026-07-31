@@ -267,6 +267,11 @@ button{font-family:inherit}
 .hero-card .state.locked{color:var(--muted)}
 .hero-card .starter{position:absolute; top:10px; right:10px; font-size:10px; letter-spacing:.1em;
   background:rgba(255,255,255,.12); padding:3px 8px; border-radius:999px}
+.hero-card .apex{position:absolute; top:10px; right:10px; font-size:9.5px; font-weight:900;
+  letter-spacing:.1em; color:#0b1020; padding:3px 9px; border-radius:999px;
+  background:linear-gradient(120deg,#ffd23f,#ff8a3d); box-shadow:0 0 16px -2px #ffb03f}
+.hero-card .hero-class{font-size:10.5px; line-height:1.4; margin:2px 0 6px; color:var(--c)}
+.hero-card .hero-class b{letter-spacing:.06em; text-transform:uppercase}
 
 .crate-panel{
   width:300px; text-align:center; padding:22px;
@@ -432,6 +437,34 @@ button{font-family:inherit}
 .lo-card canvas{margin-top:2px}
 .lo-card .lo-name{font-size:13.5px; font-weight:900}
 .lo-card .lo-role{font-size:10.5px; color:var(--muted); text-align:center}
+.lo-card.apex{border-color:rgba(255,210,63,.55); box-shadow:0 0 26px -10px #ffd23f}
+.lo-card .lo-apex{
+  position:absolute; top:-1px; right:-1px; font-size:8px; font-weight:900;
+  letter-spacing:.1em; color:#0b1020; padding:2px 7px; border-radius:0 13px 0 10px;
+  background:linear-gradient(120deg,#ffd23f,#ff8a3d);
+}
+.lo-card.apex .lo-tick{top:22px}
+.lo-card .lo-class{
+  margin-top:5px; font-size:9px; font-weight:900; letter-spacing:.09em;
+  text-transform:uppercase; padding:2px 8px; border-radius:999px;
+  color:var(--c); border:1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  background:color-mix(in srgb, var(--c) 14%, transparent);
+}
+.lo-legend{
+  display:inline-flex; align-items:center; gap:5px; margin-left:8px;
+  font-size:10.5px; font-weight:900; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--c);
+}
+.lo-legend::before{
+  content:''; width:7px; height:7px; border-radius:2px; background:var(--c);
+  box-shadow:0 0 8px var(--c);
+}
+.ins-class{
+  font-size:11px; line-height:1.35; color:var(--c); margin:2px 0 6px;
+  padding:5px 8px; border-radius:8px;
+  border:1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  background:color-mix(in srgb, var(--c) 12%, transparent);
+}
 .lo-card .lo-ult{
   font-size:10px; font-weight:800; letter-spacing:.03em; margin-top:4px;
   color:var(--r); opacity:.9; text-align:center;
@@ -1214,6 +1247,7 @@ body{ user-select:none; -webkit-user-select:none; }
           <b id="ins-name">—</b>
           <span class="lvl" id="ins-level">Lv 1</span>
         </div>
+        <div class="ins-class" id="ins-class" hidden></div>
         <div class="inspect-stats" id="ins-stats"></div>
         <div class="ins-warn" id="ins-warn" hidden></div>
         <button class="btn small btn-ult" id="btn-ult" hidden>
@@ -1301,6 +1335,13 @@ body{ user-select:none; -webkit-user-select:none; }
       <li>Stars pay <b>gems</b>, and a whole city taken at 3★ pays a bounty. Spend gems on cases to
           unlock the rest of the roster.</li>
       <li>Most heroes have a clickable ultimate — click them on the map, or press <b>Q</b>, to fire.</li>
+      <li>Every hero has a <b>class</b>. A <b>Vanguard</b> earns its keep every second — heavier
+          hits, faster cycle, a lighter ultimate. A <b>Specialist</b> is quiet on the field and
+          devastating on the button. Every Legendary is an <b>Icon</b> and is good at both. Pair
+          them deliberately.</li>
+      <li>From the third city on, troopers arrive in <b>plating</b> — welded rings you can see
+          around them. Plating has to be stripped before their armour grades start coming off, so
+          late missions need sustained fire, not one big hit.</li>
       <li>From mission 3 the legion sends <b>counter escorts</b>: some suppress heroes that carry a
           matching tag while they're nearby, others are flatly immune to a damage type. The squad
           screen marks the tags an escort shuts down in red — and units are never affected.</li>
@@ -1771,6 +1812,38 @@ const SPECIAL_LIST = Object.values(SPECIALS);
 const SWIFT_MUL = 1.45;   // faster runners
 const SHIELD_SOAK = 1;    // shielded troopers shrug off this much of every hit
 
+/* ---------------- hero classes ----------------
+   There are two ways to be worth a slot, and one hero type that is both.
+
+   A **Vanguard** earns its keep every second of the round: heavier hits, a
+   faster cycle, a little more reach, and an ultimate that is a nice-to-have
+   rather than the plan. A **Specialist** is unremarkable on the field and
+   terrifying the moment you press the button — a weaker, slower gun bought back
+   by an ultimate that lands about half again as hard.
+
+   Every **Legendary** is an **Icon**: no trade at all, strong on the field and
+   on the button. That is what the case chase is for. */
+const CLASSES = {
+  vanguard: {
+    id: 'vanguard', name: 'Vanguard', color: '#ff9a4d',
+    blurb: 'Holds the line. Heavier hits, faster cycle, lighter ultimate.',
+    damage: 1.3, rate: .85, range: 1.06, ult: .75,
+  },
+  specialist: {
+    id: 'specialist', name: 'Specialist', color: '#9a7bff',
+    blurb: 'Quiet on the field, devastating on the button.',
+    damage: .85, rate: 1.15, range: 1, ult: 1.5,
+  },
+  icon: {
+    id: 'icon', name: 'Icon', color: '#ffd23f',
+    blurb: 'No trade-off — strong on the field and on the button.',
+    damage: 1.15, rate: .92, range: 1.04, ult: 1.2,
+  },
+};
+const CLASS_LIST = Object.values(CLASSES);
+/** a hero's class card, or null for a base unit (units are never classed) */
+function classOf(def) { return (def && CLASSES[def.clazz]) || null; }
+
 /* ---------------- crates ----------------
    Two tiers so gems have somewhere to go. The premium case costs most of a
    city's earnings and is the only realistic route to a Legendary. */
@@ -1793,6 +1866,19 @@ const CRATES = [
 const CRATE_BY_ID = Object.fromEntries(CRATES.map((c) => [c.id, c]));
 const DUPE_REFUND = { Starter: 40, Rare: 70, Epic: 140, Legendary: 320 };
 
+/** pick one hero out of a bucket, honouring each hero's pull weight — a hero
+    with weight .25 turns up a quarter as often as its Legendary neighbours */
+function pickWeighted(list) {
+  let total = 0;
+  for (const h of list) total += h.weight === undefined ? 1 : h.weight;
+  let roll = Math.random() * total;
+  for (const h of list) {
+    roll -= h.weight === undefined ? 1 : h.weight;
+    if (roll <= 0) return h;
+  }
+  return list[list.length - 1];
+}
+
 /** roll a rarity from a crate's odds, then a hero of that rarity */
 function rollCrate(crate, pool) {
   const buckets = {};
@@ -1803,13 +1889,13 @@ function rollCrate(crate, pool) {
     const chance = crate.odds[tier] || 0;
     /* only spend the odds on rarities this pool can actually pay out */
     if (buckets[tier] && buckets[tier].length) {
-      if (roll < chance) return pick(buckets[tier]);
+      if (roll < chance) return pickWeighted(buckets[tier]);
       roll -= chance;
     }
   }
   /* nothing hit — hand back whatever the pool does have */
   for (const tier of ['Rare', 'Epic', 'Legendary', 'Starter']) {
-    if (buckets[tier] && buckets[tier].length) return pick(buckets[tier]);
+    if (buckets[tier] && buckets[tier].length) return pickWeighted(buckets[tier]);
   }
   return pick(pool);
 }
@@ -1886,6 +1972,14 @@ function starsFor(livesLeft, livesStart) {
   return 1;
 }
 
+/** How many layers of plating a trooper wears on a given mission. Plating is
+    stripped before its armour grades, so it is a flat "hits to kill" tax that
+    grows across the campaign — the reason mission 30 is heavy is that every
+    trooper takes real fire, not that there are simply more of them. */
+function plateFor(missionNo) {
+  return Math.max(0, Math.floor((missionNo - 2) / 2));
+}
+
 /**
  * Waves are generated rather than hand-authored — deterministic, so a mission
  * always plays the same, but escalating hard with the global mission number.
@@ -1893,8 +1987,10 @@ function starsFor(livesLeft, livesStart) {
 function buildLevelWaves(lv) {
   const waves = [];
   const mods = lv.mods || {};
-  /* a much steeper ramp — the opening cities were a walkover */
-  const diff = 1.55 + (lv.n - 1) * .13;
+  /* A steep ramp. It moved up again once shots started leading their target:
+     before that, well over half of every crossing shell missed, so the whole
+     defence was quietly running at a fraction of its printed damage. */
+  const diff = 1.9 + (lv.n - 1) * .16;
 
   for (let r = 1; r <= lv.rounds; r++) {
     const p = lv.rounds > 1 ? (r - 1) / (lv.rounds - 1) : 1;
@@ -1910,7 +2006,7 @@ function buildLevelWaves(lv) {
     }
 
     const count = Math.round((10 + r * 2.6) * diff);
-    const gap = Math.max(.14, .52 - p * .24 - lv.n * .004);
+    const gap = Math.max(.12, .48 - p * .24 - lv.n * .004);
     groups.push({
       tier: top, count, gap, delay: groups.length ? 2.5 : 0,
       swift: !!mods.swift && r % 3 === 0,
@@ -2412,18 +2508,26 @@ const Art = {
     ctx.beginPath(); ctx.arc(0, -19.5, 6.4, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
     ctx.beginPath(); ctx.arc(-4.5, -17.5, 2.6, 0, TAU); ctx.fill();
 
-    /* eyes banked with heat */
-    const heat = .55 + Math.sin(t * 3) * .45;
-    ctx.fillStyle = `rgba(255,${120 - heat * 60},60,${.55 + heat * .45})`;
+    /* eyes lit, always — the beams come out of here and never switch off */
+    const heat = .7 + Math.sin(t * 3) * .3;
+    const glow = ctx.createRadialGradient(0, -16.5, .5, 0, -16.5, 9);
+    glow.addColorStop(0, `rgba(255,150,70,${.5 * heat})`);
+    glow.addColorStop(1, 'rgba(255,120,50,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(0, -16.5, 9, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,${150 - heat * 60},70,${.7 + heat * .3})`;
     ctx.beginPath();
-    ctx.ellipse(2, -16.5, 2.4, 1.1, 0, 0, TAU);
-    ctx.ellipse(-2.6, -16.5, 1.8, 1, 0, 0, TAU);
+    ctx.ellipse(2.2, -16.5, 2.6, 1.2, 0, 0, TAU);
+    ctx.ellipse(-2.6, -16.5, 2.1, 1.1, 0, 0, TAU);
     ctx.fill();
-    if (lvl > 2) {
-      ctx.strokeStyle = `rgba(255,190,90,${heat * .7})`;
-      ctx.lineWidth = 1.3;
-      ctx.beginPath(); ctx.moveTo(4, -16.4); ctx.lineTo(11, -16.2); ctx.stroke();
-    }
+    ctx.fillStyle = `rgba(255,240,200,${.6 + heat * .4})`;
+    ctx.beginPath();
+    ctx.ellipse(2.2, -16.6, 1.2, .5, 0, 0, TAU);
+    ctx.ellipse(-2.6, -16.6, 1, .45, 0, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255,170,80,${heat * (lvl > 2 ? .8 : .5)})`;
+    ctx.lineWidth = lvl > 2 ? 1.6 : 1.1;
+    ctx.beginPath(); ctx.moveTo(4.4, -16.4); ctx.lineTo(9 + lvl * 2, -16.2); ctx.stroke();
     ctx.restore();
   },
   nocturne(ctx, lvl, t) {
@@ -3195,17 +3299,17 @@ const Art = {
 const TOWERS = [
   {
     id: 'sentry', name: 'Auto-Sentry', cost: 200, art: Art.sentry, rotates: true,
-    range: 132, cooldown: .58, damage: 1, pierce: 2, projSpeed: 560, kind: 'dart',
+    range: 132, cooldown: .58, damage: 1, pierce: 2, projSpeed: 700, kind: 'dart',
     color: '#8fa3d8', desc: 'City-issue autoturret. Cheap, reliable, everywhere.',
   },
   {
     id: 'precinct', name: 'Precinct Squad', cost: 300, art: Art.precinct, rotates: true,
-    range: 118, cooldown: .26, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
+    range: 118, cooldown: .26, damage: 1, pierce: 1, projSpeed: 760, kind: 'dart',
     color: '#6e8ec0', desc: 'Two officers behind a riot shield. Fast, light, close range.',
   },
   {
     id: 'tack', name: 'Shrapnel Ring', cost: 320, art: Art.tack,
-    range: 96, cooldown: 1.05, damage: 1, pierce: 1, projSpeed: 330, kind: 'burst', shots: 8,
+    range: 96, cooldown: 1.05, damage: 1, pierce: 1, projSpeed: 470, kind: 'burst', shots: 8,
     color: '#d79a54', desc: 'Throws fragments in every direction. Best on a tight corner.',
   },
   {
@@ -3215,7 +3319,7 @@ const TOWERS = [
   },
   {
     id: 'mortar', name: 'Mortar Post', cost: 480, art: Art.bomb, rotates: true,
-    range: 158, cooldown: 1.5, damage: 2, projSpeed: 300, kind: 'bomb', blast: 54,
+    range: 158, cooldown: 1.5, damage: 2, projSpeed: 480, kind: 'bomb', blast: 54,
     color: '#8a92ad', desc: 'Lobs shells that catch a whole cluster.',
   },
   {
@@ -3233,7 +3337,7 @@ const TOWERS = [
   },
   {
     id: 'siege', name: 'Siege Tank', cost: 950, art: Art.siege, rotates: true,
-    range: 210, cooldown: 2.6, damage: 8, projSpeed: 420, kind: 'bomb', blast: 78,
+    range: 210, cooldown: 2.6, damage: 8, projSpeed: 640, kind: 'bomb', blast: 78,
     color: '#6c7789',
     desc: 'One enormous shell at a time. Slow to reload, ruinous on arrival.',
   },
@@ -3244,14 +3348,16 @@ const HEROES = [
   {
     id: 'ember', name: 'Ember', role: 'Flame Archer', art: Art.ember,
     rarity: 'Starter', rarityColor: '#ff9a4d', glow: 'rgba(255,140,60,.45)',
+    clazz: 'vanguard',
     starter: true,
-    range: 158, cooldown: .36, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
+    range: 158, cooldown: .36, damage: 1, pierce: 1, projSpeed: 780, kind: 'dart',
     burn: { dps: 1, time: 2.4 }, color: '#ff8a3d', tags: ['fire'],
     desc: 'Rapid flaming arrows that set balloons alight for extra damage over time.',
   },
   {
     id: 'volt', name: 'Volt', role: 'Storm Caller', art: Art.volt,
     rarity: 'Rare', rarityColor: '#62d9ff', glow: 'rgba(90,200,255,.45)',
+    clazz: 'vanguard',
     range: 168, cooldown: 1.1, damage: 2, kind: 'chain', chains: 4, color: '#62d9ff',
     tags: ['electric'],
     desc: 'Calls down forked lightning that arcs between up to four balloons at once.',
@@ -3259,6 +3365,7 @@ const HEROES = [
   {
     id: 'terra', name: 'Terra', role: 'Stone Warden', art: Art.terra,
     rarity: 'Epic', rarityColor: '#a97bff', glow: 'rgba(160,120,255,.45)',
+    clazz: 'vanguard',
     range: 118, cooldown: 1.8, damage: 3, kind: 'slam', knockback: 46,
     slow: .35, slowTime: 1.4, color: '#9bbf78', tags: ['kinetic'],
     desc: 'Shatters the ground, damaging every nearby balloon and shoving them backwards.',
@@ -3266,6 +3373,7 @@ const HEROES = [
   {
     id: 'verdant', name: 'Verdant', role: 'Ring Bearer', art: Art.verdant,
     rarity: 'Legendary', rarityColor: '#3ef07a', glow: 'rgba(60,240,130,.45)',
+    clazz: 'icon',
     range: 150, cooldown: .72, damage: 1, kind: 'ray', color: '#3ef07a', tags: ['construct'],
     /* the only hero with a player-triggered ability */
     ability: {
@@ -3281,6 +3389,7 @@ const HEROES = [
   {
     id: 'streak', name: 'Streak', role: 'Speedster', art: Art.streak,
     rarity: 'Epic', rarityColor: '#ffd23f', glow: 'rgba(255,200,60,.45)',
+    clazz: 'specialist',
     range: 142, cooldown: .28, damage: 1, kind: 'ray', color: '#ffd23f', rayColor: '#ffe27a',
     tags: ['electric', 'speed'],
     ability: {
@@ -3295,10 +3404,19 @@ const HEROES = [
         + 'fire where every shot forks between targets.',
   },
   {
+    /* The rarest thing in the game, and the only hero built to feel unfair.
+       He does not throw anything — his eyes are simply always on, and every so
+       often he comes down on the road or breathes the whole field to a halt. */
     id: 'paragon', name: 'Paragon', role: 'Solar Sentinel', art: Art.paragon,
     rarity: 'Legendary', rarityColor: '#4fa8ff', glow: 'rgba(90,170,255,.45)',
-    range: 182, cooldown: 1.25, damage: 2, pierce: 2, projSpeed: 660, kind: 'dart',
+    clazz: 'icon', weight: .22, apex: true,
+    range: 205, cooldown: .16, damage: 2, kind: 'beam',
     color: '#4fa8ff', tags: ['solar'],
+    /* the two things he does on his own, on their own timers */
+    extras: {
+      slam: { every: 7.5, radius: 128, damage: 7, knock: 26 },
+      freeze: { every: 11, radius: 175, slow: .18, time: 2.6 },
+    },
     ability: {
       kind: 'lance',
       name: 'Solar Lance',
@@ -3307,13 +3425,16 @@ const HEROES = [
       duration: [2.2, 2.8, 3.4],
       hint: 'Click Paragon to fire the lance',
     },
-    desc: 'Hurls heavy solar bolts. Click him to open his eyes and sweep a blinding beam across '
-        + 'the field, burning everything it touches.',
+    desc: 'His eyes never close: a pair of continuous heat beams that burn whatever is in front '
+        + 'of him, no travel time, nothing to dodge. Every few seconds he drops out of the sky '
+        + 'onto the road, or freezes the field with a breath. The lance is just the part you '
+        + 'get to aim.',
   },
   {
     id: 'nocturne', name: 'Nocturne', role: 'Dark Detective', art: Art.nocturne,
     rarity: 'Epic', rarityColor: '#8fa8d8', glow: 'rgba(120,150,210,.4)',
-    range: 165, cooldown: .8, damage: 2, pierce: 4, projSpeed: 520, kind: 'dart',
+    clazz: 'specialist',
+    range: 165, cooldown: .8, damage: 2, pierce: 4, projSpeed: 720, kind: 'dart',
     color: '#8fa8d8', tags: ['mind', 'kinetic'],
     ability: {
       kind: 'mark',
@@ -3329,7 +3450,8 @@ const HEROES = [
   {
     id: 'ironclad', name: 'Ironclad', role: 'Arc Armorer', art: Art.ironclad,
     rarity: 'Legendary', rarityColor: '#ff8a5c', glow: 'rgba(255,140,80,.42)',
-    range: 172, cooldown: .5, damage: 2, pierce: 1, projSpeed: 720, kind: 'dart',
+    clazz: 'icon',
+    range: 172, cooldown: .5, damage: 2, pierce: 1, projSpeed: 880, kind: 'dart',
     color: '#e04b3a', tags: ['tech'],
     ability: {
       kind: 'missiles',
@@ -3345,6 +3467,7 @@ const HEROES = [
   {
     id: 'havoc', name: 'Havoc', role: 'Rage Titan', art: Art.havoc,
     rarity: 'Legendary', rarityColor: '#6ccf52', glow: 'rgba(110,210,80,.42)',
+    clazz: 'icon',
     range: 96, cooldown: 1.5, damage: 5, kind: 'smash', color: '#6ccf52', tags: ['kinetic'],
     ability: {
       kind: 'thunderclap',
@@ -3360,7 +3483,8 @@ const HEROES = [
   {
     id: 'jester', name: 'Jester', role: 'Chaos Agent', art: Art.jester,
     rarity: 'Legendary', rarityColor: '#b06cf0', glow: 'rgba(175,110,240,.42)',
-    range: 155, cooldown: .62, damage: 1, pierce: 2, projSpeed: 560, kind: 'cards',
+    clazz: 'icon',
+    range: 155, cooldown: .62, damage: 1, pierce: 2, projSpeed: 720, kind: 'cards',
     color: '#a35cd8', tags: ['mind', 'chaos'],
     ability: {
       kind: 'wildcard',
@@ -3376,7 +3500,8 @@ const HEROES = [
   {
     id: 'webline', name: 'Webline', role: 'Wall-Crawler', art: Art.webline,
     rarity: 'Epic', rarityColor: '#e0433f', glow: 'rgba(224,67,63,.4)',
-    range: 158, cooldown: .34, damage: 1, pierce: 2, projSpeed: 700, kind: 'dart',
+    clazz: 'vanguard',
+    range: 158, cooldown: .34, damage: 1, pierce: 2, projSpeed: 840, kind: 'dart',
     color: '#e0433f', tags: ['agility'],
     web: { slow: .45, time: 2.2 },
     ability: {
@@ -3394,6 +3519,7 @@ const HEROES = [
   {
     id: 'skyforge', name: 'Skyforge', role: 'Storm Smith', art: Art.skyforge,
     rarity: 'Legendary', rarityColor: '#b8c3d8', glow: 'rgba(170,215,255,.45)',
+    clazz: 'icon',
     range: 176, cooldown: 1.15, damage: 3, kind: 'chain', chains: 3,
     color: '#aeb8ca', tags: ['electric', 'storm'],
     ability: {
@@ -3410,7 +3536,8 @@ const HEROES = [
   {
     id: 'bulwark', name: 'Bulwark', role: 'Shield Bearer', art: Art.bulwark,
     rarity: 'Epic', rarityColor: '#3f6fd0', glow: 'rgba(90,150,235,.42)',
-    range: 168, cooldown: .95, damage: 2, pierce: 6, projSpeed: 480, kind: 'dart',
+    clazz: 'specialist',
+    range: 168, cooldown: .95, damage: 2, pierce: 6, projSpeed: 680, kind: 'dart',
     color: '#3f6fd0', tags: ['kinetic'],
     ability: {
       kind: 'rally',
@@ -3426,7 +3553,8 @@ const HEROES = [
   {
     id: 'valkyra', name: 'Valkyra', role: 'Warrior Princess', art: Art.valkyra,
     rarity: 'Legendary', rarityColor: '#e8b93f', glow: 'rgba(232,185,63,.45)',
-    range: 132, cooldown: .55, damage: 4, kind: 'smash',
+    clazz: 'icon',
+    range: 132, cooldown: .55, damage: 4, kind: 'smash', knock: 4,
     color: '#d84a3c', tags: ['kinetic', 'mystic'],
     ability: {
       kind: 'lasso',
@@ -3442,7 +3570,8 @@ const HEROES = [
   {
     id: 'arcanist', name: 'Arcanist', role: 'Sorcerer Supreme', art: Art.arcanist,
     rarity: 'Legendary', rarityColor: '#ff8a3d', glow: 'rgba(255,150,80,.45)',
-    range: 190, cooldown: 1.35, damage: 3, pierce: 3, projSpeed: 560, kind: 'dart',
+    clazz: 'icon',
+    range: 190, cooldown: 1.35, damage: 3, pierce: 3, projSpeed: 740, kind: 'dart',
     color: '#ff8a3d', tags: ['mystic'],
     ability: {
       kind: 'portal',
@@ -3458,6 +3587,7 @@ const HEROES = [
   {
     id: 'quiver', name: 'Quiver', role: 'Marksman', art: Art.quiver,
     rarity: 'Rare', rarityColor: '#8fbf4a', glow: 'rgba(140,190,80,.4)',
+    clazz: 'vanguard',
     range: 235, cooldown: 1.05, damage: 4, pierce: 2, projSpeed: 900, kind: 'dart',
     color: '#8fbf4a', tags: ['kinetic'],
     ability: {
@@ -3474,6 +3604,7 @@ const HEROES = [
   {
     id: 'tempest', name: 'Tempest', role: 'Weather Witch', art: Art.tempest,
     rarity: 'Epic', rarityColor: '#c9d6f0', glow: 'rgba(190,215,255,.45)',
+    clazz: 'specialist',
     range: 165, cooldown: 1.9, damage: 2, kind: 'frost', slow: .4, slowTime: 2.6,
     color: '#c9d6f0', tags: ['storm'],
     ability: {
@@ -3490,7 +3621,8 @@ const HEROES = [
   {
     id: 'sable', name: 'Sable', role: 'Infiltrator', art: Art.sable,
     rarity: 'Epic', rarityColor: '#c8506a', glow: 'rgba(200,80,106,.42)',
-    range: 150, cooldown: .42, damage: 2, pierce: 1, projSpeed: 760, kind: 'dart',
+    clazz: 'vanguard',
+    range: 150, cooldown: .42, damage: 2, pierce: 1, projSpeed: 900, kind: 'dart',
     color: '#c8506a', tags: ['kinetic', 'tech'],
     ability: {
       kind: 'expose',
@@ -3506,6 +3638,7 @@ const HEROES = [
   {
     id: 'adamant', name: 'Adamant', role: 'Storm Tyrant', art: Art.adamant,
     rarity: 'Legendary', rarityColor: '#ffd23f', glow: 'rgba(255,210,63,.5)',
+    clazz: 'icon',
     range: 190, cooldown: .9, damage: 4, kind: 'chain', chains: 5,
     color: '#ffd23f', tags: ['electric', 'storm'],
     ability: {
@@ -3522,7 +3655,8 @@ const HEROES = [
   {
     id: 'breaker', name: 'Breaker', role: 'Engine of Ruin', art: Art.breaker,
     rarity: 'Legendary', rarityColor: '#cfc4e8', glow: 'rgba(200,190,235,.45)',
-    range: 104, cooldown: 1.25, damage: 9, kind: 'smash',
+    clazz: 'icon',
+    range: 104, cooldown: 1.25, damage: 9, kind: 'smash', knock: 20,
     color: '#b8b0c8', tags: ['kinetic'],
     ability: {
       kind: 'rampage',
@@ -4239,6 +4373,11 @@ const Sfx = {
    game.js — simulation + rendering for the tower-defense stage
 ------------------------------------------------------------------- */
 
+/* How far an ordinary hit may shove a trooper back from its high-water mark.
+   Without a floor, a fast melee hero re-knocks the same trooper every swing and
+   nothing ever walks past it — the line stops being a race and becomes a wall. */
+const PUSH_CAP = 110;
+
 /* =============================== VOID LEGION TROOPER =============================== */
 class Enemy {
   constructor(tier, opts = {}) {
@@ -4255,11 +4394,18 @@ class Enemy {
     this.spawnAnim = 0;
     this.swift = !!opts.swift;        // runner
     this.shield = !!opts.shield;      // soaks part of every hit
+    /* Void Legion plating. Extra layers welded on over the trooper's own
+       armour grades — they have to be stripped before the grades underneath
+       start coming off, so a late-campaign trooper takes real sustained fire
+       rather than one big hit. This is what makes the last cities heavy. */
+    this.plate = opts.plate || 0;
+    this.maxPlate = this.plate;
     this.speedMul = opts.speedMul || 1;
     this.special = opts.special ? SPECIALS[opts.special] : null;   // counter escort
     this.lane = opts.lane || 0;                                    // which road
     this.marked = 0;                  // Nocturne's prep work: takes double damage
     this.backward = 0;                // Jester's confusion: marches the wrong way
+    this.dMax = 0;                    // furthest it has ever walked — the knockback floor
     this.hp = this.chapterBoss ? this.chapterBoss.hp
       : this.boss ? Math.round(DREAD.hp * (opts.hpMul || 1)) : 1;
     this.maxHp = this.hp;
@@ -4322,10 +4468,28 @@ class Enemy {
     }
 
     this.d += v * dt;
+    if (this.d > this.dMax) this.dMax = this.d;
     this.step += dt * v * .09;
     if (this.d >= this.path.length) { game.leak(this); return; }
     const p = this.path.at(this.d);
     this.x = p.x; this.y = p.y; this.ang = p.ang;
+  }
+
+  /** Shove it back down the road.
+      Knockback is a delay, not a wall: an ordinary hit can never park a trooper
+      more than PUSH_CAP behind the furthest it has already walked, so a melee
+      hero buys the line time instead of holding it single-handed forever.
+      Ultimates pass `hard` and ignore the floor — that is what makes them
+      ultimates. */
+  push(dist, hard) {
+    const floor = hard ? 0 : Math.max(0, this.dMax - PUSH_CAP);
+    const to = Math.max(floor, this.d - dist);
+    if (to >= this.d) return 0;
+    const moved = this.d - to;
+    this.d = to;
+    const p = this.path.at(this.d);
+    this.x = p.x; this.y = p.y; this.ang = p.ang;
+    return moved;
   }
 
   chill(factor, time) {
@@ -4348,6 +4512,21 @@ class Enemy {
     if (this.chapterBoss) this.drawChapterBoss(ctx, time, grow);
     else if (this.boss) this.drawDread(ctx, time, grow);
     else this.drawTrooper(ctx, time, grow);
+
+    /* plating reads as welded rings around the trooper — one per layer left,
+       so you can see at a glance how much is still between you and the kill */
+    if (this.plate > 0) {
+      const rings = Math.min(3, Math.ceil(this.plate / 4));
+      ctx.globalAlpha = .6;
+      for (let i = 0; i < rings; i++) {
+        ctx.strokeStyle = i === rings - 1 ? 'rgba(206,218,240,.85)' : 'rgba(150,166,200,.5)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.r + 2.5 + i * 2.2, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
 
     ctx.restore();
   }
@@ -4647,13 +4826,22 @@ class Tower {
   get mods() { return levelMods(this.level); }
   get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
   get ultReady() { return !!this.def.ability && this.charges > 0; }
-  get rate() { return this.def.cooldown * this.mods.rate; }
-  get damage() { return this.def.damage + this.mods.damage; }
+  /** the hero's class card — Vanguard, Specialist or Icon. Base units have none
+      and take no class modifiers at all. */
+  get cls() { return classOf(this.def); }
+  /** how hard this hero's ultimate lands, relative to its printed numbers */
+  get ultScale() { return this.cls ? this.cls.ult : 1; }
+  get rate() { return this.def.cooldown * this.mods.rate * (this.cls ? this.cls.rate : 1); }
+  get damage() {
+    const base = this.def.damage + this.mods.damage;
+    return this.cls ? Math.max(1, Math.round(base * this.cls.damage)) : base;
+  }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
   /** a Relay Mast in range widens the reach and shortens the cycle */
   get range() {
     const rampage = this.rampage > 0 ? 2 : 1;
-    return this.def.range * this.mods.range * (this.buffRange || 1) * rampage;
+    return this.def.range * this.mods.range * (this.buffRange || 1) * rampage
+      * (this.cls ? this.cls.range : 1);
   }
   /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
   firingRateIn(game) {
@@ -4700,6 +4888,8 @@ class Tower {
 
     if (this.def.kind === 'support') return;
 
+    if (this.def.extras) this.updateExtras(dt, game);
+
     if (this.cd <= 0) {
       const kind = this.def.kind;
       if (kind === 'frost' || kind === 'slam') {
@@ -4708,6 +4898,102 @@ class Tower {
         this.fire(game, target); this.cd = this.firingRateIn(game);
       }
     }
+  }
+
+  /** Things a hero does on its own, on its own clock — no charge to spend and
+      nothing to click. Only the apex hero has these; they are what "he's just
+      that good" looks like in code. */
+  updateExtras(dt, game) {
+    const ex = this.def.extras;
+    this.extraCd = this.extraCd || {};
+
+    if (ex.slam) {
+      const every = ex.slam.every / (1 + (this.level - 1) * .18);
+      this.extraCd.slam = (this.extraCd.slam === undefined ? every * .6 : this.extraCd.slam) - dt;
+      if (this.extraCd.slam <= 0) {
+        this.extraCd.slam = every;
+        const r = ex.slam.radius * this.mods.range;
+        if (game.anyInRange(this.x, this.y, r)) {
+          game.rings.push({ x: this.x, y: this.y, r: 12, max: r, life: .5, maxLife: .5,
+            color: '#cfe6ff', thick: 9 });
+          game.rings.push({ x: this.x, y: this.y, r: 6, max: r * .55, life: .35, maxLife: .35,
+            color: '#ffffff', thick: 5 });
+          for (let i = 0, n = game.n(22); i < n; i++) {
+            const a = rand(0, TAU);
+            game.particles.push(new Particle(this.x, this.y, {
+              vx: Math.cos(a) * rand(80, 240), vy: Math.sin(a) * rand(80, 240) - 60,
+              life: rand(.35, .7), size: rand(2.5, 5.5),
+              color: pick(['#cfe6ff', '#9dc2f0', '#7f8fa8']), kind: 'shard', gravity: 330,
+            }));
+          }
+          const dmg = ex.slam.damage + this.level;
+          for (const b of game.enemies) {
+            if (b.dead || distSq(b.x, b.y, this.x, this.y) > r * r) continue;
+            b.push(ex.slam.knock);
+            game.damage(b, dmg, { source: this, x: b.x, y: b.y, tags: this.def.tags });
+          }
+          game.shake = Math.max(game.shake, 7);
+          Sfx.slam();
+        }
+      }
+    }
+
+    if (ex.freeze) {
+      const every = ex.freeze.every / (1 + (this.level - 1) * .15);
+      this.extraCd.freeze = (this.extraCd.freeze === undefined ? every : this.extraCd.freeze) - dt;
+      if (this.extraCd.freeze <= 0) {
+        this.extraCd.freeze = every;
+        const r = ex.freeze.radius * this.mods.range;
+        if (game.anyInRange(this.x, this.y, r)) {
+          game.rings.push({ x: this.x, y: this.y, r: 10, max: r, life: .8, maxLife: .8,
+            color: '#bfe9ff', thick: 6 });
+          for (let i = 0, n = game.n(26); i < n; i++) {
+            const a = rand(0, TAU);
+            game.particles.push(new Particle(this.x, this.y - 12, {
+              vx: Math.cos(a) * rand(50, 190), vy: Math.sin(a) * rand(50, 190) - 20,
+              life: rand(.5, 1), size: rand(2, 4.5),
+              color: pick(['#dff4ff', '#a9e9ff', '#7fd0f0']), kind: 'spark',
+            }));
+          }
+          let n = 0;
+          for (const b of game.enemies) {
+            if (b.dead || distSq(b.x, b.y, this.x, this.y) > r * r) continue;
+            b.chill(ex.freeze.slow, ex.freeze.time + this.level * .3);
+            n++;
+          }
+          if (n) game.floatText(this.x, this.y - 52, 'FROZEN', '#bfe9ff', 1.1, 14);
+          Sfx.frost();
+        }
+      }
+    }
+  }
+
+  /** Aim where the target is going to be, not where it is.
+      A shot fired at a walking trooper's current position lands behind it — the
+      slower the projectile and the faster the trooper, the wider the miss. This
+      solves the intercept once, at fire time, and falls back to a straight shot
+      when there is no solution (target outrunning the projectile). */
+  leadAngle(target, speed) {
+    if (!target || !speed) return this.angle;
+    const px = target.x - this.x, py = target.y - this.y;
+    const v = target.speed * (target.backward > 0 ? -.6 : 1);
+    const tvx = Math.cos(target.ang) * v, tvy = Math.sin(target.ang) * v;
+    const a = tvx * tvx + tvy * tvy - speed * speed;
+    const b = 2 * (px * tvx + py * tvy);
+    const c = px * px + py * py;
+    let t = -1;
+    if (Math.abs(a) < 1e-4) {
+      if (Math.abs(b) > 1e-4) t = -c / b;
+    } else {
+      const disc = b * b - 4 * a * c;
+      if (disc >= 0) {
+        const r = Math.sqrt(disc);
+        const roots = [(-b + r) / (2 * a), (-b - r) / (2 * a)].filter((x) => x > 0);
+        if (roots.length) t = Math.min(...roots);
+      }
+    }
+    if (!(t > 0) || t > 2) return Math.atan2(py, px);
+    return Math.atan2(py + tvy * t, px + tvx * t);
   }
 
   fire(game, target) {
@@ -4729,7 +5015,8 @@ class Tower {
 
     switch (d.kind) {
       case 'dart': {
-        const a = this.angle;
+        const a = this.leadAngle(target, d.projSpeed);
+        this.angle = a;
         game.projectiles.push(new Projectile(this, {
           x: this.x + Math.cos(a) * 18, y: this.y + Math.sin(a) * 18,
           vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
@@ -4754,7 +5041,8 @@ class Tower {
         break;
       }
       case 'bomb': {
-        const a = this.angle;
+        const a = this.leadAngle(target, d.projSpeed);
+        this.angle = a;
         game.projectiles.push(new Projectile(this, {
           x: this.x + Math.cos(a) * 18, y: this.y + Math.sin(a) * 18,
           vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
@@ -4806,7 +5094,7 @@ class Tower {
         }
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
-          b.d = Math.max(0, b.d - d.knockback);
+          b.push(d.knockback);
           b.chill(d.slow, d.slowTime);
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
         }
@@ -4828,7 +5116,7 @@ class Tower {
         }
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
-          b.d = Math.max(0, b.d - 18);
+          b.push(d.knock === undefined ? 18 : d.knock);
           const was = b.dead;
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
           if (!was && b.dead && this.rampage > 0) this.rampageKills++;
@@ -4839,7 +5127,8 @@ class Tower {
       }
       case 'cards': {
         /* a fan of three, each card rolling its own damage */
-        const base = this.angle;
+        const base = this.leadAngle(target, d.projSpeed);
+        this.angle = base;
         for (let i = -1; i <= 1; i++) {
           const a = base + i * .22;
           game.projectiles.push(new Projectile(this, {
@@ -4851,6 +5140,27 @@ class Tower {
           }));
         }
         Sfx.cards();
+        break;
+      }
+      case 'beam': {
+        /* Twin heat beams straight out of the eyes. No projectile, so nothing
+           to lead and nothing to dodge — it simply connects, every tick. */
+        /* both eyes, drawn from where the sprite actually has them */
+        for (const off of [-2.6, 2.2]) {
+          const ex = this.x + off * this.facing;
+          const ey = this.y - 16.5;
+          game.beams.push({
+            pts: [{ x: ex, y: ey }, { x: target.x + off * .5, y: target.y + off * .5 }],
+            life: .13, maxLife: .13, color: '#ff6a2e', width: 2.6, straight: true,
+          });
+          game.beams.push({
+            pts: [{ x: ex, y: ey }, { x: target.x + off * .5, y: target.y + off * .5 }],
+            life: .1, maxLife: .1, color: '#fff0c0', width: 1.1, straight: true,
+          });
+        }
+        game.damage(target, this.damage, { source: this, x: target.x, y: target.y, tags: d.tags });
+        game.spark(target.x, target.y, '#ffd9a0', 3);
+        if (Math.random() < .4) Sfx.spark();
         break;
       }
       case 'ray': {
@@ -5068,6 +5378,20 @@ class Projectile {
   update(dt, game) {
     this.age += dt;
 
+    /* an aimed shot keeps its mark: it curves onto whatever it was loosed at,
+       and picks a new one if that trooper drops before it lands */
+    if (this.seek) {
+      if (this.seek.dead) this.seek = game.firstInRange(this.x, this.y, 600);
+      if (this.seek) {
+        const want = Math.atan2(this.seek.y - this.y, this.seek.x - this.x);
+        const cur = Math.atan2(this.vy, this.vx);
+        const diff = ((want - cur + Math.PI * 3) % TAU) - Math.PI;
+        const a = cur + diff * Math.min(1, dt * 9);
+        const sp = Math.hypot(this.vx, this.vy);
+        this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
+      }
+    }
+
     /* micro-missiles steer toward their mark */
     if (this.kind === 'missile') {
       if (!this.target || this.target.dead) {
@@ -5149,6 +5473,17 @@ class Projectile {
       roundRect(ctx, -3, -4.5, 6, 9, 1.4); ctx.fill();
       ctx.fillStyle = this.damage > 2 ? '#c8324f' : '#16121c';
       ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, TAU); ctx.fill();
+    } else if (this.kind === 'arrow') {
+      ctx.rotate(Math.atan2(this.vy, this.vx));
+      ctx.strokeStyle = 'rgba(216,240,160,.55)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(-8, 0); ctx.stroke();
+      ctx.strokeStyle = '#c8b48a'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(6, 0); ctx.stroke();
+      ctx.fillStyle = '#d8f0a0';
+      ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(4, 2.6); ctx.lineTo(4, -2.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(216,240,160,.9)';
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12, 2.6); ctx.lineTo(-11, 0); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12, -2.6); ctx.lineTo(-11, 0); ctx.closePath(); ctx.fill();
     } else if (this.kind === 'tack') {
       ctx.rotate(Math.atan2(this.vy, this.vx));
       ctx.fillStyle = this.color;
@@ -5173,13 +5508,13 @@ class Projectile {
 const ULT_ANIM_TIME = 1.1;
 
 class Saw {
-  constructor(level, lane = 0) {
+  constructor(level, lane = 0, scale = 1) {
     this.level = level;
     this.lane = lane;
     this.d = 0;
     this.speed = 400 + (level - 1) * 80;
-    this.r = 32 + (level - 1) * 7;
-    this.damage = level >= 3 ? 14 : level === 2 ? 11 : 9;
+    this.r = (32 + (level - 1) * 7) * (1 + (scale - 1) * .5);
+    this.damage = Math.round((level >= 3 ? 14 : level === 2 ? 11 : 9) * scale);
     this.spin = 0;
     this.age = 0;
     this.dead = false;
@@ -6032,6 +6367,13 @@ class Game {
     t.charges--;
     t.ultAnim = ULT_ANIM_TIME;
 
+    /* class scaling: a Specialist's ultimate lands about half again as hard as
+       its printed numbers, a Vanguard's lands lighter. `k` scales duration and
+       count, `kr` the radii (a squared quantity, so it moves less). */
+    const k = t.ultScale;
+    const kr = 1 + (k - 1) * .5;
+    const dur = (arr) => arr[t.level - 1] * k;
+
     const burst = (color, n = 26) => {
       this.rings.push({ x: t.x, y: t.y, r: 12, max: 150, life: .55, maxLife: .55, color, thick: 7 });
       for (let i = 0, k = this.n(n); i < k; i++) {
@@ -6045,18 +6387,18 @@ class Game {
 
     switch (ab.kind) {
       case 'saw':
-        this.saws.push(new Saw(t.level, this.busiestLane()));
+        this.saws.push(new Saw(t.level, this.busiestLane(), k));
         burst('#5cff9e');
         Sfx.ultCharge();
         break;
       case 'overdrive':
-        t.overdrive = ab.duration[t.level - 1];
+        t.overdrive = dur(ab.duration);
         burst('#ffd23f', 34);
         this.flash = Math.max(this.flash, .25);
         Sfx.overdrive();
         break;
       case 'lance':
-        this.lances.push(new Lance(t, ab.duration[t.level - 1]));
+        this.lances.push(new Lance(t, dur(ab.duration)));
         burst('#ffe9a8', 30);
         this.flash = Math.max(this.flash, .45);
         Sfx.lanceStart();
@@ -6064,15 +6406,15 @@ class Game {
 
       case 'mark': {
         /* prep work: every hostile currently on the field takes double damage */
-        const dur = ab.duration[t.level - 1];
+        const span = dur(ab.duration);
         let n = 0;
         for (const e of this.enemies) {
           if (e.dead) continue;
-          e.marked = Math.max(e.marked, dur);
+          e.marked = Math.max(e.marked, span);
           n++;
           this.spark(e.x, e.y, '#ff5a6e', 3);
         }
-        this.markedUntil = this.time + dur;
+        this.markedUntil = this.time + span;
         burst('#8fa8d8', 22);
         this.floatText(t.x, t.y - 66, `${n} marked`, '#ff8a98', 1.3, 15);
         Sfx.mark();
@@ -6080,7 +6422,7 @@ class Game {
       }
 
       case 'missiles': {
-        const salvo = ab.salvo[t.level - 1];
+        const salvo = Math.round(ab.salvo[t.level - 1] * k);
         for (let i = 0; i < salvo; i++) {
           const a = rand(0, TAU);
           this.projectiles.push(new Projectile(t, {
@@ -6096,16 +6438,16 @@ class Game {
       }
 
       case 'thunderclap': {
-        const radius = ab.radius[t.level - 1];
+        const radius = ab.radius[t.level - 1] * kr;
         this.rings.push({ x: t.x, y: t.y, r: 16, max: radius, life: .7, maxLife: .7,
           color: '#a8ff8a', thick: 12 });
         this.rings.push({ x: t.x, y: t.y, r: 8, max: radius * .6, life: .5, maxLife: .5,
           color: '#ffffff', thick: 6 });
         for (const e of this.enemies) {
           if (e.dead || distSq(e.x, e.y, t.x, t.y) > radius * radius) continue;
-          e.d = Math.max(0, e.d - 90);
+          e.push(90, true);
           e.chill(0, 1.6);                       // flat stun
-          this.damage(e, 5 + t.level * 2, { source: t, x: e.x, y: e.y, tags: t.def.tags });
+          this.damage(e, Math.round((5 + t.level * 2) * k), { source: t, x: e.x, y: e.y, tags: t.def.tags });
         }
         for (let i = 0, kn = this.n(40); i < kn; i++) {
           const a = rand(0, TAU);
@@ -6122,13 +6464,13 @@ class Game {
       }
 
       case 'webzone': {
-        const r = ab.radius[t.level - 1];
+        const r = ab.radius[t.level - 1] * kr;
         const lead = this.leadDistance();
         const lanePath = PATHS[lead.lane] || PATHS[0];
         const p = lanePath.at(clamp(lead.d + 60, 0, lanePath.length));
         this.webs.push({
-          x: p.x, y: p.y, r, life: ab.duration[t.level - 1],
-          maxLife: ab.duration[t.level - 1], slow: .3, seed: rand(0, TAU),
+          x: p.x, y: p.y, r, life: dur(ab.duration),
+          maxLife: dur(ab.duration), slow: .3, seed: rand(0, TAU),
         });
         burst('#e8eefc', 20);
         this.floatText(t.x, t.y - 66, 'WEB ZONE', '#e8eefc', 1.2, 15);
@@ -6138,7 +6480,7 @@ class Game {
 
       case 'stormcall': {
         /* bolts walk down the route one after another */
-        const strikes = ab.strikes[t.level - 1];
+        const strikes = Math.round(ab.strikes[t.level - 1] * k);
         const targets = [...this.enemies].filter((e) => !e.dead).sort((a, b) => b.d - a.d);
         for (let i = 0; i < strikes; i++) {
           const e = targets[i % Math.max(1, targets.length)];
@@ -6153,7 +6495,7 @@ class Game {
       }
 
       case 'rally': {
-        this.rally = Math.max(this.rally, ab.duration[t.level - 1]);
+        this.rally = Math.max(this.rally, dur(ab.duration));
         burst('#7fb0ff', 30);
         for (const other of this.towers) {
           this.rings.push({ x: other.x, y: other.y, r: 6, max: 40, life: .5, maxLife: .5,
@@ -6165,12 +6507,12 @@ class Game {
       }
 
       case 'lasso': {
-        const dur = ab.duration[t.level - 1];
+        const span = dur(ab.duration);
         let n = 0;
         for (const e of this.enemies) {
           if (e.dead) continue;
-          e.chill(0, dur);                       // bound in place
-          e.d = Math.max(0, e.d - 40);
+          e.chill(0, span);                      // bound in place
+          e.push(40, true);
           n++;
         }
         burst('#ffc85a', 28);
@@ -6180,13 +6522,11 @@ class Game {
       }
 
       case 'portal': {
-        const frac = ab.send[t.level - 1];
+        const frac = Math.min(.9, ab.send[t.level - 1] * k);
         let n = 0;
         for (const e of this.enemies) {
           if (e.dead) continue;
-          const before = e.d;
-          e.d = Math.max(0, e.d - e.path.length * frac);
-          if (e.d < before) n++;
+          if (e.push(e.path.length * frac, true) > 0) n++;
           const p2 = e.path.at(e.d);
           this.rings.push({ x: p2.x, y: p2.y, r: 4, max: 26, life: .4, maxLife: .4,
             color: '#ff9a4d', thick: 3 });
@@ -6200,27 +6540,32 @@ class Game {
       }
 
       case 'volley': {
-        const shots = ab.shots[t.level - 1];
+        /* Every arrow is aimed at a trooper and steers to it. The old volley
+           launched from an offset it never accounted for, at a speed
+           proportional to the distance, so half the quiver sailed past. */
+        const shots = Math.round(ab.shots[t.level - 1] * k);
         const marks = [...this.enemies].filter((e) => !e.dead).sort((a, b) => b.d - a.d);
+        if (!marks.length) { this.floatText(t.x, t.y - 66, 'NO TARGETS', '#c9ef8a', 1.2, 14); break; }
+        const SPEED = 980;
         for (let i = 0; i < shots; i++) {
-          const e = marks[i % Math.max(1, marks.length)];
-          if (!e) break;
-          const a = rand(0, TAU);
+          const e = marks[i % marks.length];
+          const a = Math.atan2(e.y - (t.y - 12), e.x - t.x) + rand(-.05, .05);
           this.projectiles.push(new Projectile(t, {
-            x: t.x + Math.cos(a) * 12, y: t.y - 30 - i * 4,
-            vx: (e.x - t.x) * 1.6, vy: (e.y - t.y) * 1.6,
-            damage: 3 + t.level, pierce: 2, life: .9, kind: 'dart',
+            x: t.x + Math.cos(a) * 12, y: t.y - 12 + Math.sin(a) * 12,
+            vx: Math.cos(a) * SPEED, vy: Math.sin(a) * SPEED,
+            damage: 3 + t.level, pierce: 2, life: 1.6, kind: 'arrow', seek: e,
             color: '#d8f0a0', size: 4, tags: t.def.tags,
           }));
         }
         burst('#c9ef8a', 22);
+        this.floatText(t.x, t.y - 66, `${Math.min(shots, marks.length * 4)} arrows`, '#d8f0a0', 1.3, 15);
         Sfx.volley();
         break;
       }
 
       case 'downpour': {
-        this.downpour = Math.max(this.downpour, ab.duration[t.level - 1]);
-        this.downpourDmg = 1 + t.level;
+        this.downpour = Math.max(this.downpour, dur(ab.duration));
+        this.downpourDmg = Math.max(1, Math.round((1 + t.level) * k));
         burst('#c9d6f0', 26);
         this.floatText(t.x, t.y - 66, 'DOWNPOUR', '#dbe8ff', 1.5, 17);
         Sfx.downpour();
@@ -6228,7 +6573,7 @@ class Game {
       }
 
       case 'expose': {
-        this.exposed = Math.max(this.exposed, ab.duration[t.level - 1]);
+        this.exposed = Math.max(this.exposed, dur(ab.duration));
         burst('#c8506a', 24);
         for (const e of this.enemies) if (!e.dead) this.spark(e.x, e.y, '#ff8aa8', 3);
         this.floatText(t.x, t.y - 66, 'ARMOUR EXPOSED', '#ff9ab0', 1.6, 16);
@@ -6238,8 +6583,8 @@ class Game {
 
       case 'judgement': {
         /* a standing storm: everything pinned and struck, repeatedly */
-        this.judgement = Math.max(this.judgement, ab.duration[t.level - 1]);
-        this.judgementDmg = 4 + t.level * 2;
+        this.judgement = Math.max(this.judgement, dur(ab.duration));
+        this.judgementDmg = Math.round((4 + t.level * 2) * k);
         burst('#ffd23f', 34);
         this.flash = Math.max(this.flash, .4);
         this.floatText(t.x, t.y - 70, 'JUDGEMENT', '#ffe27a', 1.8, 20);
@@ -6248,7 +6593,7 @@ class Game {
       }
 
       case 'rampage': {
-        t.rampage = ab.duration[t.level - 1];
+        t.rampage = dur(ab.duration);
         t.rampageKills = 0;
         burst('#cfc4e8', 32);
         this.shake = Math.max(this.shake, 12);
@@ -6316,6 +6661,7 @@ class Game {
           tier: grp.tier, t: grp.delay + i * grp.gap,
           opts: {
             swift: !!grp.swift, shield: !!grp.shield, speedMul, special: grp.special,
+            plate: grp.tier === 'boss' || grp.tier === 'chapterBoss' ? 0 : plateFor(this.levelNo),
             bossDef: grp.tier === 'chapterBoss' ? this.level.chapterBoss : null,
             /* split the wave across every road the map has */
             lane: lanes > 1 ? (laneTick++) % lanes : 0,
@@ -6408,7 +6754,7 @@ class Game {
           const e = new Enemy(clamp(2 + Math.floor(this.levelNo / 10), 0, 4), {
             speedMul: b.speedMul,
           });
-          e.d = Math.max(0, b.d - 20 - i * 16);
+          e.d = e.dMax = Math.max(0, b.d - 20 - i * 16);
           e.spawnAnim = .2;
           this.enemies.push(e);
         }
@@ -6466,7 +6812,7 @@ class Game {
         }
         for (let i = 0; i < pw.count; i++) {
           const e = new Enemy(4, { speedMul: b.speedMul, shield: true });
-          e.d = Math.max(0, b.d - 24 - i * 18);
+          e.d = e.dMax = Math.max(0, b.d - 24 - i * 18);
           e.spawnAnim = .2;
           this.enemies.push(e);
         }
@@ -6605,7 +6951,7 @@ class Game {
         /* a wrecked walker spills the squad riding inside it */
         for (let i = 0; i < 4; i++) {
           const child = new Enemy(3, { speedMul: b.speedMul });
-          child.d = Math.max(0, b.d - 14 - i * 12);
+          child.d = child.dMax = Math.max(0, b.d - 14 - i * 12);
           child.spawnAnim = .4;
           this.enemies.push(child);
         }
@@ -6614,6 +6960,16 @@ class Game {
     }
 
     while (amount > 0 && !b.dead) {
+      if (b.plate > 0) {
+        /* plating comes off first, and pays nothing. A whole wave shedding
+           plate would be a wall of noise, so only some of it is audible. */
+        b.plate--;
+        amount--;
+        b.hitFlash = .5;
+        this.spark(b.x, b.y, '#cfd8ec', 2);
+        if (!opts.silent && (b.plate === 0 || Math.random() < .15)) Sfx.deflect();
+        continue;
+      }
       const info = TROOPS[b.tier];
       this.cash += info.reward;
       this.killFx(b.x, b.y, info.color, b.tier > 0);
@@ -7218,12 +7574,14 @@ const UI = {
 
     $('#lo-title').textContent = lv.name.split(' — ')[1] || lv.name;
     const escorts = (lv.specials || []).map((s) => SPECIALS[s].short);
-    $('#lo-sub').textContent =
+    $('#lo-sub').innerHTML =
       `Mission ${lv.mission} of ${CHAPTER_BY_ID[lv.chapter].name} — `
-      + `${slots} hero slot${slots > 1 ? 's' : ''} on this map. `
+      + `<b>${slots} hero slot${slots > 1 ? 's' : ''}</b> on this map. `
       + (escorts.length
-        ? `Counter escorts on the field: ${escorts.join(', ')} — tags they shut down are marked in red.`
-        : 'No counter escorts on this one.');
+        ? `Counter escorts on the field: <b>${escorts.join(', ')}</b> — tags they shut down are marked in red. `
+        : 'No counter escorts on this one. ')
+      + CLASS_LIST.map((c) =>
+        `<span class="lo-legend" style="--c:${c.color}" title="${c.blurb}">${c.name}</span>`).join('');
 
     this.renderLoadout();
     this.show('loadout');
@@ -7259,6 +7617,13 @@ const UI = {
       const rar = document.createElement('i');
       rar.className = 'lo-rar';
       card.appendChild(rar);
+      if (def.apex) {
+        card.classList.add('apex');
+        const flag = document.createElement('span');
+        flag.className = 'lo-apex';
+        flag.textContent = 'RAREST';
+        card.appendChild(flag);
+      }
       card.appendChild(icon);
 
       const name = document.createElement('span');
@@ -7269,6 +7634,18 @@ const UI = {
       role.textContent = owned ? def.role : 'Locked — found in cases';
       card.appendChild(name);
       card.appendChild(role);
+
+      if (owned) {
+        const cls = classOf(def);
+        if (cls) {
+          const chip = document.createElement('span');
+          chip.className = 'lo-class';
+          chip.textContent = cls.name;
+          chip.style.setProperty('--c', cls.color);
+          chip.title = cls.blurb;
+          card.appendChild(chip);
+        }
+      }
 
       if (owned && def.ability) {
         const ult = document.createElement('span');
@@ -7455,6 +7832,15 @@ const UI = {
     panel.hidden = false;
     $('#ins-name').textContent = t.def.name;
     $('#ins-level').textContent = `Lv ${t.level}`;
+    /* a hero wears its class here — it is what the numbers below are shaped by */
+    const cls = classOf(t.def);
+    const chip = $('#ins-class');
+    chip.hidden = !cls;
+    if (cls) {
+      chip.textContent = `${cls.name} — ${cls.blurb}`;
+      chip.style.setProperty('--c', cls.color);
+    }
+
     const support = t.def.kind === 'support';
     const rate = (1 / t.rate).toFixed(1);
     $('#ins-stats').innerHTML = support
@@ -7640,11 +8026,14 @@ const UI = {
       card.insertAdjacentHTML('beforeend', `
         <h3>${owned ? h.name : '???'}</h3>
         <div class="role">${h.role}</div>
-        <div class="desc">${owned ? h.desc : 'Locked. Open a hero crate for a chance to recruit.'}</div>
+        ${classOf(h) ? `<div class="hero-class" style="--c:${classOf(h).color}">
+          <b>${classOf(h).name}</b> — ${classOf(h).blurb}</div>` : ''}
+        <div class="desc">${owned ? h.desc : 'Locked. Open a case for a chance to recruit.'}</div>
         ${owned && h.tags ? `<div class="hero-tags">${h.tags
           .map((t) => `<span>${t}</span>`).join('')}</div>` : ''}
         <span class="state ${owned ? 'owned' : 'locked'}">${owned ? '✔ UNLOCKED' : '🔒 LOCKED'}</span>
-        ${h.starter ? '<span class="starter">STARTER</span>' : ''}`);
+        ${h.starter ? '<span class="starter">STARTER</span>' : ''}
+        ${h.apex ? '<span class="apex">RAREST IN THE GAME</span>' : ''}`);
       wrap.appendChild(card);
     }
 

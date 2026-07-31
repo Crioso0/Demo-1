@@ -339,6 +339,38 @@ const SPECIAL_LIST = Object.values(SPECIALS);
 const SWIFT_MUL = 1.45;   // faster runners
 const SHIELD_SOAK = 1;    // shielded troopers shrug off this much of every hit
 
+/* ---------------- hero classes ----------------
+   There are two ways to be worth a slot, and one hero type that is both.
+
+   A **Vanguard** earns its keep every second of the round: heavier hits, a
+   faster cycle, a little more reach, and an ultimate that is a nice-to-have
+   rather than the plan. A **Specialist** is unremarkable on the field and
+   terrifying the moment you press the button — a weaker, slower gun bought back
+   by an ultimate that lands about half again as hard.
+
+   Every **Legendary** is an **Icon**: no trade at all, strong on the field and
+   on the button. That is what the case chase is for. */
+const CLASSES = {
+  vanguard: {
+    id: 'vanguard', name: 'Vanguard', color: '#ff9a4d',
+    blurb: 'Holds the line. Heavier hits, faster cycle, lighter ultimate.',
+    damage: 1.3, rate: .85, range: 1.06, ult: .75,
+  },
+  specialist: {
+    id: 'specialist', name: 'Specialist', color: '#9a7bff',
+    blurb: 'Quiet on the field, devastating on the button.',
+    damage: .85, rate: 1.15, range: 1, ult: 1.5,
+  },
+  icon: {
+    id: 'icon', name: 'Icon', color: '#ffd23f',
+    blurb: 'No trade-off — strong on the field and on the button.',
+    damage: 1.15, rate: .92, range: 1.04, ult: 1.2,
+  },
+};
+const CLASS_LIST = Object.values(CLASSES);
+/** a hero's class card, or null for a base unit (units are never classed) */
+function classOf(def) { return (def && CLASSES[def.clazz]) || null; }
+
 /* ---------------- crates ----------------
    Two tiers so gems have somewhere to go. The premium case costs most of a
    city's earnings and is the only realistic route to a Legendary. */
@@ -361,6 +393,19 @@ const CRATES = [
 const CRATE_BY_ID = Object.fromEntries(CRATES.map((c) => [c.id, c]));
 const DUPE_REFUND = { Starter: 40, Rare: 70, Epic: 140, Legendary: 320 };
 
+/** pick one hero out of a bucket, honouring each hero's pull weight — a hero
+    with weight .25 turns up a quarter as often as its Legendary neighbours */
+function pickWeighted(list) {
+  let total = 0;
+  for (const h of list) total += h.weight === undefined ? 1 : h.weight;
+  let roll = Math.random() * total;
+  for (const h of list) {
+    roll -= h.weight === undefined ? 1 : h.weight;
+    if (roll <= 0) return h;
+  }
+  return list[list.length - 1];
+}
+
 /** roll a rarity from a crate's odds, then a hero of that rarity */
 function rollCrate(crate, pool) {
   const buckets = {};
@@ -371,13 +416,13 @@ function rollCrate(crate, pool) {
     const chance = crate.odds[tier] || 0;
     /* only spend the odds on rarities this pool can actually pay out */
     if (buckets[tier] && buckets[tier].length) {
-      if (roll < chance) return pick(buckets[tier]);
+      if (roll < chance) return pickWeighted(buckets[tier]);
       roll -= chance;
     }
   }
   /* nothing hit — hand back whatever the pool does have */
   for (const tier of ['Rare', 'Epic', 'Legendary', 'Starter']) {
-    if (buckets[tier] && buckets[tier].length) return pick(buckets[tier]);
+    if (buckets[tier] && buckets[tier].length) return pickWeighted(buckets[tier]);
   }
   return pick(pool);
 }
@@ -454,6 +499,14 @@ function starsFor(livesLeft, livesStart) {
   return 1;
 }
 
+/** How many layers of plating a trooper wears on a given mission. Plating is
+    stripped before its armour grades, so it is a flat "hits to kill" tax that
+    grows across the campaign — the reason mission 30 is heavy is that every
+    trooper takes real fire, not that there are simply more of them. */
+function plateFor(missionNo) {
+  return Math.max(0, Math.floor((missionNo - 2) / 2));
+}
+
 /**
  * Waves are generated rather than hand-authored — deterministic, so a mission
  * always plays the same, but escalating hard with the global mission number.
@@ -461,8 +514,10 @@ function starsFor(livesLeft, livesStart) {
 function buildLevelWaves(lv) {
   const waves = [];
   const mods = lv.mods || {};
-  /* a much steeper ramp — the opening cities were a walkover */
-  const diff = 1.55 + (lv.n - 1) * .13;
+  /* A steep ramp. It moved up again once shots started leading their target:
+     before that, well over half of every crossing shell missed, so the whole
+     defence was quietly running at a fraction of its printed damage. */
+  const diff = 1.9 + (lv.n - 1) * .16;
 
   for (let r = 1; r <= lv.rounds; r++) {
     const p = lv.rounds > 1 ? (r - 1) / (lv.rounds - 1) : 1;
@@ -478,7 +533,7 @@ function buildLevelWaves(lv) {
     }
 
     const count = Math.round((10 + r * 2.6) * diff);
-    const gap = Math.max(.14, .52 - p * .24 - lv.n * .004);
+    const gap = Math.max(.12, .48 - p * .24 - lv.n * .004);
     groups.push({
       tier: top, count, gap, delay: groups.length ? 2.5 : 0,
       swift: !!mods.swift && r % 3 === 0,
@@ -980,18 +1035,26 @@ const Art = {
     ctx.beginPath(); ctx.arc(0, -19.5, 6.4, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
     ctx.beginPath(); ctx.arc(-4.5, -17.5, 2.6, 0, TAU); ctx.fill();
 
-    /* eyes banked with heat */
-    const heat = .55 + Math.sin(t * 3) * .45;
-    ctx.fillStyle = `rgba(255,${120 - heat * 60},60,${.55 + heat * .45})`;
+    /* eyes lit, always — the beams come out of here and never switch off */
+    const heat = .7 + Math.sin(t * 3) * .3;
+    const glow = ctx.createRadialGradient(0, -16.5, .5, 0, -16.5, 9);
+    glow.addColorStop(0, `rgba(255,150,70,${.5 * heat})`);
+    glow.addColorStop(1, 'rgba(255,120,50,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(0, -16.5, 9, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,${150 - heat * 60},70,${.7 + heat * .3})`;
     ctx.beginPath();
-    ctx.ellipse(2, -16.5, 2.4, 1.1, 0, 0, TAU);
-    ctx.ellipse(-2.6, -16.5, 1.8, 1, 0, 0, TAU);
+    ctx.ellipse(2.2, -16.5, 2.6, 1.2, 0, 0, TAU);
+    ctx.ellipse(-2.6, -16.5, 2.1, 1.1, 0, 0, TAU);
     ctx.fill();
-    if (lvl > 2) {
-      ctx.strokeStyle = `rgba(255,190,90,${heat * .7})`;
-      ctx.lineWidth = 1.3;
-      ctx.beginPath(); ctx.moveTo(4, -16.4); ctx.lineTo(11, -16.2); ctx.stroke();
-    }
+    ctx.fillStyle = `rgba(255,240,200,${.6 + heat * .4})`;
+    ctx.beginPath();
+    ctx.ellipse(2.2, -16.6, 1.2, .5, 0, 0, TAU);
+    ctx.ellipse(-2.6, -16.6, 1, .45, 0, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255,170,80,${heat * (lvl > 2 ? .8 : .5)})`;
+    ctx.lineWidth = lvl > 2 ? 1.6 : 1.1;
+    ctx.beginPath(); ctx.moveTo(4.4, -16.4); ctx.lineTo(9 + lvl * 2, -16.2); ctx.stroke();
     ctx.restore();
   },
   nocturne(ctx, lvl, t) {
@@ -1763,17 +1826,17 @@ const Art = {
 const TOWERS = [
   {
     id: 'sentry', name: 'Auto-Sentry', cost: 200, art: Art.sentry, rotates: true,
-    range: 132, cooldown: .58, damage: 1, pierce: 2, projSpeed: 560, kind: 'dart',
+    range: 132, cooldown: .58, damage: 1, pierce: 2, projSpeed: 700, kind: 'dart',
     color: '#8fa3d8', desc: 'City-issue autoturret. Cheap, reliable, everywhere.',
   },
   {
     id: 'precinct', name: 'Precinct Squad', cost: 300, art: Art.precinct, rotates: true,
-    range: 118, cooldown: .26, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
+    range: 118, cooldown: .26, damage: 1, pierce: 1, projSpeed: 760, kind: 'dart',
     color: '#6e8ec0', desc: 'Two officers behind a riot shield. Fast, light, close range.',
   },
   {
     id: 'tack', name: 'Shrapnel Ring', cost: 320, art: Art.tack,
-    range: 96, cooldown: 1.05, damage: 1, pierce: 1, projSpeed: 330, kind: 'burst', shots: 8,
+    range: 96, cooldown: 1.05, damage: 1, pierce: 1, projSpeed: 470, kind: 'burst', shots: 8,
     color: '#d79a54', desc: 'Throws fragments in every direction. Best on a tight corner.',
   },
   {
@@ -1783,7 +1846,7 @@ const TOWERS = [
   },
   {
     id: 'mortar', name: 'Mortar Post', cost: 480, art: Art.bomb, rotates: true,
-    range: 158, cooldown: 1.5, damage: 2, projSpeed: 300, kind: 'bomb', blast: 54,
+    range: 158, cooldown: 1.5, damage: 2, projSpeed: 480, kind: 'bomb', blast: 54,
     color: '#8a92ad', desc: 'Lobs shells that catch a whole cluster.',
   },
   {
@@ -1801,7 +1864,7 @@ const TOWERS = [
   },
   {
     id: 'siege', name: 'Siege Tank', cost: 950, art: Art.siege, rotates: true,
-    range: 210, cooldown: 2.6, damage: 8, projSpeed: 420, kind: 'bomb', blast: 78,
+    range: 210, cooldown: 2.6, damage: 8, projSpeed: 640, kind: 'bomb', blast: 78,
     color: '#6c7789',
     desc: 'One enormous shell at a time. Slow to reload, ruinous on arrival.',
   },
@@ -1812,14 +1875,16 @@ const HEROES = [
   {
     id: 'ember', name: 'Ember', role: 'Flame Archer', art: Art.ember,
     rarity: 'Starter', rarityColor: '#ff9a4d', glow: 'rgba(255,140,60,.45)',
+    clazz: 'vanguard',
     starter: true,
-    range: 158, cooldown: .36, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
+    range: 158, cooldown: .36, damage: 1, pierce: 1, projSpeed: 780, kind: 'dart',
     burn: { dps: 1, time: 2.4 }, color: '#ff8a3d', tags: ['fire'],
     desc: 'Rapid flaming arrows that set balloons alight for extra damage over time.',
   },
   {
     id: 'volt', name: 'Volt', role: 'Storm Caller', art: Art.volt,
     rarity: 'Rare', rarityColor: '#62d9ff', glow: 'rgba(90,200,255,.45)',
+    clazz: 'vanguard',
     range: 168, cooldown: 1.1, damage: 2, kind: 'chain', chains: 4, color: '#62d9ff',
     tags: ['electric'],
     desc: 'Calls down forked lightning that arcs between up to four balloons at once.',
@@ -1827,6 +1892,7 @@ const HEROES = [
   {
     id: 'terra', name: 'Terra', role: 'Stone Warden', art: Art.terra,
     rarity: 'Epic', rarityColor: '#a97bff', glow: 'rgba(160,120,255,.45)',
+    clazz: 'vanguard',
     range: 118, cooldown: 1.8, damage: 3, kind: 'slam', knockback: 46,
     slow: .35, slowTime: 1.4, color: '#9bbf78', tags: ['kinetic'],
     desc: 'Shatters the ground, damaging every nearby balloon and shoving them backwards.',
@@ -1834,6 +1900,7 @@ const HEROES = [
   {
     id: 'verdant', name: 'Verdant', role: 'Ring Bearer', art: Art.verdant,
     rarity: 'Legendary', rarityColor: '#3ef07a', glow: 'rgba(60,240,130,.45)',
+    clazz: 'icon',
     range: 150, cooldown: .72, damage: 1, kind: 'ray', color: '#3ef07a', tags: ['construct'],
     /* the only hero with a player-triggered ability */
     ability: {
@@ -1849,6 +1916,7 @@ const HEROES = [
   {
     id: 'streak', name: 'Streak', role: 'Speedster', art: Art.streak,
     rarity: 'Epic', rarityColor: '#ffd23f', glow: 'rgba(255,200,60,.45)',
+    clazz: 'specialist',
     range: 142, cooldown: .28, damage: 1, kind: 'ray', color: '#ffd23f', rayColor: '#ffe27a',
     tags: ['electric', 'speed'],
     ability: {
@@ -1863,10 +1931,19 @@ const HEROES = [
         + 'fire where every shot forks between targets.',
   },
   {
+    /* The rarest thing in the game, and the only hero built to feel unfair.
+       He does not throw anything — his eyes are simply always on, and every so
+       often he comes down on the road or breathes the whole field to a halt. */
     id: 'paragon', name: 'Paragon', role: 'Solar Sentinel', art: Art.paragon,
     rarity: 'Legendary', rarityColor: '#4fa8ff', glow: 'rgba(90,170,255,.45)',
-    range: 182, cooldown: 1.25, damage: 2, pierce: 2, projSpeed: 660, kind: 'dart',
+    clazz: 'icon', weight: .22, apex: true,
+    range: 205, cooldown: .16, damage: 2, kind: 'beam',
     color: '#4fa8ff', tags: ['solar'],
+    /* the two things he does on his own, on their own timers */
+    extras: {
+      slam: { every: 7.5, radius: 128, damage: 7, knock: 26 },
+      freeze: { every: 11, radius: 175, slow: .18, time: 2.6 },
+    },
     ability: {
       kind: 'lance',
       name: 'Solar Lance',
@@ -1875,13 +1952,16 @@ const HEROES = [
       duration: [2.2, 2.8, 3.4],
       hint: 'Click Paragon to fire the lance',
     },
-    desc: 'Hurls heavy solar bolts. Click him to open his eyes and sweep a blinding beam across '
-        + 'the field, burning everything it touches.',
+    desc: 'His eyes never close: a pair of continuous heat beams that burn whatever is in front '
+        + 'of him, no travel time, nothing to dodge. Every few seconds he drops out of the sky '
+        + 'onto the road, or freezes the field with a breath. The lance is just the part you '
+        + 'get to aim.',
   },
   {
     id: 'nocturne', name: 'Nocturne', role: 'Dark Detective', art: Art.nocturne,
     rarity: 'Epic', rarityColor: '#8fa8d8', glow: 'rgba(120,150,210,.4)',
-    range: 165, cooldown: .8, damage: 2, pierce: 4, projSpeed: 520, kind: 'dart',
+    clazz: 'specialist',
+    range: 165, cooldown: .8, damage: 2, pierce: 4, projSpeed: 720, kind: 'dart',
     color: '#8fa8d8', tags: ['mind', 'kinetic'],
     ability: {
       kind: 'mark',
@@ -1897,7 +1977,8 @@ const HEROES = [
   {
     id: 'ironclad', name: 'Ironclad', role: 'Arc Armorer', art: Art.ironclad,
     rarity: 'Legendary', rarityColor: '#ff8a5c', glow: 'rgba(255,140,80,.42)',
-    range: 172, cooldown: .5, damage: 2, pierce: 1, projSpeed: 720, kind: 'dart',
+    clazz: 'icon',
+    range: 172, cooldown: .5, damage: 2, pierce: 1, projSpeed: 880, kind: 'dart',
     color: '#e04b3a', tags: ['tech'],
     ability: {
       kind: 'missiles',
@@ -1913,6 +1994,7 @@ const HEROES = [
   {
     id: 'havoc', name: 'Havoc', role: 'Rage Titan', art: Art.havoc,
     rarity: 'Legendary', rarityColor: '#6ccf52', glow: 'rgba(110,210,80,.42)',
+    clazz: 'icon',
     range: 96, cooldown: 1.5, damage: 5, kind: 'smash', color: '#6ccf52', tags: ['kinetic'],
     ability: {
       kind: 'thunderclap',
@@ -1928,7 +2010,8 @@ const HEROES = [
   {
     id: 'jester', name: 'Jester', role: 'Chaos Agent', art: Art.jester,
     rarity: 'Legendary', rarityColor: '#b06cf0', glow: 'rgba(175,110,240,.42)',
-    range: 155, cooldown: .62, damage: 1, pierce: 2, projSpeed: 560, kind: 'cards',
+    clazz: 'icon',
+    range: 155, cooldown: .62, damage: 1, pierce: 2, projSpeed: 720, kind: 'cards',
     color: '#a35cd8', tags: ['mind', 'chaos'],
     ability: {
       kind: 'wildcard',
@@ -1944,7 +2027,8 @@ const HEROES = [
   {
     id: 'webline', name: 'Webline', role: 'Wall-Crawler', art: Art.webline,
     rarity: 'Epic', rarityColor: '#e0433f', glow: 'rgba(224,67,63,.4)',
-    range: 158, cooldown: .34, damage: 1, pierce: 2, projSpeed: 700, kind: 'dart',
+    clazz: 'vanguard',
+    range: 158, cooldown: .34, damage: 1, pierce: 2, projSpeed: 840, kind: 'dart',
     color: '#e0433f', tags: ['agility'],
     web: { slow: .45, time: 2.2 },
     ability: {
@@ -1962,6 +2046,7 @@ const HEROES = [
   {
     id: 'skyforge', name: 'Skyforge', role: 'Storm Smith', art: Art.skyforge,
     rarity: 'Legendary', rarityColor: '#b8c3d8', glow: 'rgba(170,215,255,.45)',
+    clazz: 'icon',
     range: 176, cooldown: 1.15, damage: 3, kind: 'chain', chains: 3,
     color: '#aeb8ca', tags: ['electric', 'storm'],
     ability: {
@@ -1978,7 +2063,8 @@ const HEROES = [
   {
     id: 'bulwark', name: 'Bulwark', role: 'Shield Bearer', art: Art.bulwark,
     rarity: 'Epic', rarityColor: '#3f6fd0', glow: 'rgba(90,150,235,.42)',
-    range: 168, cooldown: .95, damage: 2, pierce: 6, projSpeed: 480, kind: 'dart',
+    clazz: 'specialist',
+    range: 168, cooldown: .95, damage: 2, pierce: 6, projSpeed: 680, kind: 'dart',
     color: '#3f6fd0', tags: ['kinetic'],
     ability: {
       kind: 'rally',
@@ -1994,7 +2080,8 @@ const HEROES = [
   {
     id: 'valkyra', name: 'Valkyra', role: 'Warrior Princess', art: Art.valkyra,
     rarity: 'Legendary', rarityColor: '#e8b93f', glow: 'rgba(232,185,63,.45)',
-    range: 132, cooldown: .55, damage: 4, kind: 'smash',
+    clazz: 'icon',
+    range: 132, cooldown: .55, damage: 4, kind: 'smash', knock: 4,
     color: '#d84a3c', tags: ['kinetic', 'mystic'],
     ability: {
       kind: 'lasso',
@@ -2010,7 +2097,8 @@ const HEROES = [
   {
     id: 'arcanist', name: 'Arcanist', role: 'Sorcerer Supreme', art: Art.arcanist,
     rarity: 'Legendary', rarityColor: '#ff8a3d', glow: 'rgba(255,150,80,.45)',
-    range: 190, cooldown: 1.35, damage: 3, pierce: 3, projSpeed: 560, kind: 'dart',
+    clazz: 'icon',
+    range: 190, cooldown: 1.35, damage: 3, pierce: 3, projSpeed: 740, kind: 'dart',
     color: '#ff8a3d', tags: ['mystic'],
     ability: {
       kind: 'portal',
@@ -2026,6 +2114,7 @@ const HEROES = [
   {
     id: 'quiver', name: 'Quiver', role: 'Marksman', art: Art.quiver,
     rarity: 'Rare', rarityColor: '#8fbf4a', glow: 'rgba(140,190,80,.4)',
+    clazz: 'vanguard',
     range: 235, cooldown: 1.05, damage: 4, pierce: 2, projSpeed: 900, kind: 'dart',
     color: '#8fbf4a', tags: ['kinetic'],
     ability: {
@@ -2042,6 +2131,7 @@ const HEROES = [
   {
     id: 'tempest', name: 'Tempest', role: 'Weather Witch', art: Art.tempest,
     rarity: 'Epic', rarityColor: '#c9d6f0', glow: 'rgba(190,215,255,.45)',
+    clazz: 'specialist',
     range: 165, cooldown: 1.9, damage: 2, kind: 'frost', slow: .4, slowTime: 2.6,
     color: '#c9d6f0', tags: ['storm'],
     ability: {
@@ -2058,7 +2148,8 @@ const HEROES = [
   {
     id: 'sable', name: 'Sable', role: 'Infiltrator', art: Art.sable,
     rarity: 'Epic', rarityColor: '#c8506a', glow: 'rgba(200,80,106,.42)',
-    range: 150, cooldown: .42, damage: 2, pierce: 1, projSpeed: 760, kind: 'dart',
+    clazz: 'vanguard',
+    range: 150, cooldown: .42, damage: 2, pierce: 1, projSpeed: 900, kind: 'dart',
     color: '#c8506a', tags: ['kinetic', 'tech'],
     ability: {
       kind: 'expose',
@@ -2074,6 +2165,7 @@ const HEROES = [
   {
     id: 'adamant', name: 'Adamant', role: 'Storm Tyrant', art: Art.adamant,
     rarity: 'Legendary', rarityColor: '#ffd23f', glow: 'rgba(255,210,63,.5)',
+    clazz: 'icon',
     range: 190, cooldown: .9, damage: 4, kind: 'chain', chains: 5,
     color: '#ffd23f', tags: ['electric', 'storm'],
     ability: {
@@ -2090,7 +2182,8 @@ const HEROES = [
   {
     id: 'breaker', name: 'Breaker', role: 'Engine of Ruin', art: Art.breaker,
     rarity: 'Legendary', rarityColor: '#cfc4e8', glow: 'rgba(200,190,235,.45)',
-    range: 104, cooldown: 1.25, damage: 9, kind: 'smash',
+    clazz: 'icon',
+    range: 104, cooldown: 1.25, damage: 9, kind: 'smash', knock: 20,
     color: '#b8b0c8', tags: ['kinetic'],
     ability: {
       kind: 'rampage',

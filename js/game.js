@@ -2,6 +2,11 @@
    game.js — simulation + rendering for the tower-defense stage
 ------------------------------------------------------------------- */
 
+/* How far an ordinary hit may shove a trooper back from its high-water mark.
+   Without a floor, a fast melee hero re-knocks the same trooper every swing and
+   nothing ever walks past it — the line stops being a race and becomes a wall. */
+const PUSH_CAP = 110;
+
 /* =============================== VOID LEGION TROOPER =============================== */
 class Enemy {
   constructor(tier, opts = {}) {
@@ -18,11 +23,18 @@ class Enemy {
     this.spawnAnim = 0;
     this.swift = !!opts.swift;        // runner
     this.shield = !!opts.shield;      // soaks part of every hit
+    /* Void Legion plating. Extra layers welded on over the trooper's own
+       armour grades — they have to be stripped before the grades underneath
+       start coming off, so a late-campaign trooper takes real sustained fire
+       rather than one big hit. This is what makes the last cities heavy. */
+    this.plate = opts.plate || 0;
+    this.maxPlate = this.plate;
     this.speedMul = opts.speedMul || 1;
     this.special = opts.special ? SPECIALS[opts.special] : null;   // counter escort
     this.lane = opts.lane || 0;                                    // which road
     this.marked = 0;                  // Nocturne's prep work: takes double damage
     this.backward = 0;                // Jester's confusion: marches the wrong way
+    this.dMax = 0;                    // furthest it has ever walked — the knockback floor
     this.hp = this.chapterBoss ? this.chapterBoss.hp
       : this.boss ? Math.round(DREAD.hp * (opts.hpMul || 1)) : 1;
     this.maxHp = this.hp;
@@ -85,10 +97,28 @@ class Enemy {
     }
 
     this.d += v * dt;
+    if (this.d > this.dMax) this.dMax = this.d;
     this.step += dt * v * .09;
     if (this.d >= this.path.length) { game.leak(this); return; }
     const p = this.path.at(this.d);
     this.x = p.x; this.y = p.y; this.ang = p.ang;
+  }
+
+  /** Shove it back down the road.
+      Knockback is a delay, not a wall: an ordinary hit can never park a trooper
+      more than PUSH_CAP behind the furthest it has already walked, so a melee
+      hero buys the line time instead of holding it single-handed forever.
+      Ultimates pass `hard` and ignore the floor — that is what makes them
+      ultimates. */
+  push(dist, hard) {
+    const floor = hard ? 0 : Math.max(0, this.dMax - PUSH_CAP);
+    const to = Math.max(floor, this.d - dist);
+    if (to >= this.d) return 0;
+    const moved = this.d - to;
+    this.d = to;
+    const p = this.path.at(this.d);
+    this.x = p.x; this.y = p.y; this.ang = p.ang;
+    return moved;
   }
 
   chill(factor, time) {
@@ -111,6 +141,21 @@ class Enemy {
     if (this.chapterBoss) this.drawChapterBoss(ctx, time, grow);
     else if (this.boss) this.drawDread(ctx, time, grow);
     else this.drawTrooper(ctx, time, grow);
+
+    /* plating reads as welded rings around the trooper — one per layer left,
+       so you can see at a glance how much is still between you and the kill */
+    if (this.plate > 0) {
+      const rings = Math.min(3, Math.ceil(this.plate / 4));
+      ctx.globalAlpha = .6;
+      for (let i = 0; i < rings; i++) {
+        ctx.strokeStyle = i === rings - 1 ? 'rgba(206,218,240,.85)' : 'rgba(150,166,200,.5)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.r + 2.5 + i * 2.2, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
 
     ctx.restore();
   }
@@ -410,13 +455,22 @@ class Tower {
   get mods() { return levelMods(this.level); }
   get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
   get ultReady() { return !!this.def.ability && this.charges > 0; }
-  get rate() { return this.def.cooldown * this.mods.rate; }
-  get damage() { return this.def.damage + this.mods.damage; }
+  /** the hero's class card — Vanguard, Specialist or Icon. Base units have none
+      and take no class modifiers at all. */
+  get cls() { return classOf(this.def); }
+  /** how hard this hero's ultimate lands, relative to its printed numbers */
+  get ultScale() { return this.cls ? this.cls.ult : 1; }
+  get rate() { return this.def.cooldown * this.mods.rate * (this.cls ? this.cls.rate : 1); }
+  get damage() {
+    const base = this.def.damage + this.mods.damage;
+    return this.cls ? Math.max(1, Math.round(base * this.cls.damage)) : base;
+  }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
   /** a Relay Mast in range widens the reach and shortens the cycle */
   get range() {
     const rampage = this.rampage > 0 ? 2 : 1;
-    return this.def.range * this.mods.range * (this.buffRange || 1) * rampage;
+    return this.def.range * this.mods.range * (this.buffRange || 1) * rampage
+      * (this.cls ? this.cls.range : 1);
   }
   /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
   firingRateIn(game) {
@@ -463,6 +517,8 @@ class Tower {
 
     if (this.def.kind === 'support') return;
 
+    if (this.def.extras) this.updateExtras(dt, game);
+
     if (this.cd <= 0) {
       const kind = this.def.kind;
       if (kind === 'frost' || kind === 'slam') {
@@ -471,6 +527,102 @@ class Tower {
         this.fire(game, target); this.cd = this.firingRateIn(game);
       }
     }
+  }
+
+  /** Things a hero does on its own, on its own clock — no charge to spend and
+      nothing to click. Only the apex hero has these; they are what "he's just
+      that good" looks like in code. */
+  updateExtras(dt, game) {
+    const ex = this.def.extras;
+    this.extraCd = this.extraCd || {};
+
+    if (ex.slam) {
+      const every = ex.slam.every / (1 + (this.level - 1) * .18);
+      this.extraCd.slam = (this.extraCd.slam === undefined ? every * .6 : this.extraCd.slam) - dt;
+      if (this.extraCd.slam <= 0) {
+        this.extraCd.slam = every;
+        const r = ex.slam.radius * this.mods.range;
+        if (game.anyInRange(this.x, this.y, r)) {
+          game.rings.push({ x: this.x, y: this.y, r: 12, max: r, life: .5, maxLife: .5,
+            color: '#cfe6ff', thick: 9 });
+          game.rings.push({ x: this.x, y: this.y, r: 6, max: r * .55, life: .35, maxLife: .35,
+            color: '#ffffff', thick: 5 });
+          for (let i = 0, n = game.n(22); i < n; i++) {
+            const a = rand(0, TAU);
+            game.particles.push(new Particle(this.x, this.y, {
+              vx: Math.cos(a) * rand(80, 240), vy: Math.sin(a) * rand(80, 240) - 60,
+              life: rand(.35, .7), size: rand(2.5, 5.5),
+              color: pick(['#cfe6ff', '#9dc2f0', '#7f8fa8']), kind: 'shard', gravity: 330,
+            }));
+          }
+          const dmg = ex.slam.damage + this.level;
+          for (const b of game.enemies) {
+            if (b.dead || distSq(b.x, b.y, this.x, this.y) > r * r) continue;
+            b.push(ex.slam.knock);
+            game.damage(b, dmg, { source: this, x: b.x, y: b.y, tags: this.def.tags });
+          }
+          game.shake = Math.max(game.shake, 7);
+          Sfx.slam();
+        }
+      }
+    }
+
+    if (ex.freeze) {
+      const every = ex.freeze.every / (1 + (this.level - 1) * .15);
+      this.extraCd.freeze = (this.extraCd.freeze === undefined ? every : this.extraCd.freeze) - dt;
+      if (this.extraCd.freeze <= 0) {
+        this.extraCd.freeze = every;
+        const r = ex.freeze.radius * this.mods.range;
+        if (game.anyInRange(this.x, this.y, r)) {
+          game.rings.push({ x: this.x, y: this.y, r: 10, max: r, life: .8, maxLife: .8,
+            color: '#bfe9ff', thick: 6 });
+          for (let i = 0, n = game.n(26); i < n; i++) {
+            const a = rand(0, TAU);
+            game.particles.push(new Particle(this.x, this.y - 12, {
+              vx: Math.cos(a) * rand(50, 190), vy: Math.sin(a) * rand(50, 190) - 20,
+              life: rand(.5, 1), size: rand(2, 4.5),
+              color: pick(['#dff4ff', '#a9e9ff', '#7fd0f0']), kind: 'spark',
+            }));
+          }
+          let n = 0;
+          for (const b of game.enemies) {
+            if (b.dead || distSq(b.x, b.y, this.x, this.y) > r * r) continue;
+            b.chill(ex.freeze.slow, ex.freeze.time + this.level * .3);
+            n++;
+          }
+          if (n) game.floatText(this.x, this.y - 52, 'FROZEN', '#bfe9ff', 1.1, 14);
+          Sfx.frost();
+        }
+      }
+    }
+  }
+
+  /** Aim where the target is going to be, not where it is.
+      A shot fired at a walking trooper's current position lands behind it — the
+      slower the projectile and the faster the trooper, the wider the miss. This
+      solves the intercept once, at fire time, and falls back to a straight shot
+      when there is no solution (target outrunning the projectile). */
+  leadAngle(target, speed) {
+    if (!target || !speed) return this.angle;
+    const px = target.x - this.x, py = target.y - this.y;
+    const v = target.speed * (target.backward > 0 ? -.6 : 1);
+    const tvx = Math.cos(target.ang) * v, tvy = Math.sin(target.ang) * v;
+    const a = tvx * tvx + tvy * tvy - speed * speed;
+    const b = 2 * (px * tvx + py * tvy);
+    const c = px * px + py * py;
+    let t = -1;
+    if (Math.abs(a) < 1e-4) {
+      if (Math.abs(b) > 1e-4) t = -c / b;
+    } else {
+      const disc = b * b - 4 * a * c;
+      if (disc >= 0) {
+        const r = Math.sqrt(disc);
+        const roots = [(-b + r) / (2 * a), (-b - r) / (2 * a)].filter((x) => x > 0);
+        if (roots.length) t = Math.min(...roots);
+      }
+    }
+    if (!(t > 0) || t > 2) return Math.atan2(py, px);
+    return Math.atan2(py + tvy * t, px + tvx * t);
   }
 
   fire(game, target) {
@@ -492,7 +644,8 @@ class Tower {
 
     switch (d.kind) {
       case 'dart': {
-        const a = this.angle;
+        const a = this.leadAngle(target, d.projSpeed);
+        this.angle = a;
         game.projectiles.push(new Projectile(this, {
           x: this.x + Math.cos(a) * 18, y: this.y + Math.sin(a) * 18,
           vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
@@ -517,7 +670,8 @@ class Tower {
         break;
       }
       case 'bomb': {
-        const a = this.angle;
+        const a = this.leadAngle(target, d.projSpeed);
+        this.angle = a;
         game.projectiles.push(new Projectile(this, {
           x: this.x + Math.cos(a) * 18, y: this.y + Math.sin(a) * 18,
           vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
@@ -569,7 +723,7 @@ class Tower {
         }
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
-          b.d = Math.max(0, b.d - d.knockback);
+          b.push(d.knockback);
           b.chill(d.slow, d.slowTime);
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
         }
@@ -591,7 +745,7 @@ class Tower {
         }
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
-          b.d = Math.max(0, b.d - 18);
+          b.push(d.knock === undefined ? 18 : d.knock);
           const was = b.dead;
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
           if (!was && b.dead && this.rampage > 0) this.rampageKills++;
@@ -602,7 +756,8 @@ class Tower {
       }
       case 'cards': {
         /* a fan of three, each card rolling its own damage */
-        const base = this.angle;
+        const base = this.leadAngle(target, d.projSpeed);
+        this.angle = base;
         for (let i = -1; i <= 1; i++) {
           const a = base + i * .22;
           game.projectiles.push(new Projectile(this, {
@@ -614,6 +769,27 @@ class Tower {
           }));
         }
         Sfx.cards();
+        break;
+      }
+      case 'beam': {
+        /* Twin heat beams straight out of the eyes. No projectile, so nothing
+           to lead and nothing to dodge — it simply connects, every tick. */
+        /* both eyes, drawn from where the sprite actually has them */
+        for (const off of [-2.6, 2.2]) {
+          const ex = this.x + off * this.facing;
+          const ey = this.y - 16.5;
+          game.beams.push({
+            pts: [{ x: ex, y: ey }, { x: target.x + off * .5, y: target.y + off * .5 }],
+            life: .13, maxLife: .13, color: '#ff6a2e', width: 2.6, straight: true,
+          });
+          game.beams.push({
+            pts: [{ x: ex, y: ey }, { x: target.x + off * .5, y: target.y + off * .5 }],
+            life: .1, maxLife: .1, color: '#fff0c0', width: 1.1, straight: true,
+          });
+        }
+        game.damage(target, this.damage, { source: this, x: target.x, y: target.y, tags: d.tags });
+        game.spark(target.x, target.y, '#ffd9a0', 3);
+        if (Math.random() < .4) Sfx.spark();
         break;
       }
       case 'ray': {
@@ -831,6 +1007,20 @@ class Projectile {
   update(dt, game) {
     this.age += dt;
 
+    /* an aimed shot keeps its mark: it curves onto whatever it was loosed at,
+       and picks a new one if that trooper drops before it lands */
+    if (this.seek) {
+      if (this.seek.dead) this.seek = game.firstInRange(this.x, this.y, 600);
+      if (this.seek) {
+        const want = Math.atan2(this.seek.y - this.y, this.seek.x - this.x);
+        const cur = Math.atan2(this.vy, this.vx);
+        const diff = ((want - cur + Math.PI * 3) % TAU) - Math.PI;
+        const a = cur + diff * Math.min(1, dt * 9);
+        const sp = Math.hypot(this.vx, this.vy);
+        this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
+      }
+    }
+
     /* micro-missiles steer toward their mark */
     if (this.kind === 'missile') {
       if (!this.target || this.target.dead) {
@@ -912,6 +1102,17 @@ class Projectile {
       roundRect(ctx, -3, -4.5, 6, 9, 1.4); ctx.fill();
       ctx.fillStyle = this.damage > 2 ? '#c8324f' : '#16121c';
       ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, TAU); ctx.fill();
+    } else if (this.kind === 'arrow') {
+      ctx.rotate(Math.atan2(this.vy, this.vx));
+      ctx.strokeStyle = 'rgba(216,240,160,.55)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(-8, 0); ctx.stroke();
+      ctx.strokeStyle = '#c8b48a'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(6, 0); ctx.stroke();
+      ctx.fillStyle = '#d8f0a0';
+      ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(4, 2.6); ctx.lineTo(4, -2.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(216,240,160,.9)';
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12, 2.6); ctx.lineTo(-11, 0); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12, -2.6); ctx.lineTo(-11, 0); ctx.closePath(); ctx.fill();
     } else if (this.kind === 'tack') {
       ctx.rotate(Math.atan2(this.vy, this.vx));
       ctx.fillStyle = this.color;
@@ -936,13 +1137,13 @@ class Projectile {
 const ULT_ANIM_TIME = 1.1;
 
 class Saw {
-  constructor(level, lane = 0) {
+  constructor(level, lane = 0, scale = 1) {
     this.level = level;
     this.lane = lane;
     this.d = 0;
     this.speed = 400 + (level - 1) * 80;
-    this.r = 32 + (level - 1) * 7;
-    this.damage = level >= 3 ? 14 : level === 2 ? 11 : 9;
+    this.r = (32 + (level - 1) * 7) * (1 + (scale - 1) * .5);
+    this.damage = Math.round((level >= 3 ? 14 : level === 2 ? 11 : 9) * scale);
     this.spin = 0;
     this.age = 0;
     this.dead = false;
@@ -1795,6 +1996,13 @@ class Game {
     t.charges--;
     t.ultAnim = ULT_ANIM_TIME;
 
+    /* class scaling: a Specialist's ultimate lands about half again as hard as
+       its printed numbers, a Vanguard's lands lighter. `k` scales duration and
+       count, `kr` the radii (a squared quantity, so it moves less). */
+    const k = t.ultScale;
+    const kr = 1 + (k - 1) * .5;
+    const dur = (arr) => arr[t.level - 1] * k;
+
     const burst = (color, n = 26) => {
       this.rings.push({ x: t.x, y: t.y, r: 12, max: 150, life: .55, maxLife: .55, color, thick: 7 });
       for (let i = 0, k = this.n(n); i < k; i++) {
@@ -1808,18 +2016,18 @@ class Game {
 
     switch (ab.kind) {
       case 'saw':
-        this.saws.push(new Saw(t.level, this.busiestLane()));
+        this.saws.push(new Saw(t.level, this.busiestLane(), k));
         burst('#5cff9e');
         Sfx.ultCharge();
         break;
       case 'overdrive':
-        t.overdrive = ab.duration[t.level - 1];
+        t.overdrive = dur(ab.duration);
         burst('#ffd23f', 34);
         this.flash = Math.max(this.flash, .25);
         Sfx.overdrive();
         break;
       case 'lance':
-        this.lances.push(new Lance(t, ab.duration[t.level - 1]));
+        this.lances.push(new Lance(t, dur(ab.duration)));
         burst('#ffe9a8', 30);
         this.flash = Math.max(this.flash, .45);
         Sfx.lanceStart();
@@ -1827,15 +2035,15 @@ class Game {
 
       case 'mark': {
         /* prep work: every hostile currently on the field takes double damage */
-        const dur = ab.duration[t.level - 1];
+        const span = dur(ab.duration);
         let n = 0;
         for (const e of this.enemies) {
           if (e.dead) continue;
-          e.marked = Math.max(e.marked, dur);
+          e.marked = Math.max(e.marked, span);
           n++;
           this.spark(e.x, e.y, '#ff5a6e', 3);
         }
-        this.markedUntil = this.time + dur;
+        this.markedUntil = this.time + span;
         burst('#8fa8d8', 22);
         this.floatText(t.x, t.y - 66, `${n} marked`, '#ff8a98', 1.3, 15);
         Sfx.mark();
@@ -1843,7 +2051,7 @@ class Game {
       }
 
       case 'missiles': {
-        const salvo = ab.salvo[t.level - 1];
+        const salvo = Math.round(ab.salvo[t.level - 1] * k);
         for (let i = 0; i < salvo; i++) {
           const a = rand(0, TAU);
           this.projectiles.push(new Projectile(t, {
@@ -1859,16 +2067,16 @@ class Game {
       }
 
       case 'thunderclap': {
-        const radius = ab.radius[t.level - 1];
+        const radius = ab.radius[t.level - 1] * kr;
         this.rings.push({ x: t.x, y: t.y, r: 16, max: radius, life: .7, maxLife: .7,
           color: '#a8ff8a', thick: 12 });
         this.rings.push({ x: t.x, y: t.y, r: 8, max: radius * .6, life: .5, maxLife: .5,
           color: '#ffffff', thick: 6 });
         for (const e of this.enemies) {
           if (e.dead || distSq(e.x, e.y, t.x, t.y) > radius * radius) continue;
-          e.d = Math.max(0, e.d - 90);
+          e.push(90, true);
           e.chill(0, 1.6);                       // flat stun
-          this.damage(e, 5 + t.level * 2, { source: t, x: e.x, y: e.y, tags: t.def.tags });
+          this.damage(e, Math.round((5 + t.level * 2) * k), { source: t, x: e.x, y: e.y, tags: t.def.tags });
         }
         for (let i = 0, kn = this.n(40); i < kn; i++) {
           const a = rand(0, TAU);
@@ -1885,13 +2093,13 @@ class Game {
       }
 
       case 'webzone': {
-        const r = ab.radius[t.level - 1];
+        const r = ab.radius[t.level - 1] * kr;
         const lead = this.leadDistance();
         const lanePath = PATHS[lead.lane] || PATHS[0];
         const p = lanePath.at(clamp(lead.d + 60, 0, lanePath.length));
         this.webs.push({
-          x: p.x, y: p.y, r, life: ab.duration[t.level - 1],
-          maxLife: ab.duration[t.level - 1], slow: .3, seed: rand(0, TAU),
+          x: p.x, y: p.y, r, life: dur(ab.duration),
+          maxLife: dur(ab.duration), slow: .3, seed: rand(0, TAU),
         });
         burst('#e8eefc', 20);
         this.floatText(t.x, t.y - 66, 'WEB ZONE', '#e8eefc', 1.2, 15);
@@ -1901,7 +2109,7 @@ class Game {
 
       case 'stormcall': {
         /* bolts walk down the route one after another */
-        const strikes = ab.strikes[t.level - 1];
+        const strikes = Math.round(ab.strikes[t.level - 1] * k);
         const targets = [...this.enemies].filter((e) => !e.dead).sort((a, b) => b.d - a.d);
         for (let i = 0; i < strikes; i++) {
           const e = targets[i % Math.max(1, targets.length)];
@@ -1916,7 +2124,7 @@ class Game {
       }
 
       case 'rally': {
-        this.rally = Math.max(this.rally, ab.duration[t.level - 1]);
+        this.rally = Math.max(this.rally, dur(ab.duration));
         burst('#7fb0ff', 30);
         for (const other of this.towers) {
           this.rings.push({ x: other.x, y: other.y, r: 6, max: 40, life: .5, maxLife: .5,
@@ -1928,12 +2136,12 @@ class Game {
       }
 
       case 'lasso': {
-        const dur = ab.duration[t.level - 1];
+        const span = dur(ab.duration);
         let n = 0;
         for (const e of this.enemies) {
           if (e.dead) continue;
-          e.chill(0, dur);                       // bound in place
-          e.d = Math.max(0, e.d - 40);
+          e.chill(0, span);                      // bound in place
+          e.push(40, true);
           n++;
         }
         burst('#ffc85a', 28);
@@ -1943,13 +2151,11 @@ class Game {
       }
 
       case 'portal': {
-        const frac = ab.send[t.level - 1];
+        const frac = Math.min(.9, ab.send[t.level - 1] * k);
         let n = 0;
         for (const e of this.enemies) {
           if (e.dead) continue;
-          const before = e.d;
-          e.d = Math.max(0, e.d - e.path.length * frac);
-          if (e.d < before) n++;
+          if (e.push(e.path.length * frac, true) > 0) n++;
           const p2 = e.path.at(e.d);
           this.rings.push({ x: p2.x, y: p2.y, r: 4, max: 26, life: .4, maxLife: .4,
             color: '#ff9a4d', thick: 3 });
@@ -1963,27 +2169,32 @@ class Game {
       }
 
       case 'volley': {
-        const shots = ab.shots[t.level - 1];
+        /* Every arrow is aimed at a trooper and steers to it. The old volley
+           launched from an offset it never accounted for, at a speed
+           proportional to the distance, so half the quiver sailed past. */
+        const shots = Math.round(ab.shots[t.level - 1] * k);
         const marks = [...this.enemies].filter((e) => !e.dead).sort((a, b) => b.d - a.d);
+        if (!marks.length) { this.floatText(t.x, t.y - 66, 'NO TARGETS', '#c9ef8a', 1.2, 14); break; }
+        const SPEED = 980;
         for (let i = 0; i < shots; i++) {
-          const e = marks[i % Math.max(1, marks.length)];
-          if (!e) break;
-          const a = rand(0, TAU);
+          const e = marks[i % marks.length];
+          const a = Math.atan2(e.y - (t.y - 12), e.x - t.x) + rand(-.05, .05);
           this.projectiles.push(new Projectile(t, {
-            x: t.x + Math.cos(a) * 12, y: t.y - 30 - i * 4,
-            vx: (e.x - t.x) * 1.6, vy: (e.y - t.y) * 1.6,
-            damage: 3 + t.level, pierce: 2, life: .9, kind: 'dart',
+            x: t.x + Math.cos(a) * 12, y: t.y - 12 + Math.sin(a) * 12,
+            vx: Math.cos(a) * SPEED, vy: Math.sin(a) * SPEED,
+            damage: 3 + t.level, pierce: 2, life: 1.6, kind: 'arrow', seek: e,
             color: '#d8f0a0', size: 4, tags: t.def.tags,
           }));
         }
         burst('#c9ef8a', 22);
+        this.floatText(t.x, t.y - 66, `${Math.min(shots, marks.length * 4)} arrows`, '#d8f0a0', 1.3, 15);
         Sfx.volley();
         break;
       }
 
       case 'downpour': {
-        this.downpour = Math.max(this.downpour, ab.duration[t.level - 1]);
-        this.downpourDmg = 1 + t.level;
+        this.downpour = Math.max(this.downpour, dur(ab.duration));
+        this.downpourDmg = Math.max(1, Math.round((1 + t.level) * k));
         burst('#c9d6f0', 26);
         this.floatText(t.x, t.y - 66, 'DOWNPOUR', '#dbe8ff', 1.5, 17);
         Sfx.downpour();
@@ -1991,7 +2202,7 @@ class Game {
       }
 
       case 'expose': {
-        this.exposed = Math.max(this.exposed, ab.duration[t.level - 1]);
+        this.exposed = Math.max(this.exposed, dur(ab.duration));
         burst('#c8506a', 24);
         for (const e of this.enemies) if (!e.dead) this.spark(e.x, e.y, '#ff8aa8', 3);
         this.floatText(t.x, t.y - 66, 'ARMOUR EXPOSED', '#ff9ab0', 1.6, 16);
@@ -2001,8 +2212,8 @@ class Game {
 
       case 'judgement': {
         /* a standing storm: everything pinned and struck, repeatedly */
-        this.judgement = Math.max(this.judgement, ab.duration[t.level - 1]);
-        this.judgementDmg = 4 + t.level * 2;
+        this.judgement = Math.max(this.judgement, dur(ab.duration));
+        this.judgementDmg = Math.round((4 + t.level * 2) * k);
         burst('#ffd23f', 34);
         this.flash = Math.max(this.flash, .4);
         this.floatText(t.x, t.y - 70, 'JUDGEMENT', '#ffe27a', 1.8, 20);
@@ -2011,7 +2222,7 @@ class Game {
       }
 
       case 'rampage': {
-        t.rampage = ab.duration[t.level - 1];
+        t.rampage = dur(ab.duration);
         t.rampageKills = 0;
         burst('#cfc4e8', 32);
         this.shake = Math.max(this.shake, 12);
@@ -2079,6 +2290,7 @@ class Game {
           tier: grp.tier, t: grp.delay + i * grp.gap,
           opts: {
             swift: !!grp.swift, shield: !!grp.shield, speedMul, special: grp.special,
+            plate: grp.tier === 'boss' || grp.tier === 'chapterBoss' ? 0 : plateFor(this.levelNo),
             bossDef: grp.tier === 'chapterBoss' ? this.level.chapterBoss : null,
             /* split the wave across every road the map has */
             lane: lanes > 1 ? (laneTick++) % lanes : 0,
@@ -2171,7 +2383,7 @@ class Game {
           const e = new Enemy(clamp(2 + Math.floor(this.levelNo / 10), 0, 4), {
             speedMul: b.speedMul,
           });
-          e.d = Math.max(0, b.d - 20 - i * 16);
+          e.d = e.dMax = Math.max(0, b.d - 20 - i * 16);
           e.spawnAnim = .2;
           this.enemies.push(e);
         }
@@ -2229,7 +2441,7 @@ class Game {
         }
         for (let i = 0; i < pw.count; i++) {
           const e = new Enemy(4, { speedMul: b.speedMul, shield: true });
-          e.d = Math.max(0, b.d - 24 - i * 18);
+          e.d = e.dMax = Math.max(0, b.d - 24 - i * 18);
           e.spawnAnim = .2;
           this.enemies.push(e);
         }
@@ -2368,7 +2580,7 @@ class Game {
         /* a wrecked walker spills the squad riding inside it */
         for (let i = 0; i < 4; i++) {
           const child = new Enemy(3, { speedMul: b.speedMul });
-          child.d = Math.max(0, b.d - 14 - i * 12);
+          child.d = child.dMax = Math.max(0, b.d - 14 - i * 12);
           child.spawnAnim = .4;
           this.enemies.push(child);
         }
@@ -2377,6 +2589,16 @@ class Game {
     }
 
     while (amount > 0 && !b.dead) {
+      if (b.plate > 0) {
+        /* plating comes off first, and pays nothing. A whole wave shedding
+           plate would be a wall of noise, so only some of it is audible. */
+        b.plate--;
+        amount--;
+        b.hitFlash = .5;
+        this.spark(b.x, b.y, '#cfd8ec', 2);
+        if (!opts.silent && (b.plate === 0 || Math.random() < .15)) Sfx.deflect();
+        continue;
+      }
       const info = TROOPS[b.tier];
       this.cash += info.reward;
       this.killFx(b.x, b.y, info.color, b.tier > 0);
