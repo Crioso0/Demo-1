@@ -40,6 +40,7 @@ const UI = {
 
     this.bindCanvas(game.canvas);
     this.bindKeys();
+    this.bindMobile();
     this.refreshMenu();
   },
 
@@ -161,6 +162,7 @@ const UI = {
     this.syncHud(true);
     this.show('game');
     Sfx.resume();
+    if (this.syncRotateHint) this.syncRotateHint();
     if (!Save.data.seenHelp) $('#overlay-help').hidden = false;
   },
 
@@ -212,8 +214,19 @@ const UI = {
     el.onclick = () => {
       if (el.classList.contains('disabled')) return;
       const g = this.game;
-      if (g.placing && g.placing.def === def) { g.cancelPlacing(); this.syncShop(); return; }
+      if (g.placing && g.placing.def === def) {
+        g.cancelPlacing();
+        if (this.coarse) g.pointer.inside = false;
+        this.syncShop();
+        return;
+      }
       g.beginPlacing(def, isHero);
+      if (this.coarse) {
+        /* no hover on touch — show the ghost immediately, centre of the map */
+        g.pointer.x = CANVAS_W / 2;
+        g.pointer.y = CANVAS_H / 2;
+        g.pointer.inside = true;
+      }
       this.syncShop();
       this.syncInspect();
       Sfx.click();
@@ -488,9 +501,42 @@ const UI = {
     this.refreshMenu();
   },
 
+  /* =================== phones =================== */
+  bindMobile() {
+    /* iOS keeps audio locked until a gesture — take the first one we get */
+    const unlock = () => Sfx.resume();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+
+    const hint = $('#rotate-hint');
+    $('#rotate-hint-x').onclick = () => {
+      hint.hidden = true;
+      this.hintDismissed = true;
+    };
+    const sync = () => {
+      const portrait = window.matchMedia('(orientation: portrait)').matches;
+      const small = window.innerWidth < 900;
+      const show = !this.hintDismissed && portrait && small && this.coarse;
+      hint.hidden = !show;
+      /* say it once, briefly, then stop nagging */
+      if (show && !this.hintTimer) {
+        this.hintTimer = setTimeout(() => { this.hintDismissed = true; hint.hidden = true; }, 9000);
+      }
+    };
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', () => setTimeout(sync, 200));
+    this.syncRotateHint = sync;
+    sync();
+  },
+
   /* =================== input =================== */
   bindCanvas(canvas) {
     const g = this.game;
+    /* touch has no hover, so placement works as drag-then-release instead */
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    this.coarse = coarse;
+    let dragging = false;
+
     const toWorld = (ev) => {
       const r = canvas.getBoundingClientRect();
       return {
@@ -499,30 +545,73 @@ const UI = {
       };
     };
 
+    /** tap on a placed unit: select it, and fire a charged hero on the same tap */
+    const pick = (p) => {
+      const reach = coarse ? 34 : 26;
+      let hit = null;
+      for (const t of g.towers) if (distSq(t.x, t.y, p.x, p.y) < reach * reach) hit = t;
+      g.selected = hit;
+      if (hit && hit.def.ability && g.canUseUlt(hit)) g.activateUlt(hit);
+      this.syncInspect();
+    };
+
     canvas.addEventListener('pointermove', (ev) => {
       const p = toWorld(ev);
       g.pointer.x = p.x; g.pointer.y = p.y;
       g.pointer.inside = true;
+      if (coarse && dragging) ev.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('pointerleave', () => {
+      if (!coarse) g.pointer.inside = false;
     });
-    canvas.addEventListener('pointerleave', () => { g.pointer.inside = false; });
 
     canvas.addEventListener('pointerdown', (ev) => {
       Sfx.resume();
       const p = toWorld(ev);
       if (ev.button === 2) { g.cancelPlacing(); this.syncShop(); return; }
 
-      if (g.placing) {
-        if (g.tryPlace(p.x, p.y)) { this.syncShop(); this.syncInspect(); }
+      g.pointer.x = p.x; g.pointer.y = p.y;
+      g.pointer.inside = true;
+
+      if (!coarse) {
+        /* mouse: click places straight away, the hover preview already showed it */
+        if (g.placing) {
+          if (g.tryPlace(p.x, p.y)) { this.syncShop(); this.syncInspect(); }
+          return;
+        }
+        pick(p);
         return;
       }
-      /* select / deselect a placed unit */
-      let hit = null;
-      for (const t of g.towers) if (distSq(t.x, t.y, p.x, p.y) < 26 * 26) hit = t;
-      g.selected = hit;
-      /* a charged hero fires on the same click that selects him, so the
-         inspect panel is still reachable for upgrading and selling */
-      if (hit && hit.def.ability && g.canUseUlt(hit)) g.activateUlt(hit);
-      this.syncInspect();
+
+      /* touch: hold the preview under the finger and wait for the lift */
+      dragging = true;
+      if (canvas.setPointerCapture) {
+        try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+      }
+      ev.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('pointerup', (ev) => {
+      if (!coarse || !dragging) return;
+      dragging = false;
+      const p = toWorld(ev);
+      g.pointer.x = p.x; g.pointer.y = p.y;
+
+      if (g.placing) {
+        if (g.tryPlace(p.x, p.y)) { this.syncShop(); this.syncInspect(); }
+        else this.syncShop();
+      } else {
+        pick(p);
+      }
+      /* drop the ghost once the finger is gone */
+      g.pointer.inside = !!g.placing;
+      ev.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('pointercancel', () => {
+      dragging = false;
+      if (coarse) g.pointer.inside = !!g.placing;
     });
 
     canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());

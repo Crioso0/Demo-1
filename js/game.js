@@ -927,7 +927,7 @@ class Saw {
     this.x = p.x; this.y = p.y;
 
     /* sparks off the track */
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0, n = game.n(2); i < n; i++) {
       const a = rand(0, TAU);
       game.particles.push(new Particle(this.x, this.y, {
         vx: Math.cos(a) * rand(50, 220), vy: Math.sin(a) * rand(50, 220),
@@ -1246,11 +1246,15 @@ class Game {
     this.bg = null;
     this.onEvent = () => {};
     this.map = null;
+    this.fx = 1;
     this.reset(1);
   }
 
   reset(levelNo = this.levelNo || 1) {
     Sfx.stopAll();
+    /* phones render the same fight with a lighter particle budget */
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    this.fx = coarse || window.innerWidth < 900 ? .5 : 1;
     this.levelNo = clamp(levelNo, 1, LEVEL_COUNT);
     this.level = LEVELS[this.levelNo - 1];
     if (!this.map || this.map !== this.level.map) this.setMapAndBake(this.level.map);
@@ -1740,7 +1744,7 @@ class Game {
 
     const burst = (color, n = 26) => {
       this.rings.push({ x: t.x, y: t.y, r: 12, max: 150, life: .55, maxLife: .55, color, thick: 7 });
-      for (let i = 0; i < n; i++) {
+      for (let i = 0, k = this.n(n); i < k; i++) {
         const a = rand(0, TAU);
         this.particles.push(new Particle(t.x, t.y, {
           vx: Math.cos(a) * rand(80, 260), vy: Math.sin(a) * rand(80, 260) - 40,
@@ -1813,7 +1817,7 @@ class Game {
           e.chill(0, 1.6);                       // flat stun
           this.damage(e, 5 + t.level * 2, { source: t, x: e.x, y: e.y, tags: t.def.tags });
         }
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0, kn = this.n(40); i < kn; i++) {
           const a = rand(0, TAU);
           this.particles.push(new Particle(t.x, t.y, {
             vx: Math.cos(a) * rand(120, 420), vy: Math.sin(a) * rand(120, 420) - 40,
@@ -2241,6 +2245,9 @@ class Game {
     }
   }
 
+  /** particle count, trimmed on small screens */
+  n(count) { return Math.max(1, Math.round(count * this.fx)); }
+
   /* ---------------- cash feedback ---------------- */
   /** coins arc out of a kill and fly to the counter; balance is untouched */
   spawnCoins(x, y, n, value) {
@@ -2258,7 +2265,7 @@ class Game {
   /* ---------------- fx ---------------- */
   killFx(x, y, color, armour) {
     /* armour plate shards plus a burst off the power core */
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0, n = this.n(7); i < n; i++) {
       const a = rand(0, TAU);
       this.particles.push(new Particle(x, y, {
         vx: Math.cos(a) * rand(40, 190), vy: Math.sin(a) * rand(40, 190) - 50,
@@ -2267,7 +2274,7 @@ class Game {
         kind: 'shard', gravity: 460,
       }));
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0, n = this.n(4); i < n; i++) {
       const a = rand(0, TAU);
       this.particles.push(new Particle(x, y, {
         vx: Math.cos(a) * rand(60, 150), vy: Math.sin(a) * rand(60, 150),
@@ -2279,7 +2286,7 @@ class Game {
 
   explodeFx(x, y, radius, color) {
     this.rings.push({ x, y, r: 6, max: radius, life: .4, maxLife: .4, color, thick: 6 });
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0, n = this.n(22); i < n; i++) {
       const a = rand(0, TAU), sp = rand(60, 260);
       this.particles.push(new Particle(x, y, {
         vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
@@ -2287,7 +2294,7 @@ class Game {
         color: pick([color, '#ffe066', '#ffffff']), kind: 'spark', gravity: 120,
       }));
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0, n = this.n(8); i < n; i++) {
       this.particles.push(new Particle(x + rand(-10, 10), y + rand(-10, 10), {
         vx: rand(-30, 30), vy: rand(-60, -20),
         life: rand(.5, 1), size: rand(6, 12), color: '#8a8f9e', kind: 'smoke',
@@ -2481,7 +2488,7 @@ class Game {
       ctx.globalAlpha = k;
       ctx.strokeStyle = '#e8f4ff';
       ctx.lineWidth = 3 * k + 1;
-      ctx.shadowColor = '#9fd0ff'; ctx.shadowBlur = 18;
+      if (this.fx > .75) { ctx.shadowColor = '#9fd0ff'; ctx.shadowBlur = 18; }
       ctx.beginPath();
       ctx.moveTo(st.x + rand(-14, 14), 0);
       let y = 0;
@@ -2502,7 +2509,7 @@ class Game {
       ctx.strokeStyle = bm.color;
       ctx.lineWidth = bm.width * t;
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.shadowColor = bm.color; ctx.shadowBlur = 16;
+      if (this.fx > .75) { ctx.shadowColor = bm.color; ctx.shadowBlur = 16; }
       ctx.beginPath();
       bm.pts.forEach((p, i) => {
         if (i === 0) { ctx.moveTo(p.x, p.y); return; }

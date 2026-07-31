@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Void Bastion — Hero Collector Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="css/styles.css" />
@@ -117,6 +119,11 @@
     </div>
 
     <aside class="sidebar">
+      <div class="rotate-hint" id="rotate-hint" hidden>
+        <span class="rot-icon"></span>
+        <span>Turn sideways for a bigger battlefield</span>
+        <button class="rot-x" id="rotate-hint-x" aria-label="Dismiss">&times;</button>
+      </div>
       <div class="shop-section">
         <h4>Towers</h4>
         <div class="shop-grid" id="shop-towers"></div>

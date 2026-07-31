@@ -17,6 +17,8 @@
 }
 
 *{box-sizing:border-box}
+/* class rules like .btn-ult{display:flex} otherwise beat the UA's [hidden] */
+[hidden]{display:none !important}
 html,body{height:100%}
 body{
   margin:0;
@@ -544,6 +546,16 @@ canvas#game.placing{cursor:none}
   background:rgba(6,10,22,.78); backdrop-filter:blur(6px);
   display:flex; align-items:center; justify-content:center;
   animation:fade .25s ease;
+  /* a short landscape phone must still be able to reach the buttons */
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+.result-card,.help-card{
+  max-height:calc(100vh - 28px);
+  overflow-y:auto;
+}
+@supports (height: 100dvh){
+  .result-card,.help-card{max-height:calc(100dvh - 28px)}
 }
 .overlay[hidden]{display:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}
@@ -568,7 +580,8 @@ canvas#game.placing{cursor:none}
 .help-card .btn{display:block; margin:18px auto 0}
 
 /* crate opening */
-.crate-stage{position:relative; display:grid; place-items:center; width:min(560px,92vw); height:520px}
+.crate-stage{position:relative; display:grid; place-items:center;
+  width:min(560px,92vw); height:min(520px, calc(100vh - 40px)); min-height:340px}
 .rays{
   position:absolute; width:640px; height:640px; opacity:0;
   background:repeating-conic-gradient(from 0deg, rgba(255,255,255,.42) 0deg 5deg, transparent 5deg 22deg);
@@ -642,4 +655,208 @@ canvas#game.placing{cursor:none}
   .logo-top{font-size:44px} .logo-bot{font-size:62px}
   .sidebar{width:230px; flex-basis:230px}
   .shop-grid{grid-template-columns:1fr}
+}
+
+/* ============================================================
+   TOUCH + PHONE LAYOUT
+   The desktop build is a canvas beside a 322px sidebar, which
+   leaves a phone with almost no battlefield. On small screens the
+   sidebar becomes a dock instead: horizontal shop rails under the
+   map in portrait, a compact icon rail beside it in landscape.
+   ============================================================ */
+
+/* stop the page itself behaving like a scrollable document */
+html, body{
+  overscroll-behavior:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;
+}
+body{ user-select:none; -webkit-user-select:none; }
+.btn, .shop-item, .level-card, .chapter-card, .hero-card{ touch-action:manipulation; }
+
+/* keep chrome clear of the notch and the home indicator */
+.hud{ padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
+#screen-menu .menu-inner,
+#screen-chapters, #screen-levels, #screen-collection{
+  padding-left:max(16px, env(safe-area-inset-left));
+  padding-right:max(16px, env(safe-area-inset-right));
+}
+
+/* the rotate nudge */
+.rotate-hint{
+  display:flex; align-items:center; gap:9px;
+  padding:7px 10px; border-radius:10px;
+  background:rgba(20,30,60,.7); border:1px solid var(--line);
+  color:#c3cdf0; font-size:11.5px; font-weight:700;
+  flex:0 0 auto;
+}
+.rotate-hint span:nth-child(2){flex:1; min-width:0}
+.rotate-hint[hidden]{display:none}
+.rot-icon{
+  width:14px; height:20px; border:2px solid #9fc4ff; border-radius:3px;
+  animation:rotTip 2.4s ease-in-out infinite;
+}
+@keyframes rotTip{0%,55%{transform:rotate(0)}75%,100%{transform:rotate(90deg)}}
+.rot-x{
+  appearance:none; background:none; border:0; color:var(--muted);
+  font-size:17px; line-height:1; padding:0 2px; cursor:pointer;
+}
+
+/* ---------- narrow screens, portrait: stack the whole thing ---------- */
+@media (max-width:900px) and (orientation:portrait){
+  .game-wrap{flex-direction:column}
+
+  .stage{flex:0 0 auto; padding:6px 6px 0; min-height:0}
+  .hud{gap:6px; margin-bottom:6px; flex-wrap:wrap}
+  .hud-item{padding:5px 10px; font-size:14px; border-radius:10px}
+  .hud-item .lbl{font-size:9px; letter-spacing:.1em}
+  .hud-item.mission{padding:4px 10px}
+  .hud-item.mission span:last-child{font-size:11px}
+  .canvas-holder{flex:0 0 auto}
+  canvas#game{border-radius:12px; border-width:1px}
+
+  /* the sidebar becomes a bottom dock */
+  .sidebar{
+    width:100%; flex:1 1 auto; min-height:0;
+    border-left:none; border-top:1px solid var(--line);
+    padding:8px 8px calc(6px + env(safe-area-inset-bottom));
+    gap:8px; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .shop-section{min-height:0}
+  .shop-section h4{margin-bottom:5px; font-size:10px}
+  /* rails you swipe sideways */
+  .shop-grid, .shop-grid.heroes{
+    display:flex; gap:8px; overflow-x:auto; overflow-y:hidden;
+    padding-bottom:4px; scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+  .shop-grid::-webkit-scrollbar{height:4px}
+  .shop-grid::-webkit-scrollbar-thumb{background:#2e3c6e; border-radius:2px}
+  .shop-item{
+    flex:0 0 auto; width:156px; scroll-snap-align:start;
+    padding:9px; min-height:58px;
+  }
+  .shop-item canvas{width:42px; height:42px}
+  .shop-item .si-name{font-size:13.5px}
+  .shop-item .si-cost,.shop-item .si-lock{font-size:12px}
+  /* spread the rails through the dock instead of stacking them at the top */
+  .sidebar{justify-content:flex-start; gap:12px}
+  .shop-section:last-of-type{margin-bottom:2px}
+
+  /* selected unit slides up as a sheet above the dock */
+  .inspect{
+    position:fixed; left:8px; right:8px;
+    bottom:calc(70px + env(safe-area-inset-bottom));
+    z-index:6; padding:12px;
+    background:rgba(12,19,40,.97); backdrop-filter:blur(8px);
+    box-shadow:0 -8px 30px rgba(0,0,0,.5);
+    animation:sheetUp .2s ease;
+  }
+  @keyframes sheetUp{from{transform:translateY(14px); opacity:0}to{transform:none; opacity:1}}
+  .inspect-actions .btn, .btn-ult{min-height:42px}
+
+  /* the action bar is pinned to the bottom of the screen */
+  .sidebar-foot{
+    position:fixed; left:0; right:0; bottom:0; margin:0; z-index:7;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, rgba(16,24,51,.86), #101833 40%);
+    border-top:1px solid var(--line);
+    backdrop-filter:blur(6px);
+  }
+  .btn-go{min-height:50px}
+  .btn.speed{flex:0 0 66px; min-height:50px}
+  /* leave room for the pinned bar */
+  .sidebar{padding-bottom:76px}
+}
+
+/* ---------- landscape phones: compact icon rail beside the map ---------- */
+@media (max-height:560px) and (orientation:landscape){
+  .stage{padding:6px 4px 6px 8px}
+  .hud{gap:6px; margin-bottom:5px}
+  .hud-item{padding:4px 10px; font-size:13px}
+  .hud-item .lbl{font-size:9px}
+  .hud-item.mission{display:none}
+  canvas#game{border-radius:10px; border-width:1px}
+
+  .sidebar{
+    width:132px; flex:0 0 132px; gap:6px;
+    padding:6px 6px calc(4px + env(safe-area-inset-bottom));
+  }
+  .shop-section h4{font-size:9px; letter-spacing:.1em; margin-bottom:4px}
+  .shop-section h4 .hint{display:none}
+  .shop-grid{gap:5px}
+  .shop-item{padding:5px; gap:6px; min-height:40px}
+  .shop-item canvas{width:30px; height:30px}
+  .shop-item .si-name{font-size:10.5px; letter-spacing:-.01em}
+  .shop-item .si-cost,.shop-item .si-lock{font-size:9.5px}
+  .sidebar{width:142px; flex-basis:142px}
+  .inspect{padding:8px; font-size:11px}
+  .inspect-stats{grid-template-columns:1fr; gap:2px; font-size:10px}
+  .btn-ult{font-size:11px; padding:6px 8px}
+  .inspect-actions .btn{font-size:11px; padding:6px 6px}
+  .go-label{font-size:13px}
+  .go-sub{display:none}
+  .btn.speed{flex:0 0 44px; font-size:13px}
+}
+
+@media (max-height:560px) and (orientation:landscape){
+  .result-card,.help-card{padding:18px 22px; border-radius:16px}
+  .result-card h2{font-size:26px; margin-bottom:2px}
+  .help-card h2{font-size:20px}
+  .help-card ol{font-size:12px; line-height:1.45; margin:8px 0}
+  .res-stars span{width:26px; height:26px}
+  .reward-row{margin-bottom:12px; font-size:14px}
+  .crate-stage{height:calc(100vh - 24px); min-height:0}
+  .reveal-card{width:200px; height:min(300px, calc(100vh - 90px))}
+  .reveal-art{width:110px; height:110px}
+  .reveal-art canvas{width:110px; height:110px}
+  .reveal-name{font-size:20px}
+  .crate.big{width:120px; height:100px}
+}
+
+/* ---------- type + card scaling on small screens ---------- */
+@media (max-width:640px){
+  .logo-top{font-size:clamp(22px,7vw,40px)}
+  .logo-bot{font-size:clamp(44px,15vw,86px)}
+  .tagline{font-size:12.5px; margin:12px 0 22px}
+  .crest{width:56px; height:56px}
+  .menu-buttons .btn-primary{min-width:min(300px,86vw)}
+  .menu-foot{gap:7px}
+  .stat-chip{font-size:11.5px; padding:6px 11px}
+
+  .sub-head{gap:10px; margin-bottom:16px; flex-wrap:wrap}
+  .sub-head h2{font-size:20px}
+  .progress-chip,.gem-chip{font-size:12px; padding:6px 11px}
+
+  .chapter-grid{grid-template-columns:1fr; gap:12px}
+  .chapter-card{padding:16px; border-radius:16px}
+  .chapter-card .ch-name{font-size:20px}
+  .level-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+  .level-card{padding:12px}
+  .level-card .lv-name{font-size:15px}
+
+  .hero-cards{gap:12px}
+  .hero-card{width:min(260px,88vw)}
+  .crate-panel{width:min(300px,88vw)}
+
+  .result-card,.help-card{padding:24px 20px; border-radius:18px}
+  .result-card h2{font-size:30px}
+  .help-card ol{font-size:13px; padding-left:18px}
+  .reveal-card{width:min(240px,72vw); height:min(340px,52vh)}
+}
+
+/* thumb-sized hit areas on touch */
+@media (hover:none){
+  .btn.small{min-height:40px; padding:9px 14px}
+  .hud-quit{min-height:40px; padding:9px 16px}
+  .rot-x{min-width:40px; min-height:40px; font-size:20px; margin:-10px -6px -10px 0}
+  [data-back], #btn-back-chapters{min-height:42px}
+}
+
+/* on a touch device the hover lift just leaves cards stuck mid-animation */
+@media (hover:none){
+  .hero-card:hover,.level-card:hover:not(.locked),.chapter-card:hover:not(.locked){transform:none}
+  .shop-item:hover{transform:none}
+  .btn:hover{filter:none}
 }

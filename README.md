@@ -131,11 +131,26 @@ Dart Sentry ($200) · Tack Ring ($320) · Frost Totem ($380) · Bomb Lobber ($48
 Everything upgrades twice (more range, faster fire, extra pierce, +1 damage at
 level 3) and sells back for 70%.
 
+## Phones
+
+The layout responds to the screen it is on. In **portrait** the map goes
+full-width with the shop as swipeable rails underneath and a pinned action bar;
+in **landscape** it is the map plus a compact icon rail, which is the better way
+to play. Overlays scroll so nothing is ever out of reach on a short screen, and
+chrome respects the notch and home indicator.
+
+Touch has no hover, so placement is **drag-then-release**: pick a tower, the
+ghost and its range appear on the map, drag to position it and lift to build. A
+plain tap works too. Tapping a hero selects it *and* fires its ultimate if a
+charge is ready. Phones also run a lighter particle budget so a 400-strong wave
+stays smooth.
+
 ## Controls
 
 | Input | Action |
 |---|---|
 | Click shop item, then click map | Place |
+| Touch: pick, then drag on map and lift | Place |
 | Click a placed unit | Inspect / upgrade / sell |
 | Click a hero with a charge | Fire their ultimate |
 | `Space` | Start next round |
