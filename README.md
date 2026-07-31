@@ -131,6 +131,31 @@ Dart Sentry ($200) · Tack Ring ($320) · Frost Totem ($380) · Bomb Lobber ($48
 Everything upgrades twice (more range, faster fire, extra pierce, +1 damage at
 level 3) and sells back for 70%.
 
+## Install it on a phone
+
+The best way to play on a phone is as an installed app — full screen, no browser
+chrome, works with no signal, and progress is kept on the device.
+
+**Build it**
+
+```
+node build.js --pwa           # writes docs/ (app shell, manifest, service worker)
+node tools/make-icons.js      # regenerates the app icons (needs playwright)
+```
+
+`docs/` is a complete, self-contained web app: one HTML file with everything
+inlined, plus a manifest, icons and an offline service worker.
+
+**Serve it with GitHub Pages** — Settings → Pages → *Deploy from a branch* →
+branch `claude/hero-collector-demo-game-dl8kvs`, folder `/docs`. GitHub Pages
+needs the repository to be public on a free plan.
+
+**Then on iPhone**: open the Pages URL in Safari → Share → *Add to Home Screen*.
+It launches full screen with no Safari UI, and runs offline after the first load.
+
+`node build.js` on its own writes `dist/void-bastion.html`, a single file you can
+open directly or hand to anyone — no server needed.
+
 ## Phones
 
 The layout responds to the screen it is on. In **portrait** the map goes
