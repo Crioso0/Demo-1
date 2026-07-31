@@ -372,6 +372,18 @@ const Sfx = {
     }
   },
 
+  /**
+   * A coin landing in the counter. The pitch climbs with the kill streak so a
+   * good run sounds like a run of good luck — purely audible, no economy change.
+   */
+  pickup(streak = 1) {
+    const step = Math.min(streak - 1, 15);
+    const f = 880 * Math.pow(2, step / 12);       // a semitone per kill
+    this.tone({ freq: f, dur: .09, type: 'triangle', gain: .035, attack: .001 });
+    this.tone({ freq: f * 1.5, dur: .07, type: 'sine', gain: .022, delay: .015, attack: .001 });
+    this.noise({ dur: .03, gain: .05, type: 'highpass', freq: 6000, attack: .0005 });
+  },
+
   /** a round or level payout: the same ka-ching with a rising cash flourish */
   cash() {
     this.coin();
@@ -382,6 +394,70 @@ const Sfx = {
 
   click() {
     this.tone({ freq: 660, to: 880, dur: .05, type: 'triangle', gain: .03, attack: .001 });
+  },
+
+  /* ---------------- counters and new abilities ---------------- */
+
+  /** damage bouncing off an immune escort */
+  deflect() {
+    this.tone({ freq: 1400, to: 2100, dur: .09, type: 'square', gain: .03, attack: .001 });
+    this.noise({ dur: .07, gain: .12, type: 'bandpass', freq: 3400, q: 4, attack: .0006 });
+  },
+
+  /** a hero being jammed by a counter escort */
+  suppress() {
+    this.tone({ freq: 620, to: 180, dur: .34, type: 'sawtooth', gain: .05, attack: .004 });
+    this.noise({ dur: .3, gain: .07, type: 'lowpass', freq: 1400, freqTo: 300, attack: .006 });
+  },
+
+  /** Havoc's fists meeting the ground */
+  smash() {
+    this.tone({ freq: 150, to: 42, dur: .28, type: 'sine', gain: .17, attack: .001, hold: .04 });
+    this.noise({ dur: .22, gain: .16, type: 'lowpass', freq: 800, freqTo: 160, attack: .001 });
+  },
+
+  /** the full Thunderclap: a colossal double impact */
+  thunderclap() {
+    this.noise({ dur: .07, gain: .3, type: 'highpass', freq: 900, attack: .0006 });
+    this.noise({ dur: 1.1, gain: .24, type: 'lowpass', freq: 1200, freqTo: 90, attack: .003, hold: .16 });
+    this.tone({ freq: 150, to: 26, dur: .95, type: 'sine', gain: .22, attack: .002, hold: .12 });
+    this.tone({ freq: 88, to: 30, dur: 1.2, type: 'square', gain: .07, delay: .05, attack: .01, hold: .2 });
+  },
+
+  /** Jester's cards leaving his hand */
+  cards() {
+    for (let i = 0; i < 3; i++) {
+      this.noise({ dur: .045, gain: .13, type: 'bandpass', freq: rand(2600, 4200), q: 3,
+        delay: i * .022, attack: .0008 });
+    }
+  },
+
+  /** Wild Card: a stinger that refuses to settle */
+  wildcard() {
+    [523, 622, 740, 880, 1046].forEach((f, i) =>
+      this.tone({ freq: f * (i % 2 ? .97 : 1.03), dur: .18, type: 'square',
+        gain: .04, delay: i * .05, attack: .002 }));
+    this.noise({ dur: .5, gain: .07, type: 'bandpass', freq: 900, freqTo: 4200, q: 1.2, attack: .02 });
+    this.tone({ freq: 300, to: 90, dur: .5, type: 'sawtooth', gain: .04, delay: .22, attack: .01 });
+  },
+
+  /** Nocturne finishing his prep */
+  mark() {
+    this.tone({ freq: 1200, to: 1600, dur: .1, type: 'sine', gain: .035, attack: .002 });
+    this.tone({ freq: 300, to: 220, dur: .4, type: 'triangle', gain: .05, delay: .05, attack: .01, hold: .1 });
+    for (let i = 0; i < 3; i++) {
+      this.noise({ dur: .05, gain: .07, type: 'bandpass', freq: 5200, q: 5, delay: .08 + i * .06 });
+    }
+  },
+
+  /** Ironclad emptying the pods */
+  missiles() {
+    for (let i = 0; i < 6; i++) {
+      this.noise({ dur: .16, gain: .11, type: 'bandpass', freq: 1200, freqTo: 3600, q: 1.4,
+        delay: i * .045, attack: .004 });
+      this.tone({ freq: 420 + i * 40, to: 1500, dur: .18, type: 'sawtooth', gain: .022,
+        delay: i * .045, attack: .004 });
+    }
   },
 
   /** can't afford it / can't do that */

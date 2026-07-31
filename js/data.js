@@ -130,6 +130,35 @@ const DREAD = {
   name: 'Dreadnought', color: '#3a4157', speed: 46, r: 34, hp: 120, reward: 40, leak: 15,
 };
 
+/* ---------------- counter units ----------------
+   Each special escort shuts down a different slice of the roster, either by
+   suppressing heroes that carry a tag while it is nearby, or by being flatly
+   immune to that kind of damage. Towers are never affected — they stay the
+   backbone so a counter wave is a problem to solve, not an instant loss. */
+const SPECIALS = {
+  riftstone: {
+    id: 'riftstone', name: 'Riftstone Carrier', color: '#7cff6b', badge: 'crystal',
+    aura: 155, suppress: ['solar'],
+    short: 'Riftstone', desc: 'Its shard smothers solar power — Paragon goes dark nearby.',
+  },
+  amber: {
+    id: 'amber', name: 'Amber Ring', color: '#ffc53f', badge: 'ring',
+    immune: ['construct'],
+    short: 'Amber Ring', desc: 'A rival ring: completely immune to construct damage.',
+  },
+  dampener: {
+    id: 'dampener', name: 'Static Dampener', color: '#5bc8ff', badge: 'coil',
+    aura: 165, suppress: ['tech', 'electric'],
+    short: 'Dampener', desc: 'Kills circuits and current — tech and electric heroes stall out.',
+  },
+  shroud: {
+    id: 'shroud', name: 'Ash Shroud', color: '#c07bff', badge: 'smoke',
+    aura: 145, suppress: ['mind'], immune: ['fire'],
+    short: 'Ash Shroud', desc: 'Fireproof, and its haze blanks out trickery and marks.',
+  },
+};
+const SPECIAL_LIST = Object.values(SPECIALS);
+
 /* modifiers a wave can carry */
 const SWIFT_MUL = 1.45;   // faster runners
 const SHIELD_SOAK = 1;    // shielded troopers shrug off this much of every hit
@@ -139,21 +168,23 @@ const LEVELS = [
   { n: 1,  name: 'First Contact',   map: 'ridge',   rounds: 6,  tiers: 2, cash: 650, lives: 100 },
   { n: 2,  name: 'Ridge Patrol',    map: 'ridge',   rounds: 8,  tiers: 3, cash: 650, lives: 100 },
   { n: 3,  name: 'Ashfall Landing', map: 'ashfall', rounds: 8,  tiers: 3, cash: 700, lives: 100,
-    mods: { speed: 1.06 } },
+    mods: { speed: 1.06 }, specials: ['dampener'] },
   { n: 4,  name: 'Crater Push',     map: 'ashfall', rounds: 10, tiers: 4, cash: 700, lives: 100,
-    boss: [8], mods: { speed: 1.06 } },
+    boss: [8], mods: { speed: 1.06 }, specials: ['riftstone'] },
   { n: 5,  name: 'Frostline Watch', map: 'frost',   rounds: 10, tiers: 4, cash: 750, lives: 90,
-    mods: { swift: true } },
+    mods: { swift: true }, specials: ['amber'] },
   { n: 6,  name: 'Deep Freeze',     map: 'frost',   rounds: 12, tiers: 5, cash: 750, lives: 90,
-    boss: [10], mods: { shield: true } },
+    boss: [10], mods: { shield: true }, specials: ['shroud'] },
   { n: 7,  name: 'Ridge Assault',   map: 'ridge',   rounds: 12, tiers: 5, cash: 800, lives: 85,
-    boss: [9, 12], mods: { swift: true } },
+    boss: [9, 12], mods: { swift: true }, specials: ['dampener', 'riftstone'] },
   { n: 8,  name: 'Molten Siege',    map: 'ashfall', rounds: 14, tiers: 5, cash: 800, lives: 85,
-    boss: [10, 13], mods: { speed: 1.1, shield: true } },
+    boss: [10, 13], mods: { speed: 1.1, shield: true }, specials: ['amber', 'shroud'] },
   { n: 9,  name: 'Whiteout',        map: 'frost',   rounds: 14, tiers: 5, cash: 850, lives: 80,
-    boss: [9, 12, 14], mods: { speed: 1.12, swift: true } },
+    boss: [9, 12, 14], mods: { speed: 1.12, swift: true },
+    specials: ['riftstone', 'dampener', 'amber'] },
   { n: 10, name: 'The Rift',        map: 'rift',    rounds: 16, tiers: 5, cash: 900, lives: 75,
-    boss: [8, 12, 15, 16], mods: { speed: 1.15, swift: true, shield: true } },
+    boss: [8, 12, 15, 16], mods: { speed: 1.15, swift: true, shield: true },
+    specials: ['riftstone', 'amber', 'dampener', 'shroud'] },
 ];
 const LEVEL_COUNT = LEVELS.length;
 
@@ -195,6 +226,20 @@ function buildLevelWaves(lv) {
       groups.push({
         tier: top - 2, count: Math.round(count * 1.1), gap: gap * .7, delay: 8.5,
         swift: !!mods.swift,
+      });
+    }
+
+    /* counter escorts: they start showing up a third of the way in and get
+       thicker as the level runs on, so the roster you picked stops working */
+    if (lv.specials && lv.specials.length && r >= Math.max(2, Math.ceil(lv.rounds * .3))) {
+      lv.specials.forEach((sid, i) => {
+        if ((r + i) % 2) return;
+        groups.push({
+          tier: clamp(top - 1, 1, TROOPS.length - 1),
+          count: 2 + Math.floor(p * 4) + Math.floor(lv.n / 4),
+          gap: 1.5, delay: 6 + i * 3.5, special: sid,
+          shield: !!mods.shield && p > .6,
+        });
       });
     }
     waves.push(groups);
@@ -594,6 +639,239 @@ const Art = {
     }
     ctx.restore();
   },
+  nocturne(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.7) * 1.2;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 15, 5, 0, 0, TAU); ctx.fill();
+
+    /* cape sweeping behind */
+    ctx.fillStyle = '#14171f';
+    ctx.beginPath();
+    ctx.moveTo(-6, -11);
+    ctx.quadraticCurveTo(-22 - Math.sin(t * 1.6) * 3, 2, -14, 15);
+    ctx.lineTo(14, 15);
+    ctx.quadraticCurveTo(21 + Math.sin(t * 1.6) * 3, 2, 6, -11);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#1c2029';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#39404f'); g.addColorStop(1, '#161a23');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+
+    /* utility belt */
+    ctx.fillStyle = '#d8ac3f';
+    roundRect(ctx, -8, 1, 16, 3.4, 1.5); ctx.fill();
+    /* chest sigil */
+    ctx.fillStyle = '#0d1016';
+    ctx.beginPath();
+    ctx.moveTo(-5, -6); ctx.quadraticCurveTo(0, -2, 5, -6);
+    ctx.quadraticCurveTo(2, -8.5, 0, -6.5); ctx.quadraticCurveTo(-2, -8.5, -5, -6);
+    ctx.fill();
+
+    /* cowl with ears */
+    ctx.fillStyle = '#232833';
+    ctx.beginPath(); ctx.arc(0, -15, 6, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-5.5, -18); ctx.lineTo(-4, -26); ctx.lineTo(-1.5, -18); ctx.closePath();
+    ctx.moveTo(5.5, -18); ctx.lineTo(4, -26); ctx.lineTo(1.5, -18); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#3a3f4c';
+    ctx.beginPath(); ctx.arc(0, -12.5, 6, Math.PI * .1, Math.PI * .9); ctx.fill();
+    /* lit eye slits */
+    ctx.fillStyle = lvl > 2 ? '#8fdcff' : '#dfe7f5';
+    roundRect(ctx, -4.6, -16.6, 3.6, 1.7, .8); ctx.fill();
+    roundRect(ctx, 1, -16.6, 3.6, 1.7, .8); ctx.fill();
+
+    /* batarang ready in hand */
+    ctx.fillStyle = '#8f98ab';
+    ctx.save(); ctx.translate(13, -2); ctx.rotate(t * 3);
+    ctx.beginPath();
+    ctx.moveTo(-6, 0); ctx.lineTo(0, -3); ctx.lineTo(6, 0); ctx.lineTo(0, 2); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  },
+  ironclad(ctx, lvl, t) {
+    const bob = Math.sin(t * 2.1) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+
+    /* repulsor wash under the boots */
+    const jet = ctx.createRadialGradient(0, 15, 1, 0, 15, 17);
+    jet.addColorStop(0, 'rgba(140,210,255,.45)');
+    jet.addColorStop(1, 'rgba(140,210,255,0)');
+    ctx.fillStyle = jet;
+    ctx.beginPath(); ctx.ellipse(0, 15, 17, 6, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#8f1f26';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    /* armour */
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#e04b3a'); g.addColorStop(1, '#8d1c22');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+    ctx.fillStyle = '#e8b93f';
+    roundRect(ctx, -10.5, -11, 5, 10, 2.5); ctx.fill();
+    roundRect(ctx, 5.5, -11, 5, 10, 2.5); ctx.fill();
+
+    /* arc reactor */
+    const pulse = .7 + Math.sin(t * 4) * .3;
+    const core = ctx.createRadialGradient(0, -5, 0, 0, -5, 8 * pulse);
+    core.addColorStop(0, 'rgba(240,255,255,.98)');
+    core.addColorStop(.45, `rgba(130,225,255,${.85 * pulse})`);
+    core.addColorStop(1, 'rgba(90,180,255,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, -5, 8 * pulse, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#f0e6c0'; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(0, -5, 3.6, 0, TAU); ctx.stroke();
+
+    /* helm */
+    ctx.fillStyle = '#e8b93f';
+    ctx.beginPath(); ctx.arc(0, -15, 6.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c53a30';
+    ctx.beginPath(); ctx.arc(0, -17, 6.2, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillStyle = '#cffaff';
+    roundRect(ctx, -4.4, -16, 3.4, 1.9, .9); ctx.fill();
+    roundRect(ctx, 1, -16, 3.4, 1.9, .9); ctx.fill();
+
+    /* palm repulsor charged */
+    ctx.fillStyle = '#e8b93f';
+    roundRect(ctx, 8, -6, 9, 7, 3); ctx.fill();
+    const pr = ctx.createRadialGradient(17, -2.5, 0, 17, -2.5, 7 * pulse);
+    pr.addColorStop(0, 'rgba(230,250,255,.95)');
+    pr.addColorStop(1, 'rgba(110,200,255,0)');
+    ctx.fillStyle = pr;
+    ctx.beginPath(); ctx.arc(17, -2.5, 7 * pulse, 0, TAU); ctx.fill();
+
+    if (lvl > 2) {
+      /* shoulder pods snapped open at max tier */
+      ctx.fillStyle = '#4a4f5e';
+      roundRect(ctx, -13, -14, 6, 4, 1.5); ctx.fill();
+      roundRect(ctx, 7, -14, 6, 4, 1.5); ctx.fill();
+    }
+    ctx.restore();
+  },
+  havoc(ctx, lvl, t) {
+    const breathe = Math.sin(t * 1.6) * 1.4;
+    ctx.save(); ctx.translate(0, breathe * .4);
+    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.beginPath(); ctx.ellipse(0, 15, 20, 6.5, 0, 0, TAU); ctx.fill();
+
+    /* legs */
+    ctx.fillStyle = '#4b3a86';
+    roundRect(ctx, -9, 4, 8, 11, 3); ctx.fill();
+    roundRect(ctx, 1, 4, 8, 11, 3); ctx.fill();
+
+    /* enormous torso */
+    const g = ctx.createLinearGradient(0, -14, 0, 8);
+    g.addColorStop(0, '#7ee060'); g.addColorStop(1, '#2f7c31');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-13, -8);
+    ctx.quadraticCurveTo(-15, 6, -9, 7);
+    ctx.lineTo(9, 7);
+    ctx.quadraticCurveTo(15, 6, 13, -8);
+    ctx.quadraticCurveTo(8, -13, 0, -12);
+    ctx.quadraticCurveTo(-8, -13, -13, -8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    /* slabs of arm, knuckles down */
+    ctx.fillStyle = '#5fbe49';
+    ctx.save(); ctx.translate(-14, -4); ctx.rotate(-.25 + breathe * .04);
+    roundRect(ctx, -5, 0, 9, 16, 4.5); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(14, -4); ctx.rotate(.25 - breathe * .04);
+    roundRect(ctx, -4, 0, 9, 16, 4.5); ctx.fill(); ctx.restore();
+
+    /* small head sunk into the shoulders */
+    ctx.fillStyle = '#6ccf52';
+    roundRect(ctx, -6, -20, 12, 10, 4.5); ctx.fill();
+    ctx.fillStyle = '#123d16';
+    roundRect(ctx, -4.5, -17.5, 3.4, 1.8, .8); ctx.fill();
+    roundRect(ctx, 1.1, -17.5, 3.4, 1.8, .8); ctx.fill();
+    /* clenched jaw */
+    ctx.fillStyle = '#e9ffe2';
+    roundRect(ctx, -3, -12.6, 6, 1.5, .6); ctx.fill();
+
+    if (lvl > 2) {
+      ctx.strokeStyle = `rgba(140,255,120,${.35 + Math.sin(t * 6) * .25})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, -2, 24, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  },
+  jester(ctx, lvl, t) {
+    const bob = Math.sin(t * 2.6) * 1.5;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#2d6b3a';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    /* long purple coat */
+    const g = ctx.createLinearGradient(0, -12, 0, 8);
+    g.addColorStop(0, '#a35cd8'); g.addColorStop(1, '#4d2170');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -11); ctx.lineTo(9, -11);
+    ctx.quadraticCurveTo(12, 0, 9, 9); ctx.lineTo(-9, 9);
+    ctx.quadraticCurveTo(-12, 0, -9, -11);
+    ctx.fill();
+    /* lapels and flower */
+    ctx.fillStyle = '#f0a83c';
+    ctx.beginPath();
+    ctx.moveTo(-4, -11); ctx.lineTo(0, -3); ctx.lineTo(4, -11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#4ade80';
+    ctx.beginPath(); ctx.arc(-6, -8, 2.4, 0, TAU); ctx.fill();
+
+    /* chalk-white face */
+    ctx.fillStyle = '#f4f2ee';
+    ctx.beginPath(); ctx.arc(0, -16, 6.2, 0, TAU); ctx.fill();
+    /* green hair */
+    ctx.fillStyle = '#3fbf5f';
+    ctx.beginPath(); ctx.arc(0, -18.5, 6.4, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * 4, -19);
+      ctx.quadraticCurveTo(s2 * 11, -18 + Math.sin(t * 5 + s2) * 1.5, s2 * 7, -12);
+      ctx.quadraticCurveTo(s2 * 6, -16, s2 * 4, -19);
+      ctx.fill();
+    }
+    /* eyes and the grin */
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-2.2, -17, 1.2, 0, TAU); ctx.arc(2.2, -17, 1.2, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c8324f'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, -14.5, 3.6, .15, Math.PI - .15); ctx.stroke();
+
+    /* fanned cards */
+    ctx.save(); ctx.translate(12, -1);
+    for (let i = -1; i <= 1; i++) {
+      ctx.save(); ctx.rotate(i * .3 + Math.sin(t * 2) * .08);
+      ctx.fillStyle = '#f4f2ee';
+      roundRect(ctx, -2, -7, 4.4, 9, 1); ctx.fill();
+      ctx.fillStyle = i === 0 ? '#c8324f' : '#16121c';
+      ctx.beginPath(); ctx.arc(.2, -2.5, 1, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
@@ -627,26 +905,27 @@ const HEROES = [
     rarity: 'Starter', rarityColor: '#ff9a4d', glow: 'rgba(255,140,60,.45)',
     starter: true,
     range: 158, cooldown: .36, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
-    burn: { dps: 1, time: 2.4 }, color: '#ff8a3d',
+    burn: { dps: 1, time: 2.4 }, color: '#ff8a3d', tags: ['fire'],
     desc: 'Rapid flaming arrows that set balloons alight for extra damage over time.',
   },
   {
     id: 'volt', name: 'Volt', role: 'Storm Caller', art: Art.volt,
     rarity: 'Rare', rarityColor: '#62d9ff', glow: 'rgba(90,200,255,.45)',
     range: 168, cooldown: 1.1, damage: 2, kind: 'chain', chains: 4, color: '#62d9ff',
+    tags: ['electric'],
     desc: 'Calls down forked lightning that arcs between up to four balloons at once.',
   },
   {
     id: 'terra', name: 'Terra', role: 'Stone Warden', art: Art.terra,
     rarity: 'Epic', rarityColor: '#a97bff', glow: 'rgba(160,120,255,.45)',
     range: 118, cooldown: 1.8, damage: 3, kind: 'slam', knockback: 46,
-    slow: .35, slowTime: 1.4, color: '#9bbf78',
+    slow: .35, slowTime: 1.4, color: '#9bbf78', tags: ['kinetic'],
     desc: 'Shatters the ground, damaging every nearby balloon and shoving them backwards.',
   },
   {
     id: 'verdant', name: 'Verdant', role: 'Ring Bearer', art: Art.verdant,
     rarity: 'Legendary', rarityColor: '#3ef07a', glow: 'rgba(60,240,130,.45)',
-    range: 150, cooldown: .72, damage: 1, kind: 'ray', color: '#3ef07a',
+    range: 150, cooldown: .72, damage: 1, kind: 'ray', color: '#3ef07a', tags: ['construct'],
     /* the only hero with a player-triggered ability */
     ability: {
       kind: 'saw',
@@ -661,6 +940,7 @@ const HEROES = [
     id: 'streak', name: 'Streak', role: 'Speedster', art: Art.streak,
     rarity: 'Epic', rarityColor: '#ffd23f', glow: 'rgba(255,200,60,.45)',
     range: 142, cooldown: .28, damage: 1, kind: 'ray', color: '#ffd23f', rayColor: '#ffe27a',
+    tags: ['electric', 'speed'],
     ability: {
       kind: 'overdrive',
       name: 'Overdrive',
@@ -675,7 +955,7 @@ const HEROES = [
     id: 'paragon', name: 'Paragon', role: 'Solar Sentinel', art: Art.paragon,
     rarity: 'Legendary', rarityColor: '#4fa8ff', glow: 'rgba(90,170,255,.45)',
     range: 182, cooldown: 1.25, damage: 2, pierce: 2, projSpeed: 660, kind: 'dart',
-    color: '#4fa8ff',
+    color: '#4fa8ff', tags: ['solar'],
     ability: {
       kind: 'lance',
       name: 'Solar Lance',
@@ -685,6 +965,65 @@ const HEROES = [
     },
     desc: 'Hurls heavy solar bolts. Click him to open his eyes and sweep a blinding beam across '
         + 'the field, burning everything it touches.',
+  },
+  {
+    id: 'nocturne', name: 'Nocturne', role: 'Dark Detective', art: Art.nocturne,
+    rarity: 'Epic', rarityColor: '#8fa8d8', glow: 'rgba(120,150,210,.4)',
+    range: 165, cooldown: .8, damage: 2, pierce: 4, projSpeed: 520, kind: 'dart',
+    color: '#8fa8d8', tags: ['mind', 'kinetic'],
+    ability: {
+      kind: 'mark',
+      name: 'Prep Time',
+      charges: [1, 2, 3],
+      duration: [6, 8, 10],
+      hint: 'Click Nocturne to mark the field',
+    },
+    desc: 'No powers — just a batarang that cuts through a whole file of troopers. His prep work '
+        + 'marks every hostile on the field so everything you own hits them twice as hard.',
+  },
+  {
+    id: 'ironclad', name: 'Ironclad', role: 'Arc Armorer', art: Art.ironclad,
+    rarity: 'Legendary', rarityColor: '#ff8a5c', glow: 'rgba(255,140,80,.42)',
+    range: 172, cooldown: .5, damage: 2, pierce: 1, projSpeed: 720, kind: 'dart',
+    color: '#e04b3a', tags: ['tech'],
+    ability: {
+      kind: 'missiles',
+      name: 'Micro-Missile Barrage',
+      charges: [1, 2, 3],
+      salvo: [8, 12, 18],
+      hint: 'Click Ironclad to empty the pods',
+    },
+    desc: 'Repulsor bolts on a fast cycle. His shoulder pods snap open and empty a swarm of '
+        + 'homing micro-missiles across the field.',
+  },
+  {
+    id: 'havoc', name: 'Havoc', role: 'Rage Titan', art: Art.havoc,
+    rarity: 'Legendary', rarityColor: '#6ccf52', glow: 'rgba(110,210,80,.42)',
+    range: 96, cooldown: 1.5, damage: 5, kind: 'smash', color: '#6ccf52', tags: ['kinetic'],
+    ability: {
+      kind: 'thunderclap',
+      name: 'Thunderclap',
+      charges: [1, 2, 3],
+      radius: [230, 280, 340],
+      hint: 'Click Havoc to bring both fists down',
+    },
+    desc: 'Hits like a falling building but only at arm’s length. Thunderclap flattens everything '
+        + 'in a huge radius, stuns it and throws it back down the route.',
+  },
+  {
+    id: 'jester', name: 'Jester', role: 'Chaos Agent', art: Art.jester,
+    rarity: 'Legendary', rarityColor: '#b06cf0', glow: 'rgba(175,110,240,.42)',
+    range: 155, cooldown: .62, damage: 1, pierce: 2, projSpeed: 560, kind: 'cards',
+    color: '#a35cd8', tags: ['mind', 'chaos'],
+    ability: {
+      kind: 'wildcard',
+      name: 'Wild Card',
+      charges: [1, 2, 3],
+      hint: 'Click Jester and see what happens',
+    },
+    desc: 'Fans out razor cards for wildly inconsistent damage. Wild Card deals every hostile on '
+        + 'the field a random fate — blown up, stunned, sent marching backwards, or shaken down '
+        + 'for pocket money.',
   },
 ];
 

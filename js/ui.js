@@ -82,6 +82,9 @@ const UI = {
           ${lv.boss ? `<span class="tag boss">${lv.boss.length}× Dreadnought</span>` : ''}
           ${mods.swift ? '<span class="tag swift">Runners</span>' : ''}
           ${mods.shield ? '<span class="tag shield">Shielded</span>' : ''}
+          ${(lv.specials || []).map((sid) =>
+            `<span class="tag counter" style="--c:${SPECIALS[sid].color}"
+                   title="${SPECIALS[sid].desc}">${SPECIALS[sid].short}</span>`).join('')}
           <span class="tag gems">+${levelReward(lv)} gems</span>
         </span>`;
       card.onclick = () => {
@@ -141,7 +144,8 @@ const UI = {
     txt.className = 'si-txt';
     txt.innerHTML = owned
       ? `<span class="si-name">${def.name}</span>
-         <span class="si-cost${isHero ? ' free' : ''}">${isHero ? 'HERO · free' : '$' + def.cost}</span>`
+         <span class="si-cost${isHero ? ' free' : ''}">${isHero
+            ? (def.tags ? def.tags.join(' · ') : 'HERO') : '$' + def.cost}</span>`
       : `<span class="si-name">${def.name}</span><span class="si-lock">🔒 in crates</span>`;
     el.appendChild(txt);
 
@@ -171,8 +175,14 @@ const UI = {
       it.el.classList.toggle('selected', !!g.placing && g.placing.def === it.def);
       if (it.isHero && owned) {
         const cost = it.el.querySelector('.si-cost');
-        if (cost) cost.textContent = placed ? 'HERO · deployed'
-          : noSlot ? 'no slot free' : 'HERO · free';
+        const tower = placed && g.towers.find((t) => t.def === it.def);
+        if (cost) {
+          cost.textContent = tower && tower.suppressed ? `⚠ ${tower.suppressed.short}`
+            : placed ? 'deployed'
+            : noSlot ? 'no slot free'
+            : (it.def.tags ? it.def.tags.join(' · ') : 'HERO');
+          cost.classList.toggle('warn', !!(tower && tower.suppressed));
+        }
       }
     }
     const slots = $('#hero-slots');
@@ -192,6 +202,15 @@ const UI = {
       <div>Range <b>${Math.round(t.range)}</b></div>
       <div>Rate <b>${rate}/s</b></div>
       <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`;
+    const warn = $('#ins-warn');
+    if (t.suppressed) {
+      warn.hidden = false;
+      warn.textContent = `${t.suppressed.name} is suppressing this hero`;
+      warn.style.setProperty('--warn', t.suppressed.color);
+    } else {
+      warn.hidden = true;
+    }
+
     const ult = $('#btn-ult');
     if (t.def.ability) {
       ult.hidden = false;
@@ -318,6 +337,8 @@ const UI = {
         <h3>${owned ? h.name : '???'}</h3>
         <div class="role">${h.role}</div>
         <div class="desc">${owned ? h.desc : 'Locked. Open a hero crate for a chance to recruit.'}</div>
+        ${owned && h.tags ? `<div class="hero-tags">${h.tags
+          .map((t) => `<span>${t}</span>`).join('')}</div>` : ''}
         <span class="state ${owned ? 'owned' : 'locked'}">${owned ? '✔ UNLOCKED' : '🔒 LOCKED'}</span>
         ${h.starter ? '<span class="starter">STARTER</span>' : ''}`);
       wrap.appendChild(card);

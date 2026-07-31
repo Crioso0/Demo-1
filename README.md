@@ -47,19 +47,44 @@ is a heavier grade of armour. Damage strips one grade at a time, so an Elite
 sheds plating down through the ranks before it drops. **Dreadnought** walkers
 take sustained fire and spill a squad of Shockers when they break.
 
+## Counter escorts
+
+From level 3 the legion sends escorts built to shut specific heroes down. Each
+carries a **tag** it works against, and every hero carries tags of its own — so
+the two heroes you bring are a real decision, not a power ranking. **Towers are
+never affected**, so a counter wave is a problem to solve rather than a loss.
+
+| Escort | Effect |
+|---|---|
+| **Riftstone Carrier** | Aura suppresses `solar` — Paragon goes dark near it |
+| **Static Dampener** | Aura suppresses `tech` and `electric` — Ironclad, Volt, Streak stall |
+| **Ash Shroud** | Aura suppresses `mind` (Nocturne, Jester); immune to `fire` (Ember) |
+| **Amber Ring** | Flatly immune to `construct` — Verdant's beam and saw do nothing |
+
+A suppressed hero drains of colour, wears a struck-through ring in the jammer's
+colour, stops firing and can't use its ultimate until the escort is dead or out
+of range. `kinetic` heroes — **Terra** and **Havoc** — are never countered, so
+brute force always has a seat.
+
 ## Heroes
 
 Only **two may be deployed per mission**, so the roster choice is part of the
 level.
 
-| Hero | Role | Unlock | Ability |
+| Hero | Role | Tags | Ability |
 |---|---|---|---|
-| **Ember** | Flame Archer | starter | Fast arrows that ignite troopers |
-| **Volt** | Storm Caller | crate | Forked lightning across four targets |
-| **Terra** | Stone Warden | crate | Ground slam: area damage, knockback, slow |
-| **Verdant** | Ring Bearer | crate | Ring beam + **Buzzsaw Construct** ultimate |
-| **Streak** | Speedster | crate | Lightning jabs + **Overdrive** ultimate |
-| **Paragon** | Solar Sentinel | crate | Solar bolts + **Solar Lance** ultimate |
+| **Ember** | Flame Archer | fire | Fast arrows that ignite troopers |
+| **Volt** | Storm Caller | electric | Forked lightning across four targets |
+| **Terra** | Stone Warden | kinetic | Ground slam: area damage, knockback, slow |
+| **Verdant** | Ring Bearer | construct | Ring beam + **Buzzsaw Construct** |
+| **Streak** | Speedster | electric, speed | Lightning jabs + **Overdrive** |
+| **Paragon** | Solar Sentinel | solar | Solar bolts + **Solar Lance** |
+| **Nocturne** | Dark Detective | mind, kinetic | Piercing batarang + **Prep Time** |
+| **Ironclad** | Arc Armorer | tech | Repulsor bolts + **Micro-Missile Barrage** |
+| **Havoc** | Rage Titan | kinetic | Arm's-length smash + **Thunderclap** |
+| **Jester** | Chaos Agent | mind, chaos | Razor cards + **Wild Card** |
+
+Ember is the starter; every other hero comes out of crates.
 
 ### Clickable ultimates
 
@@ -72,8 +97,17 @@ press `Q`, or use the green button in the inspect panel.
   between three targets. A ring around him counts the window down.
 - **Solar Lance** (Paragon) — a blinding sustained beam that tracks the leading
   trooper and burns everything in the line.
+- **Prep Time** (Nocturne) — no powers, just homework: marks every hostile on
+  the field so **everything you own hits them twice as hard** for the duration.
+  The strongest setup tool in the game.
+- **Micro-Missile Barrage** (Ironclad) — his pods snap open and empty up to 18
+  homing micro-missiles that seek targets and detonate.
+- **Thunderclap** (Havoc) — both fists down: huge-radius damage that stuns
+  everything caught and throws it back down the route.
+- **Wild Card** (Jester) — every hostile draws its own fate: blown up, stunned,
+  turned around to march backwards, or shaken down for pocket money.
 
-All three scale the same way: **1 use at level 1, 2 at level 2, 3 at level 3**,
+All seven scale the same way: **1 use at level 1, 2 at level 2, 3 at level 3**,
 refilled at the start of every round. Charge pips float above the hero.
 
 ## Towers
@@ -105,8 +139,10 @@ thing, mixed through a compressor so a wave of simultaneous kills can't clip.
 - **Trooper down** — armour cracking apart over a low thud, with a fizz off the
   ruptured power core. Heavier grades crack lower and duller. A gate thins the
   stack when one trooper sheds several grades in a single frame.
-- **Money** — a bright metallic ding over a register clunk, then coins settling;
-  round payouts add a rising flourish on top.
+- **Money** — coins burst off every kill, arc, then fly to the counter and land
+  with a chime that climbs a semitone per kill in a streak. Round payouts shower
+  a dozen coins over a ka-ching. Collection is still automatic and payouts are
+  unchanged — this is feedback, not a new mechanic to manage.
 - **Sawblade** — a *sustained* voice: a blade tone plus its octave, amplitude-
   modulated at the rate the teeth pass, over grind noise. It spins up, bites on
   each cut, and spins down.
@@ -136,10 +172,11 @@ Console handle for tinkering: `BB.game`, `BB.Save`, `BB.UI`.
 
 ## Demo scope
 
-10 levels, 4 maps, 6 heroes, 4 towers, 5 troop grades plus Dreadnought walkers.
-No meta progression beyond crate unlocks and level unlocks; hero levels reset
-each run.
+10 levels, 4 maps, 10 heroes, 4 towers, 5 troop grades, 4 counter escorts and
+Dreadnought walkers that get tougher as the campaign runs. No meta progression
+beyond crate unlocks and level unlocks; hero levels reset each run.
 
-Verdant, Streak and Paragon are original characters built for this demo — a
-ring-construct hero, a speedster and a solar sentinel — not licensed ones, and
-the Void Legion is likewise this demo's own.
+Every hero here is an original character built for this demo — a ring-construct
+bearer, a speedster, a solar sentinel, a gadget detective, an armoured
+industrialist, a rage titan and a chaos agent — not licensed ones. The Void
+Legion and its escorts are likewise this demo's own.

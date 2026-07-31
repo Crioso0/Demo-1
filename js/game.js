@@ -18,7 +18,10 @@ class Enemy {
     this.swift = !!opts.swift;        // runner
     this.shield = !!opts.shield;      // soaks part of every hit
     this.speedMul = opts.speedMul || 1;
-    this.hp = this.boss ? DREAD.hp : 1;
+    this.special = opts.special ? SPECIALS[opts.special] : null;   // counter escort
+    this.marked = 0;                  // Nocturne's prep work: takes double damage
+    this.backward = 0;                // Jester's confusion: marches the wrong way
+    this.hp = this.boss ? Math.round(DREAD.hp * (opts.hpMul || 1)) : 1;
     this.maxHp = this.hp;
     this.r = this.boss ? DREAD.r : TROOPS[tier].r;
     this.step = rand(0, TAU);         // walk cycle offset
@@ -28,6 +31,11 @@ class Enemy {
   get color() { return this.info.color; }
   get speed() {
     return this.info.speed * this.slowF * this.speedMul * (this.swift ? SWIFT_MUL : 1);
+  }
+  /** does this unit shrug off a damage source carrying these tags? */
+  immuneTo(tags) {
+    if (!this.special || !this.special.immune || !tags) return false;
+    return tags.some((t) => this.special.immune.includes(t));
   }
 
   update(dt, game) {
@@ -51,7 +59,19 @@ class Enemy {
       }
     }
 
+    if (this.marked > 0) this.marked -= dt;
+
     const v = this.speed;
+    if (this.backward > 0) {
+      /* confused: marching back the way it came */
+      this.backward -= dt;
+      this.d = Math.max(0, this.d - v * .6 * dt);
+      this.step += dt * v * .09;
+      const q = PATH.at(this.d);
+      this.x = q.x; this.y = q.y; this.ang = q.ang;
+      return;
+    }
+
     this.d += v * dt;
     this.step += dt * v * .09;
     if (this.d >= PATH.length) { game.leak(this); return; }
@@ -147,14 +167,73 @@ class Enemy {
       ctx.fillStyle = `rgba(120,220,255,${.1 + p * .07})`;
       ctx.beginPath(); ctx.arc(0, -5, 14, 0, TAU); ctx.fill();
     }
+    if (this.special) this.drawSpecial(ctx, time);
     if (this.slowT > 0) {
       ctx.fillStyle = 'rgba(160,230,255,.3)';
       roundRect(ctx, -8, -14, 16, 20, 5); ctx.fill();
+    }
+    if (this.marked > 0) {
+      const p = .6 + Math.sin(time * 9) * .4;
+      ctx.strokeStyle = `rgba(255,90,110,${p})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(0, -6, 13, 0, TAU); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-17, -6); ctx.lineTo(-11, -6); ctx.moveTo(11, -6); ctx.lineTo(17, -6);
+      ctx.moveTo(0, -23); ctx.lineTo(0, -17); ctx.moveTo(0, 5); ctx.lineTo(0, 11);
+      ctx.stroke();
+    }
+    if (this.backward > 0) {
+      ctx.fillStyle = `rgba(200,140,255,${.5 + Math.sin(time * 12) * .3})`;
+      ctx.font = 'bold 11px Trebuchet MS, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('?', 0, -24);
     }
     if (this.hitFlash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${clamp(this.hitFlash, 0, .7)})`;
       roundRect(ctx, -8, -16, 16, 22, 5); ctx.fill();
     }
+  }
+
+  /** the escort's badge, and the ground ring showing its suppression reach */
+  drawSpecial(ctx, time) {
+    const sp = this.special;
+    const p = .5 + Math.sin(time * 3 + this.seed) * .5;
+
+    ctx.save();
+    ctx.strokeStyle = rgba(sp.color, .8);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(0, -6, 12 + p * 1.5, 0, TAU); ctx.stroke();
+
+    ctx.fillStyle = sp.color;
+    ctx.save();
+    ctx.translate(0, -22);
+    if (sp.badge === 'crystal') {
+      ctx.beginPath();
+      ctx.moveTo(0, -6); ctx.lineTo(3.4, 0); ctx.lineTo(0, 5); ctx.lineTo(-3.4, 0);
+      ctx.closePath(); ctx.fill();
+    } else if (sp.badge === 'ring') {
+      ctx.lineWidth = 2.2; ctx.strokeStyle = sp.color;
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, TAU); ctx.stroke();
+    } else if (sp.badge === 'coil') {
+      ctx.lineWidth = 1.6; ctx.strokeStyle = sp.color;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) ctx.arc(0, -3 + i * 3, 3.4, .2, Math.PI - .2);
+      ctx.stroke();
+    } else {
+      ctx.globalAlpha = .8;
+      ctx.beginPath();
+      ctx.arc(-2.5, 0, 3, 0, TAU); ctx.arc(2.5, -1, 3.4, 0, TAU); ctx.arc(0, 2, 2.6, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* a soft halo so the escort is obvious in a crowd */
+    const halo = ctx.createRadialGradient(0, -6, 2, 0, -6, 22);
+    halo.addColorStop(0, rgba(sp.color, .3));
+    halo.addColorStop(1, rgba(sp.color, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, -6, 22, 0, TAU); ctx.fill();
+    ctx.restore();
   }
 
   drawDread(ctx, time, grow) {
@@ -260,6 +339,8 @@ class Tower {
     if (this.recoil > 0) this.recoil = Math.max(0, this.recoil - dt * 26);
     this.cd -= dt;
 
+    if (this.suppressed) { this.cd = Math.max(this.cd, .15); return; }
+
     const target = game.firstInRange(this.x, this.y, this.range);
     if (target) {
       const want = Math.atan2(target.y - this.y, target.x - this.x);
@@ -291,7 +372,7 @@ class Tower {
       const hits = pool.slice(0, 3);
       const pts = [{ x: this.x + this.facing * 12, y: this.y - 3 }, ...hits.map((e) => ({ x: e.x, y: e.y }))];
       game.beams.push({ pts, life: .12, maxLife: .12, color: '#ffe27a', width: 2.6 });
-      hits.forEach((e) => game.damage(e, this.damage, { source: this, x: e.x, y: e.y }));
+      hits.forEach((e) => game.damage(e, this.damage, { source: this, x: e.x, y: e.y, tags: d.tags }));
       Sfx.spark();
       return;
     }
@@ -303,8 +384,8 @@ class Tower {
           x: this.x + Math.cos(a) * 18, y: this.y + Math.sin(a) * 18,
           vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
           damage: this.damage, pierce: this.pierce, life: this.range / d.projSpeed + .12,
-          kind: 'dart', color: this.isHero ? '#ffb15c' : '#e9eeff',
-          burn: d.burn ? d.burn.time : 0, size: 4,
+          kind: 'dart', color: this.isHero ? (d.color || '#ffb15c') : '#e9eeff',
+          burn: d.burn ? d.burn.time : 0, size: 4, tags: d.tags,
         }));
         Sfx.shoot();
         break;
@@ -338,7 +419,7 @@ class Tower {
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
           b.chill(d.slow, d.slowTime);
-          game.damage(b, this.damage, { source: this, x: b.x, y: b.y });
+          game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
         }
         Sfx.frost();
         break;
@@ -357,7 +438,8 @@ class Tower {
         if (!hits.length) return;
         const pts = [{ x: this.x + this.facing * 13, y: this.y }, ...hits.map((b) => ({ x: b.x, y: b.y }))];
         game.beams.push({ pts, life: .22, maxLife: .22, color: '#8fe6ff', width: 3.4 });
-        hits.forEach((b, i) => game.damage(b, Math.max(1, this.damage - (i > 1 ? 1 : 0)), { source: this, x: b.x, y: b.y }));
+        hits.forEach((b, i) => game.damage(b, Math.max(1, this.damage - (i > 1 ? 1 : 0)),
+          { source: this, x: b.x, y: b.y, tags: d.tags }));
         game.shake = Math.max(game.shake, 2);
         Sfx.zap();
         break;
@@ -376,10 +458,47 @@ class Tower {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
           b.d = Math.max(0, b.d - d.knockback);
           b.chill(d.slow, d.slowTime);
-          game.damage(b, this.damage, { source: this, x: b.x, y: b.y });
+          game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
         }
         game.shake = Math.max(game.shake, 6);
         Sfx.slam();
+        break;
+      }
+      case 'smash': {
+        /* arm's length only, but it flattens everything in the arc */
+        game.rings.push({ x: this.x, y: this.y, r: 10, max: this.range, life: .35,
+          maxLife: .35, color: '#8bef6a', thick: 8 });
+        for (let i = 0; i < 12; i++) {
+          const a = rand(0, TAU);
+          game.particles.push(new Particle(this.x, this.y, {
+            vx: Math.cos(a) * rand(70, 200), vy: Math.sin(a) * rand(70, 200) - 40,
+            life: rand(.3, .6), size: rand(2.5, 5), color: pick(['#8bef6a', '#c8b18a', '#6b5a3f']),
+            kind: 'shard', gravity: 340,
+          }));
+        }
+        for (const b of game.enemies) {
+          if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
+          b.d = Math.max(0, b.d - 18);
+          game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
+        }
+        game.shake = Math.max(game.shake, 5);
+        Sfx.smash();
+        break;
+      }
+      case 'cards': {
+        /* a fan of three, each card rolling its own damage */
+        const base = this.angle;
+        for (let i = -1; i <= 1; i++) {
+          const a = base + i * .22;
+          game.projectiles.push(new Projectile(this, {
+            x: this.x + Math.cos(a) * 14, y: this.y + Math.sin(a) * 14,
+            vx: Math.cos(a) * d.projSpeed, vy: Math.sin(a) * d.projSpeed,
+            damage: randInt(1, 3 + this.level), pierce: this.pierce,
+            life: this.range / d.projSpeed + .1,
+            kind: 'card', color: '#f4f2ee', size: 4, tags: d.tags,
+          }));
+        }
+        Sfx.cards();
         break;
       }
       case 'ray': {
@@ -388,7 +507,7 @@ class Tower {
           pts: [{ x: this.x + this.facing * 15, y: this.y - 3 }, { x: target.x, y: target.y }],
           life: .15, maxLife: .15, color: d.rayColor || '#5cff9e', width: 3, straight: true,
         });
-        game.damage(target, this.damage, { source: this, x: target.x, y: target.y });
+        game.damage(target, this.damage, { source: this, x: target.x, y: target.y, tags: d.tags });
         game.spark(target.x, target.y, d.rayColor || '#9dffc6', 5);
         Sfx.spark();
         break;
@@ -421,6 +540,31 @@ class Tower {
         gl.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gl;
         ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+      }
+
+      /* a jammed hero: drained of colour, ringed in the jammer's own light */
+      if (this.suppressed) {
+        ctx.save();
+        ctx.filter = 'grayscale(1) brightness(.65)';
+        ctx.save(); ctx.scale(this.facing, 1);
+        this.def.art(ctx, this.level, time);
+        ctx.restore();
+        ctx.restore();
+
+        const p = .5 + Math.sin(time * 5) * .5;
+        ctx.strokeStyle = rgba(this.suppressed.color, .5 + p * .4);
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([5, 4]);
+        ctx.lineDashOffset = time * 16;
+        ctx.beginPath(); ctx.arc(0, -2, 24, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        /* a struck-through circle: this one is offline */
+        ctx.strokeStyle = rgba(this.suppressed.color, .95);
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, -30, 6.5, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-4.6, -34.6); ctx.lineTo(4.6, -25.4); ctx.stroke();
+        ctx.restore();
+        return;
       }
 
       /* Overdrive: after-images, crackle and a ring counting the window down */
@@ -532,8 +676,33 @@ class Projectile {
 
   update(dt, game) {
     this.age += dt;
+
+    /* micro-missiles steer toward their mark */
+    if (this.kind === 'missile') {
+      if (!this.target || this.target.dead) {
+        this.target = game.firstInRange(this.x, this.y, 900);
+      }
+      if (this.target) {
+        const want = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+        const cur = Math.atan2(this.vy, this.vx);
+        let diff = ((want - cur + Math.PI * 3) % TAU) - Math.PI;
+        const a = cur + diff * Math.min(1, dt * 6);
+        const sp = Math.hypot(this.vx, this.vy);
+        this.vx = Math.cos(a) * sp;
+        this.vy = Math.sin(a) * sp;
+      }
+      if (Math.random() < dt * 60) {
+        game.particles.push(new Particle(this.x, this.y, {
+          vx: rand(-20, 20), vy: rand(-20, 20), life: .25, size: rand(2, 4),
+          color: pick(['#ffd9a0', '#ff8a5c', '#9aa3b8']), kind: 'smoke',
+        }));
+      }
+    }
+
     if (this.age >= this.life) {
-      if (this.kind === 'bomb') game.explode(this.x, this.y, this.blast, this.damage, this.owner);
+      if (this.kind === 'bomb' || this.kind === 'missile') {
+        game.explode(this.x, this.y, this.blast, this.damage, this.owner, this.tags);
+      }
       this.dead = true; return;
     }
     this.x += this.vx * dt;
@@ -549,13 +718,13 @@ class Projectile {
       const rr = b.r + this.size;
       if (distSq(b.x, b.y, this.x, this.y) > rr * rr) continue;
 
-      if (this.kind === 'bomb') {
-        game.explode(this.x, this.y, this.blast, this.damage, this.owner);
+      if (this.kind === 'bomb' || this.kind === 'missile') {
+        game.explode(this.x, this.y, this.blast, this.damage, this.owner, this.tags);
         this.dead = true; return;
       }
       this.hits.add(b);
       if (this.burn) b.ignite(this.burn);
-      game.damage(b, this.damage, { source: this.owner, x: this.x, y: this.y });
+      game.damage(b, this.damage, { source: this.owner, x: this.x, y: this.y, tags: this.tags });
       if (--this.pierce <= 0) { this.dead = true; return; }
     }
   }
@@ -563,7 +732,16 @@ class Projectile {
   draw(ctx) {
     ctx.save();
     ctx.translate(this.x, this.y);
-    if (this.kind === 'bomb') {
+    if (this.kind === 'missile') {
+      ctx.rotate(Math.atan2(this.vy, this.vx));
+      ctx.fillStyle = '#d8dee9';
+      roundRect(ctx, -5, -2, 10, 4, 1.6); ctx.fill();
+      ctx.fillStyle = '#c53a30';
+      ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(1, 2.4); ctx.lineTo(1, -2.4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = `rgba(255,${170 + Math.random() * 60},80,.95)`;
+      ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-11 - Math.random() * 4, 0);
+      ctx.lineTo(-5, 1.8); ctx.closePath(); ctx.fill();
+    } else if (this.kind === 'bomb') {
       ctx.rotate(this.spin);
       ctx.fillStyle = '#20263c';
       ctx.beginPath(); ctx.arc(0, 0, this.size, 0, TAU); ctx.fill();
@@ -573,6 +751,12 @@ class Projectile {
       ctx.beginPath(); ctx.moveTo(0, -this.size); ctx.lineTo(2, -this.size - 4); ctx.stroke();
       ctx.fillStyle = '#ffe066';
       ctx.beginPath(); ctx.arc(2.5, -this.size - 5, 1.8 + Math.random(), 0, TAU); ctx.fill();
+    } else if (this.kind === 'card') {
+      ctx.rotate(this.spin);
+      ctx.fillStyle = '#f4f2ee';
+      roundRect(ctx, -3, -4.5, 6, 9, 1.4); ctx.fill();
+      ctx.fillStyle = this.damage > 2 ? '#c8324f' : '#16121c';
+      ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, TAU); ctx.fill();
     } else if (this.kind === 'tack') {
       ctx.rotate(Math.atan2(this.vy, this.vx));
       ctx.fillStyle = this.color;
@@ -636,7 +820,7 @@ class Saw {
       if (distSq(b.x, b.y, this.x, this.y) > rr * rr) continue;
       if ((this.hitAt.get(b) || 0) > this.age) continue;
       this.hitAt.set(b, this.age + .12);
-      game.damage(b, this.damage, { source: this, x: b.x, y: b.y, silent: true });
+      game.damage(b, this.damage, { source: this, x: b.x, y: b.y, silent: true, tags: ['construct'] });
       game.spark(b.x, b.y, '#9dffc6', 6);
       this.voice.bite();
     }
@@ -773,7 +957,7 @@ class Lance {
         if (e.dead) continue;
         const d2 = pointSegDistSq(e.x, e.y, this.t.x, this.t.y, this.end.x, this.end.y);
         if (d2 > (w + e.r) * (w + e.r)) continue;
-        game.damage(e, this.damage, { source: this.t, x: e.x, y: e.y, silent: true });
+        game.damage(e, this.damage, { source: this.t, x: e.x, y: e.y, silent: true, tags: ['solar'] });
         e.ignite(1.2);
         if (Math.random() < .5) game.spark(e.x, e.y, '#ffd9a0', 4);
       }
@@ -827,6 +1011,65 @@ class Lance {
     fl.addColorStop(1, 'rgba(255,140,60,0)');
     ctx.fillStyle = fl;
     ctx.beginPath(); ctx.arc(this.t.x, this.t.y - 6, 22 * k, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* =============================== CASH PICKUP =============================== */
+/* Money is still collected automatically — these only exist so earning it
+   reads and sounds good. They pop off a kill, arc, then home to the counter. */
+const CASH_TARGET = { x: 150, y: 26 };
+
+class Coin {
+  constructor(x, y, value) {
+    this.x = x; this.y = y;
+    this.value = value;
+    this.vx = rand(-90, 90);
+    this.vy = rand(-210, -130);
+    this.age = 0;
+    this.pop = .28 + Math.random() * .18;   // free-flight time before it homes
+    this.dead = false;
+    this.spin = rand(0, TAU);
+    this.spinV = rand(6, 13) * (Math.random() < .5 ? -1 : 1);
+  }
+
+  update(dt) {
+    this.age += dt;
+    this.spin += this.spinV * dt;
+    if (this.age < this.pop) {
+      this.vy += 620 * dt;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      return;
+    }
+    /* then it accelerates toward the cash readout */
+    const k = clamp((this.age - this.pop) / .5, 0, 1);
+    const speed = lerp(340, 1500, k * k);
+    const dx = CASH_TARGET.x - this.x, dy = CASH_TARGET.y - this.y;
+    const len = Math.hypot(dx, dy) || 1;
+    this.x += (dx / len) * speed * dt;
+    this.y += (dy / len) * speed * dt;
+    if (len < 26) this.dead = true;
+  }
+
+  draw(ctx) {
+    const w = Math.abs(Math.cos(this.spin));
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.fillStyle = 'rgba(255,220,120,.28)';
+    ctx.beginPath(); ctx.arc(0, 0, 8, 0, TAU); ctx.fill();
+    const g = ctx.createLinearGradient(0, -7, 0, 7);
+    g.addColorStop(0, '#fff2b8'); g.addColorStop(.5, '#ffc63f'); g.addColorStop(1, '#c98a13');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, 0, Math.max(1.4, 6 * w), 6, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,80,10,.55)'; ctx.lineWidth = 1;
+    ctx.stroke();
+    if (w > .45) {
+      ctx.fillStyle = 'rgba(140,95,15,.75)';
+      ctx.font = 'bold 7px Trebuchet MS, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('$', 0, 2.5);
+    }
     ctx.restore();
   }
 }
@@ -906,6 +1149,9 @@ class Game {
     this.projectiles = [];
     this.saws = [];
     this.lances = [];
+    this.coins = [];
+    this.streak = 0;
+    this.streakT = 0;
     this.particles = [];
     this.rings = [];
     this.beams = [];
@@ -1239,12 +1485,17 @@ class Game {
 
   /* ---------------- activated abilities ---------------- */
   canUseUlt(t) {
-    return !!(t && t.def.ability && !this.over && t.charges > 0
+    return !!(t && t.def.ability && !this.over && t.charges > 0 && !t.suppressed
       && (this.running || this.enemies.length > 0));
   }
 
   activateUlt(t) {
     if (!t || !t.def.ability || this.over) return false;
+    if (t.suppressed) {
+      this.floatText(t.x, t.y - 40, `${t.suppressed.short} is jamming him`, '#ff5a6e', 1.3, 13);
+      Sfx.deny();
+      return false;
+    }
     if (t.charges <= 0) {
       this.floatText(t.x, t.y - 40, 'No charges left', '#ff5a6e', 1, 14);
       Sfx.deny();
@@ -1289,6 +1540,98 @@ class Game {
         this.flash = Math.max(this.flash, .45);
         Sfx.lanceStart();
         break;
+
+      case 'mark': {
+        /* prep work: every hostile currently on the field takes double damage */
+        const dur = ab.duration[t.level - 1];
+        let n = 0;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          e.marked = Math.max(e.marked, dur);
+          n++;
+          this.spark(e.x, e.y, '#ff5a6e', 3);
+        }
+        this.markedUntil = this.time + dur;
+        burst('#8fa8d8', 22);
+        this.floatText(t.x, t.y - 66, `${n} marked`, '#ff8a98', 1.3, 15);
+        Sfx.mark();
+        break;
+      }
+
+      case 'missiles': {
+        const salvo = ab.salvo[t.level - 1];
+        for (let i = 0; i < salvo; i++) {
+          const a = rand(0, TAU);
+          this.projectiles.push(new Projectile(t, {
+            x: t.x, y: t.y - 6,
+            vx: Math.cos(a) * rand(150, 260), vy: Math.sin(a) * rand(150, 260),
+            damage: 2 + t.level, pierce: 1, life: 3.5, kind: 'missile',
+            color: '#ff8a5c', size: 5, blast: 46 + t.level * 6, tags: t.def.tags,
+          }));
+        }
+        burst('#ff8a5c', 24);
+        Sfx.missiles();
+        break;
+      }
+
+      case 'thunderclap': {
+        const radius = ab.radius[t.level - 1];
+        this.rings.push({ x: t.x, y: t.y, r: 16, max: radius, life: .7, maxLife: .7,
+          color: '#a8ff8a', thick: 12 });
+        this.rings.push({ x: t.x, y: t.y, r: 8, max: radius * .6, life: .5, maxLife: .5,
+          color: '#ffffff', thick: 6 });
+        for (const e of this.enemies) {
+          if (e.dead || distSq(e.x, e.y, t.x, t.y) > radius * radius) continue;
+          e.d = Math.max(0, e.d - 90);
+          e.chill(0, 1.6);                       // flat stun
+          this.damage(e, 5 + t.level * 2, { source: t, x: e.x, y: e.y, tags: t.def.tags });
+        }
+        for (let i = 0; i < 40; i++) {
+          const a = rand(0, TAU);
+          this.particles.push(new Particle(t.x, t.y, {
+            vx: Math.cos(a) * rand(120, 420), vy: Math.sin(a) * rand(120, 420) - 40,
+            life: rand(.4, .9), size: rand(2.5, 6),
+            color: pick(['#a8ff8a', '#e6ffd8', '#8a7a5a']), kind: 'shard', gravity: 300,
+          }));
+        }
+        this.shake = Math.max(this.shake, 16);
+        this.flash = Math.max(this.flash, .3);
+        Sfx.thunderclap();
+        break;
+      }
+
+      case 'wildcard': {
+        /* every hostile draws a card and lives with it */
+        let blown = 0, stunned = 0, turned = 0, robbed = 0;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          const roll = Math.random();
+          if (roll < .3) {
+            this.explode(e.x, e.y, 54, 4 + t.level, t, t.def.tags);
+            blown++;
+          } else if (roll < .58) {
+            e.chill(0, 2.2);
+            stunned++;
+            this.spark(e.x, e.y, '#b06cf0', 4);
+          } else if (roll < .82) {
+            e.backward = 2.4;
+            turned++;
+            this.floatText(e.x, e.y - 22, '?!', '#c08cff', .8, 13);
+          } else {
+            const purse = 20 + this.levelNo * 3;
+            this.cash += purse;
+            this.spawnCoins(e.x, e.y, 2, purse);
+            robbed++;
+          }
+        }
+        burst('#b06cf0', 30);
+        this.floatText(t.x, t.y - 66,
+          `${blown} blown · ${stunned} stunned · ${turned} turned · ${robbed} robbed`,
+          '#d8b0ff', 2, 14);
+        this.flash = Math.max(this.flash, .25);
+        Sfx.wildcard();
+        break;
+      }
     }
 
     this.floatText(t.x, t.y - 46, ab.name.toUpperCase() + '!', t.def.rarityColor || '#5cff9e', 1.5, 20);
@@ -1312,7 +1655,11 @@ class Game {
       for (let i = 0; i < grp.count; i++) {
         this.queue.push({
           tier: grp.tier, t: grp.delay + i * grp.gap,
-          opts: { swift: !!grp.swift, shield: !!grp.shield, speedMul },
+          opts: {
+            swift: !!grp.swift, shield: !!grp.shield, speedMul, special: grp.special,
+            /* Dreadnoughts get tougher as the campaign goes on */
+            hpMul: 1 + (this.levelNo - 1) * .13,
+          },
         });
       }
     }
@@ -1325,6 +1672,11 @@ class Game {
     const bonus = 95 + this.round * 14 + this.levelNo * 10;
     this.cash += bonus;
     this.floatText(CANVAS_W / 2, 90, `Round ${this.round} cleared  +$${bonus}`, '#4ade80', 2.2, 22);
+    for (let i = 0; i < 12; i++) {
+      const c = new Coin(CANVAS_W / 2 + rand(-90, 90), 120 + rand(-20, 20), bonus / 12);
+      c.pop = .35 + i * .05;
+      this.coins.push(c);
+    }
     Sfx.cash();
     if (this.round >= this.waves.length) this.end(true);
     else this.onEvent('round-end', this.round);
@@ -1363,6 +1715,34 @@ class Game {
     if (this.lives <= 0) { this.lives = 0; this.end(false); }
   }
 
+  /* ---------------- counter escorts ---------------- */
+  /**
+   * Recomputed each step: a hero is suppressed while an escort that counters
+   * one of its tags is inside its own aura. Towers are never suppressed.
+   */
+  updateSuppression() {
+    const auras = [];
+    for (const e of this.enemies) {
+      if (!e.dead && e.special && e.special.suppress) auras.push(e);
+    }
+    for (const t of this.towers) {
+      if (!t.isHero || !t.def.tags) { t.suppressed = null; continue; }
+      let hit = null;
+      for (const e of auras) {
+        const r = e.special.aura;
+        if (distSq(e.x, e.y, t.x, t.y) > r * r) continue;
+        if (!e.special.suppress.some((tag) => t.def.tags.includes(tag))) continue;
+        hit = e.special;
+        break;
+      }
+      if (hit && !t.suppressed) {
+        this.floatText(t.x, t.y - 40, 'SUPPRESSED', hit.color, 1.1, 13);
+        Sfx.suppress();
+      }
+      t.suppressed = hit;
+    }
+  }
+
   /* ---------------- combat helpers ---------------- */
   firstInRange(x, y, r) {
     let best = null, bestD = -1;
@@ -1383,6 +1763,21 @@ class Game {
 
   damage(b, amount, opts = {}) {
     if (b.dead) return;
+
+    /* a counter escort simply refuses the damage type it is built against */
+    if (opts.tags && b.immuneTo(opts.tags)) {
+      if (!b.immuneShown || this.time - b.immuneShown > .6) {
+        b.immuneShown = this.time;
+        this.floatText(b.x, b.y - 26, 'IMMUNE', b.special.color, .8, 13);
+        this.spark(b.x, b.y, b.special.color, 5);
+        Sfx.deflect();
+      }
+      return;
+    }
+
+    /* Nocturne's mark doubles everything that lands on it */
+    if (b.marked > 0) amount *= 2;
+
     /* shielded troopers shrug off part of every hit (but never all of it) */
     if (b.shield && !opts.dot) amount = Math.max(1, amount - SHIELD_SOAK);
 
@@ -1393,6 +1788,8 @@ class Game {
       if (b.hp <= 0) {
         b.dead = true;
         this.cash += DREAD.reward;
+        this.spawnCoins(b.x, b.y, 4, DREAD.reward);
+        this.cashChime();
         this.explodeFx(b.x, b.y, 70, '#ff7a4d');
         this.floatText(b.x, b.y - 40, `+$${DREAD.reward}`, '#ffcf5c', 1.2, 18);
         this.shake = Math.max(this.shake, 10);
@@ -1415,19 +1812,38 @@ class Game {
       if (!opts.silent) Sfx.kill(b.tier);
       amount--;
       b.tier--;
-      if (b.tier < 0) { b.dead = true; }
-      else { b.r = TROOPS[b.tier].r; b.hitFlash = .4; }
+      if (b.tier < 0) {
+        b.dead = true;
+        this.spawnCoins(b.x, b.y, 1 + (b.special ? 1 : 0), info.reward);
+        this.cashChime();
+      } else { b.r = TROOPS[b.tier].r; b.hitFlash = .4; }
     }
   }
 
-  explode(x, y, radius, damage, owner) {
+  explode(x, y, radius, damage, owner, tags) {
     this.explodeFx(x, y, radius, '#ffb15c');
     this.shake = Math.max(this.shake, 5);
     Sfx.boom();
     for (const b of this.enemies) {
       if (b.dead) continue;
-      if (distSq(b.x, b.y, x, y) <= radius * radius) this.damage(b, damage, { source: owner, silent: true });
+      if (distSq(b.x, b.y, x, y) <= radius * radius) {
+        this.damage(b, damage, { source: owner, silent: true, tags });
+      }
     }
+  }
+
+  /* ---------------- cash feedback ---------------- */
+  /** coins arc out of a kill and fly to the counter; balance is untouched */
+  spawnCoins(x, y, n, value) {
+    const many = Math.min(n, 4);
+    for (let i = 0; i < many; i++) this.coins.push(new Coin(x, y, value));
+  }
+
+  /** a kill streak only raises the pitch of the chime — no economy change */
+  cashChime() {
+    this.streak = Math.min(this.streak + 1, 24);
+    this.streakT = 1.4;
+    Sfx.pickup(this.streak);
   }
 
   /* ---------------- fx ---------------- */
@@ -1501,7 +1917,9 @@ class Game {
       for (const r of this.rings) { r.life -= dt; r.r = lerp(r.r, r.max, dt * 9); }
       for (const b of this.beams) b.life -= dt;
       for (const t of this.texts) { t.life -= dt; t.y -= dt * 26; }
+      for (const c of this.coins) c.update(dt);
       this.particles = this.particles.filter((p) => p.life > 0);
+      this.coins = this.coins.filter((c) => !c.dead);
       this.rings = this.rings.filter((r) => r.life > 0);
       this.beams = this.beams.filter((b) => b.life > 0);
       this.texts = this.texts.filter((t) => t.life > 0);
@@ -1520,11 +1938,17 @@ class Game {
     }
 
     for (const b of this.enemies) if (!b.dead) b.update(dt, this);
+    this.updateSuppression();
     for (const t of this.towers) t.update(dt, this);
     for (const p of this.projectiles) if (!p.dead) p.update(dt, this);
     for (const sw of this.saws) if (!sw.dead) sw.update(dt, this);
     for (const ln of this.lances) if (!ln.dead) ln.update(dt, this);
 
+    for (const c of this.coins) c.update(dt);
+    if (this.streakT > 0) {
+      this.streakT -= dt;
+      if (this.streakT <= 0) this.streak = 0;
+    }
     for (const p of this.particles) p.update(dt);
     for (const r of this.rings) { r.life -= dt; r.r = lerp(r.r, r.max, dt * 9); }
     for (const b of this.beams) b.life -= dt;
@@ -1535,6 +1959,7 @@ class Game {
     this.saws = this.saws.filter((sw) => !sw.dead);
     this.lances = this.lances.filter((ln) => !ln.dead);
     this.particles = this.particles.filter((p) => p.life > 0);
+    this.coins = this.coins.filter((c) => !c.dead);
     this.rings = this.rings.filter((r) => r.life > 0);
     this.beams = this.beams.filter((b) => b.life > 0);
     this.texts = this.texts.filter((t) => t.life > 0);
@@ -1614,6 +2039,7 @@ class Game {
     }
 
     for (const p of this.particles) p.draw(ctx);
+    for (const c of this.coins) c.draw(ctx);
 
     /* floating text */
     for (const t of this.texts) {
