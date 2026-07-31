@@ -402,26 +402,36 @@ class Tower {
     this.charges = this.maxCharges;
     this.ultAnim = 0;
     this.overdrive = 0;      // Streak's supersonic window
+    this.rampage = 0;        // Breaker off the leash
+    this.rampageKills = 0;
     this.disabled = 0;       // knocked offline by a boss power
   }
 
   get mods() { return levelMods(this.level); }
   get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
   get ultReady() { return !!this.def.ability && this.charges > 0; }
-  get range() { return this.def.range * this.mods.range; }
   get rate() { return this.def.cooldown * this.mods.rate; }
   get damage() { return this.def.damage + this.mods.damage; }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
+  /** a Relay Mast in range widens the reach and shortens the cycle */
+  get range() {
+    const rampage = this.rampage > 0 ? 2 : 1;
+    return this.def.range * this.mods.range * (this.buffRange || 1) * rampage;
+  }
   /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
   firingRateIn(game) {
     let r = this.overdrive > 0 ? this.rate * .17 : this.rate;
     if (game && game.rally > 0) r *= .5;
+    if (this.buffRate) r *= this.buffRate;
+    /* each kill during a Rampage shortens the next swing */
+    if (this.rampage > 0) r *= Math.max(.28, .5 - this.rampageKills * .02);
     return r;
   }
 
   update(dt, game) {
     this.placeAnim = Math.min(1, this.placeAnim + dt * 3.2);
     if (this.ultAnim > 0) this.ultAnim = Math.max(0, this.ultAnim - dt);
+    if (this.rampage > 0) this.rampage = Math.max(0, this.rampage - dt);
     if (this.overdrive > 0) {
       this.overdrive = Math.max(0, this.overdrive - dt);
       /* he blurs through his own after-images while it lasts */
@@ -450,6 +460,8 @@ class Tower {
       this.angle += diff * Math.min(1, dt * 12);
       this.facing = Math.cos(want) < 0 ? -1 : 1;
     }
+
+    if (this.def.kind === 'support') return;
 
     if (this.cd <= 0) {
       const kind = this.def.kind;
@@ -580,7 +592,9 @@ class Tower {
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
           b.d = Math.max(0, b.d - 18);
+          const was = b.dead;
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
+          if (!was && b.dead && this.rampage > 0) this.rampageKills++;
         }
         game.shake = Math.max(game.shake, 5);
         Sfx.smash();
@@ -771,6 +785,23 @@ class Tower {
       this.def.art(ctx, this.level, time);
     }
     ctx.restore();
+
+    /* a mast quietly shows what it is covering */
+    if (this.def.kind === 'support') {
+      ctx.save();
+      ctx.strokeStyle = `rgba(176,164,255,${selected ? .55 : .22})`;
+      ctx.fillStyle = `rgba(176,164,255,${selected ? .1 : .045})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, TAU);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    } else if (this.buffRange > 1) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(190,175,255,${.35 + Math.sin(time * 3) * .15})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(this.x, this.y, 21, -1.1, -2.05, true); ctx.stroke();
+      ctx.restore();
+    }
 
     if (selected) {
       ctx.save();
@@ -1283,6 +1314,9 @@ class Game {
     this.webs = [];
     this.strikes = [];
     this.rally = 0;
+    this.judgement = 0;
+    this.judgementDmg = 6;
+    this.judgementTick = 0;
     this.downpour = 0;
     this.downpourDmg = 2;
     this.downpourTick = 0;
@@ -1965,6 +1999,27 @@ class Game {
         break;
       }
 
+      case 'judgement': {
+        /* a standing storm: everything pinned and struck, repeatedly */
+        this.judgement = Math.max(this.judgement, ab.duration[t.level - 1]);
+        this.judgementDmg = 4 + t.level * 2;
+        burst('#ffd23f', 34);
+        this.flash = Math.max(this.flash, .4);
+        this.floatText(t.x, t.y - 70, 'JUDGEMENT', '#ffe27a', 1.8, 20);
+        Sfx.judgement();
+        break;
+      }
+
+      case 'rampage': {
+        t.rampage = ab.duration[t.level - 1];
+        t.rampageKills = 0;
+        burst('#cfc4e8', 32);
+        this.shake = Math.max(this.shake, 12);
+        this.floatText(t.x, t.y - 66, 'RAMPAGE', '#e8dcff', 1.6, 18);
+        Sfx.rampage();
+        break;
+      }
+
       case 'wildcard': {
         /* every hostile draws a card and lives with it */
         let blown = 0, stunned = 0, turned = 0, robbed = 0;
@@ -2039,7 +2094,7 @@ class Game {
 
   finishRound() {
     this.running = false;
-    const bonus = 95 + this.round * 14 + this.levelNo * 10;
+    const bonus = roundBonus(this.round, this.waves.length, this.levelNo);
     this.cash += bonus;
     this.floatText(CANVAS_W / 2, 90, `Round ${this.round} cleared  +$${bonus}`, '#4ade80', 2.2, 22);
     for (let i = 0; i < 12; i++) {
@@ -2183,6 +2238,26 @@ class Game {
         Sfx.bossNull();
         break;
       }
+    }
+  }
+
+  /* ---------------- support masts ---------------- */
+  /** recomputed each step: who is standing inside a Relay Mast's ring */
+  updateBuffs() {
+    const masts = this.towers.filter((t) => t.def.kind === 'support');
+    for (const t of this.towers) {
+      let range = 1, rate = 1;
+      if (t.def.kind !== 'support') {
+        for (const m of masts) {
+          const r = m.def.range * m.mods.range;
+          if (distSq(m.x, m.y, t.x, t.y) > r * r) continue;
+          /* masts do not stack in full — the best one wins, plus a little */
+          range = Math.max(range, 1 + m.def.buff.range * (1 + (m.level - 1) * .25));
+          rate = Math.min(rate, m.def.buff.rate - (m.level - 1) * .05);
+        }
+      }
+      t.buffRange = range;
+      t.buffRate = rate;
     }
   }
 
@@ -2439,12 +2514,28 @@ class Game {
 
     for (const b of this.enemies) if (!b.dead) b.update(dt, this);
     this.updateSuppression();
+    this.updateBuffs();
     for (const t of this.towers) t.update(dt, this);
     for (const p of this.projectiles) if (!p.dead) p.update(dt, this);
     for (const sw of this.saws) if (!sw.dead) sw.update(dt, this);
     for (const ln of this.lances) if (!ln.dead) ln.update(dt, this);
     if (this.rally > 0) this.rally -= dt;
     if (this.exposed > 0) this.exposed -= dt;
+    if (this.judgement > 0) {
+      this.judgement -= dt;
+      this.judgementTick -= dt;
+      for (const e of this.enemies) if (!e.dead) e.chill(0, .25);
+      if (this.judgementTick <= 0) {
+        this.judgementTick = .45;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          this.damage(e, this.judgementDmg, { x: e.x, y: e.y, silent: true, tags: ['electric'] });
+          if (Math.random() < .4) this.spark(e.x, e.y, '#ffe27a', 4);
+        }
+        this.shake = Math.max(this.shake, 4);
+        Sfx.zap();
+      }
+    }
     if (this.downpour > 0) {
       this.downpour -= dt;
       this.downpourTick -= dt;
@@ -2635,6 +2726,25 @@ class Game {
       ctx.strokeText(t.text, t.x, t.y);
       ctx.fillStyle = t.color;
       ctx.fillText(t.text, t.x, t.y);
+      ctx.restore();
+    }
+
+    /* Judgement: the sky itself is the weapon */
+    if (this.judgement > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(255,220,120,${.06 + Math.sin(this.time * 20) * .05})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.strokeStyle = 'rgba(255,230,150,.75)';
+      ctx.lineWidth = 2;
+      const n = this.fx > .75 ? 5 : 3;
+      for (let i = 0; i < n; i++) {
+        const x = ((this.time * 300 + i * 331) % CANVAS_W);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        let y = 0;
+        while (y < CANVAS_H) { y += 70; ctx.lineTo(x + rand(-26, 26), y); }
+        ctx.stroke();
+      }
       ctx.restore();
     }
 

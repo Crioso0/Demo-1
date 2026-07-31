@@ -221,11 +221,9 @@ const MAPS = [];
 CHAPTERS.forEach((ch, ci) => {
   for (let i = 0; i < MISSIONS_PER_CHAPTER; i++) {
     const seed = 9000 + ci * 137 + i * 29;
-    /* from the second city on, the later missions open a second road, so the
-       legion arrives from two directions and one strongpoint is not enough */
-    const twoLanes = ci >= 1 && i >= 2;
+    /* one road per map — a second entrance read as clutter rather than a
+       decision, so the pressure comes from the waves instead */
     const routes = [generateRoute(seed)];
-    if (twoLanes) routes.push(generateRoute(seed + 5171));
     MAPS.push({
       id: `${ch.id}-${i + 1}`,
       name: `${ch.name} ${['I', 'II', 'III', 'IV', 'V'][i]}`,
@@ -421,6 +419,18 @@ CHAPTERS.forEach((ch, ci) => {
 const LEVEL_COUNT = LEVELS.length;
 const LEVEL_BY_N = Object.fromEntries(LEVELS.map((l) => [l.n, l]));
 
+/**
+ * What clearing a round pays. It starts small and grows steeply, so the back
+ * half of a mission is where upgrades become affordable — early rounds are
+ * about surviving on what you have.
+ */
+function roundBonus(roundNo, totalRounds, missionNo) {
+  const p = totalRounds > 1 ? (roundNo - 1) / (totalRounds - 1) : 1;
+  const base = 120 + missionNo * 12;
+  const ramp = Math.pow(p, 1.6) * (900 + missionNo * 45);
+  return Math.round(base + ramp);
+}
+
 /** gems paid out for finishing a mission (first clear pays double) */
 function levelReward(lv) { return 16 + lv.n * 3; }
 
@@ -582,6 +592,87 @@ const Art = {
     ctx.restore();
     ctx.fillStyle = lvl > 1 ? '#ffcf5c' : '#8a92ad';
     ctx.beginPath(); ctx.arc(-4, 2, 6, 0, TAU); ctx.fill();
+  },
+
+  /* --- more base units --- */
+  precinct(ctx, lvl, t) {
+    Art.base(ctx, '#4a6fa8', '#1f3358');
+    /* riot shield */
+    ctx.fillStyle = '#2b3d5c';
+    roundRect(ctx, 6, -10, 7, 20, 3); ctx.fill();
+    ctx.fillStyle = '#8fb2e0';
+    roundRect(ctx, 7.5, -8, 4, 16, 2); ctx.fill();
+    /* sidearm */
+    ctx.fillStyle = '#161a24';
+    roundRect(ctx, 2, -3.5, 18, 6, 2.5); ctx.fill();
+    ctx.fillStyle = lvl > 1 ? '#ffcf5c' : '#6e8ec0';
+    ctx.beginPath(); ctx.arc(-3, 0, 6.5, 0, TAU); ctx.fill();
+    /* the light bar */
+    const flash = Math.sin(t * 8) > 0;
+    ctx.fillStyle = flash ? '#ff5a6e' : '#3a4d70';
+    roundRect(ctx, -8, -15, 7, 4, 1.5); ctx.fill();
+    ctx.fillStyle = flash ? '#3a4d70' : '#5bc8ff';
+    roundRect(ctx, 1, -15, 7, 4, 1.5); ctx.fill();
+  },
+  cryo(ctx, lvl, t) {
+    Art.base(ctx, '#a8e4f0', '#2f6a8c');
+    /* coolant tanks */
+    ctx.fillStyle = '#1d3a4c';
+    roundRect(ctx, -11, -12, 8, 16, 3); ctx.fill();
+    roundRect(ctx, 3, -12, 8, 16, 3); ctx.fill();
+    ctx.fillStyle = `rgba(180,240,255,${.6 + Math.sin(t * 3) * .3})`;
+    roundRect(ctx, -9.5, -10, 5, 12, 2); ctx.fill();
+    roundRect(ctx, 4.5, -10, 5, 12, 2); ctx.fill();
+    /* emitter */
+    ctx.fillStyle = '#dff6ff';
+    roundRect(ctx, -4, -20, 8, 9, 3); ctx.fill();
+    ctx.strokeStyle = `rgba(220,250,255,${.5 + Math.sin(t * 5) * .4})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, -16, 12 + Math.sin(t * 2) * 2, -2.4, -.7); ctx.stroke();
+    if (lvl > 2) {
+      ctx.fillStyle = '#ffffff';
+      starPath(ctx, 0, -26, 6, 4, 1.8, t); ctx.fill();
+    }
+  },
+  siege(ctx, lvl, t) {
+    /* tracks */
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#20242f';
+    roundRect(ctx, -19, -3, 38, 15, 6); ctx.fill();
+    ctx.fillStyle = '#39414f';
+    for (let i = -2; i <= 2; i++) roundRect(ctx, i * 7 - 2.5, 0, 5, 9, 2), ctx.fill();
+    /* hull */
+    const g = ctx.createLinearGradient(0, -14, 0, 4);
+    g.addColorStop(0, '#6c7789'); g.addColorStop(1, '#333a48');
+    ctx.fillStyle = g;
+    roundRect(ctx, -15, -13, 30, 15, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1.6; ctx.stroke();
+    /* the gun */
+    ctx.fillStyle = '#1b1f29';
+    roundRect(ctx, 0, -8, 30, 8, 3); ctx.fill();
+    ctx.fillStyle = '#4c556b';
+    roundRect(ctx, 26, -10, 8, 12, 3); ctx.fill();
+    ctx.fillStyle = lvl > 1 ? '#ffcf5c' : '#8a92ad';
+    ctx.beginPath(); ctx.arc(-4, -6, 5.5, 0, TAU); ctx.fill();
+  },
+  relay(ctx, lvl, t) {
+    Art.base(ctx, '#8a7fd0', '#3b3168');
+    /* mast */
+    ctx.strokeStyle = '#c9c2f0'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, -22); ctx.stroke();
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 3; i++) {
+      const y = -6 - i * 6;
+      ctx.beginPath(); ctx.moveTo(-6 + i, y); ctx.lineTo(6 - i, y); ctx.stroke();
+    }
+    /* the pulse it sends out */
+    const p = (t * .8) % 1;
+    ctx.strokeStyle = `rgba(190,170,255,${.7 * (1 - p)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, -22, 6 + p * 16, 0, TAU); ctx.stroke();
+    ctx.fillStyle = lvl > 2 ? '#ffd977' : '#e0d8ff';
+    ctx.beginPath(); ctx.arc(0, -22, 3.4, 0, TAU); ctx.fill();
   },
 
   /* --- heroes --- */
@@ -1545,29 +1636,174 @@ const Art = {
     }
     ctx.restore();
   },
+  adamant(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.9) * 2;
+    ctx.save(); ctx.translate(0, bob);
+
+    /* he hangs in a charged field */
+    const halo = ctx.createRadialGradient(0, 0, 4, 0, 0, 30);
+    halo.addColorStop(0, `rgba(255,215,90,${.2 + Math.sin(t * 4) * .1})`);
+    halo.addColorStop(1, 'rgba(255,215,90,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.fill();
+
+    /* black cape */
+    ctx.fillStyle = '#14141c';
+    ctx.beginPath();
+    ctx.moveTo(-7, -11);
+    ctx.quadraticCurveTo(-21 - Math.sin(t * 2) * 4, 2, -13, 16);
+    ctx.lineTo(13, 16);
+    ctx.quadraticCurveTo(21 + Math.sin(t * 2) * 4, 2, 7, -11);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#1b1b24';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3a3a48'); g.addColorStop(1, '#101017');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -11); ctx.lineTo(9, -11);
+    ctx.quadraticCurveTo(11.5, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11.5, -2, -9, -11);
+    ctx.fill();
+
+    /* the bolt on his chest */
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath();
+    ctx.moveTo(1.5, -11); ctx.lineTo(-4, -3.5); ctx.lineTo(-.5, -3.5);
+    ctx.lineTo(-3, 4); ctx.lineTo(4.5, -5.5); ctx.lineTo(1, -5.5);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#e8c9a8';
+    ctx.beginPath(); ctx.arc(0, -15, 6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#14141c';
+    ctx.beginPath(); ctx.arc(0, -17.5, 6.2, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillStyle = `rgba(255,225,120,${.6 + Math.sin(t * 5) * .4})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.3, -15.4, 1.8, 1.1, 0, 0, TAU);
+    ctx.ellipse(2.3, -15.4, 1.8, 1.1, 0, 0, TAU);
+    ctx.fill();
+
+    /* arcs snapping off his fists */
+    ctx.strokeStyle = `rgba(255,225,120,${.5 + Math.sin(t * 15) * .4})`;
+    ctx.lineWidth = 1.6;
+    for (const s2 of [-1, 1]) {
+      const a = t * 7 * s2;
+      ctx.beginPath();
+      ctx.moveTo(s2 * 12, 0);
+      ctx.lineTo(s2 * 15 + Math.cos(a) * 3, 5 + Math.sin(a) * 3);
+      ctx.lineTo(s2 * 13, 10);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  breaker(ctx, lvl, t) {
+    const heave = Math.sin(t * 1.4) * 1.6;
+    ctx.save(); ctx.translate(0, heave * .4);
+    ctx.fillStyle = 'rgba(0,0,0,.36)';
+    ctx.beginPath(); ctx.ellipse(0, 16, 22, 7, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#3b3550';
+    roundRect(ctx, -10, 5, 9, 11, 3); ctx.fill();
+    roundRect(ctx, 1, 5, 9, 11, 3); ctx.fill();
+
+    /* a slab of a body */
+    const g = ctx.createLinearGradient(0, -15, 0, 9);
+    g.addColorStop(0, '#b8b0c8'); g.addColorStop(1, '#4a4460');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-14, -8);
+    ctx.quadraticCurveTo(-16, 6, -10, 8);
+    ctx.lineTo(10, 8);
+    ctx.quadraticCurveTo(16, 6, 14, -8);
+    ctx.quadraticCurveTo(8, -14, 0, -13);
+    ctx.quadraticCurveTo(-8, -14, -14, -8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.6; ctx.stroke();
+
+    /* bone spurs down the arms and shoulders */
+    ctx.fillStyle = '#efe9f5';
+    const spur = (x, y, h2, lean) => {
+      ctx.beginPath();
+      ctx.moveTo(x - 2.4, y); ctx.lineTo(x + lean, y - h2); ctx.lineTo(x + 2.4, y);
+      ctx.closePath(); ctx.fill();
+    };
+    spur(-11, -8, 9, -3); spur(-6, -12, 7, -2);
+    spur(11, -8, 9, 3); spur(6, -12, 7, 2);
+    spur(-15, 2, 6, -4); spur(15, 2, 6, 4);
+
+    /* arms */
+    ctx.fillStyle = '#8f87a8';
+    ctx.save(); ctx.translate(-15, -3); ctx.rotate(-.2 + heave * .05);
+    roundRect(ctx, -5, 0, 10, 17, 5); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(15, -3); ctx.rotate(.2 - heave * .05);
+    roundRect(ctx, -5, 0, 10, 17, 5); ctx.fill(); ctx.restore();
+
+    /* small hard head */
+    ctx.fillStyle = '#a89fbf';
+    roundRect(ctx, -6.5, -22, 13, 11, 4.5); ctx.fill();
+    ctx.fillStyle = '#efe9f5';
+    spur(-4, -22, 6, -2); spur(4, -22, 6, 2);
+    ctx.fillStyle = `rgba(255,90,90,${.65 + Math.sin(t * 4) * .35})`;
+    roundRect(ctx, -4.5, -18.5, 3.4, 2, .9); ctx.fill();
+    roundRect(ctx, 1.1, -18.5, 3.4, 2, .9); ctx.fill();
+
+    if (lvl > 2) {
+      ctx.strokeStyle = `rgba(220,200,255,${.3 + Math.sin(t * 5) * .2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, -2, 26, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
 const TOWERS = [
   {
-    id: 'sentry', name: 'Dart Sentry', cost: 200, art: Art.sentry, rotates: true,
+    id: 'sentry', name: 'Auto-Sentry', cost: 200, art: Art.sentry, rotates: true,
     range: 132, cooldown: .58, damage: 1, pierce: 2, projSpeed: 560, kind: 'dart',
-    color: '#8fa3d8', desc: 'Reliable single-target darts.',
+    color: '#8fa3d8', desc: 'City-issue autoturret. Cheap, reliable, everywhere.',
   },
   {
-    id: 'tack', name: 'Tack Ring', cost: 320, art: Art.tack,
+    id: 'precinct', name: 'Precinct Squad', cost: 300, art: Art.precinct, rotates: true,
+    range: 118, cooldown: .26, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
+    color: '#6e8ec0', desc: 'Two officers behind a riot shield. Fast, light, close range.',
+  },
+  {
+    id: 'tack', name: 'Shrapnel Ring', cost: 320, art: Art.tack,
     range: 96, cooldown: 1.05, damage: 1, pierce: 1, projSpeed: 330, kind: 'burst', shots: 8,
-    color: '#d79a54', desc: 'Fires eight tacks in a ring. Great on corners.',
+    color: '#d79a54', desc: 'Throws fragments in every direction. Best on a tight corner.',
   },
   {
-    id: 'frost', name: 'Frost Totem', cost: 380, art: Art.frost,
+    id: 'frost', name: 'Frost Pylon', cost: 380, art: Art.frost,
     range: 112, cooldown: 1.7, damage: 1, kind: 'frost', slow: .45, slowTime: 2.2,
-    color: '#9fe4ff', desc: 'Chilling pulse slows every balloon in range.',
+    color: '#9fe4ff', desc: 'Chilling pulse. Slows everything caught in it.',
   },
   {
-    id: 'bomb', name: 'Bomb Lobber', cost: 480, art: Art.bomb, rotates: true,
+    id: 'mortar', name: 'Mortar Post', cost: 480, art: Art.bomb, rotates: true,
     range: 158, cooldown: 1.5, damage: 2, projSpeed: 300, kind: 'bomb', blast: 54,
-    color: '#8a92ad', desc: 'Lobs explosives that damage a whole cluster.',
+    color: '#8a92ad', desc: 'Lobs shells that catch a whole cluster.',
+  },
+  {
+    id: 'cryo', name: 'Cryo Battery', cost: 620, art: Art.cryo,
+    range: 150, cooldown: 2.4, damage: 2, kind: 'frost', slow: .22, slowTime: 3.4,
+    color: '#a8e4f0',
+    desc: 'Frostline hardware. Wide, deep freeze — the heaviest slow in the game.',
+  },
+  {
+    id: 'relay', name: 'Relay Mast', cost: 700, art: Art.relay,
+    range: 150, cooldown: 99, damage: 0, kind: 'support',
+    buff: { range: .22, rate: .78 },
+    color: '#b0a4ff',
+    desc: 'Fires nothing. Everything else inside its ring gains range and shoots faster.',
+  },
+  {
+    id: 'siege', name: 'Siege Tank', cost: 950, art: Art.siege, rotates: true,
+    range: 210, cooldown: 2.6, damage: 8, projSpeed: 420, kind: 'bomb', blast: 78,
+    color: '#6c7789',
+    desc: 'One enormous shell at a time. Slow to reload, ruinous on arrival.',
   },
 ];
 
@@ -1834,6 +2070,38 @@ const HEROES = [
     },
     desc: 'Quick baton work at close range. Expose finds the seams in every suit of armour on the '
         + 'field, so shields stop working and everything takes an extra point per hit.',
+  },
+  {
+    id: 'adamant', name: 'Adamant', role: 'Storm Tyrant', art: Art.adamant,
+    rarity: 'Legendary', rarityColor: '#ffd23f', glow: 'rgba(255,210,63,.5)',
+    range: 190, cooldown: .9, damage: 4, kind: 'chain', chains: 5,
+    color: '#ffd23f', tags: ['electric', 'storm'],
+    ability: {
+      kind: 'judgement',
+      name: 'Judgement',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [3, 4, 5],
+      hint: 'Click Adamant to pass sentence',
+    },
+    desc: 'An old god with no patience: heavy forked lightning on a short cycle. Judgement holds '
+        + 'the whole field in place under a standing storm and burns it down.',
+  },
+  {
+    id: 'breaker', name: 'Breaker', role: 'Engine of Ruin', art: Art.breaker,
+    rarity: 'Legendary', rarityColor: '#cfc4e8', glow: 'rgba(200,190,235,.45)',
+    range: 104, cooldown: 1.25, damage: 9, kind: 'smash',
+    color: '#b8b0c8', tags: ['kinetic'],
+    ability: {
+      kind: 'rampage',
+      name: 'Rampage',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [6, 8, 10],
+      hint: 'Click Breaker to let it off the leash',
+    },
+    desc: 'Hits harder than anything else in the roster and cannot reach past its own arms. '
+        + 'Rampage doubles its reach and swings, and every kill feeds the next.',
   },
 ];
 

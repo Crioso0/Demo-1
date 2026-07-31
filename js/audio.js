@@ -531,6 +531,18 @@ const Sfx = {
     this.noise({ dur: .35, gain: .16, type: 'bandpass', freq: 3000, freqTo: 900, q: 2.4, attack: .002 });
   },
 
+  judgement() {
+    this.tone({ freq: 60, to: 40, dur: 1.6, type: 'sine', gain: .2, attack: .02, hold: .5 });
+    this.noise({ dur: .3, gain: .3, type: 'highpass', freq: 2000, attack: .001 });
+    [1400, 900, 600].forEach((f, i) =>
+      this.tone({ freq: f, to: f * .4, dur: .5, type: 'sawtooth', gain: .05, delay: i * .12 }));
+  },
+  rampage() {
+    this.tone({ freq: 90, to: 46, dur: .8, type: 'square', gain: .16, attack: .004, hold: .2 });
+    this.noise({ dur: .8, gain: .18, type: 'lowpass', freq: 1400, freqTo: 200, attack: .004, hold: .15 });
+    this.tone({ freq: 220, to: 120, dur: .9, type: 'sawtooth', gain: .06, delay: .1, attack: .02 });
+  },
+
   /** can't afford it / can't do that */
   deny() {
     this.tone({ freq: 225, to: 155, dur: .12, type: 'square', gain: .05, attack: .002 });

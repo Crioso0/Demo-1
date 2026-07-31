@@ -101,6 +101,21 @@
   <div class="level-grid" id="level-grid"><!-- built by JS --></div>
 </section>
 
+<!-- ===================== LOADOUT ===================== -->
+<section class="screen" id="screen-loadout">
+  <header class="sub-head">
+    <button class="btn small" id="btn-loadout-back">&larr; Missions</button>
+    <h2 id="lo-title">Choose your squad</h2>
+    <span class="progress-chip" id="lo-count">0 / 1 picked</span>
+  </header>
+  <p class="chapter-blurb" id="lo-sub"></p>
+  <div class="loadout-grid" id="loadout-grid"><!-- built by JS --></div>
+  <div class="loadout-bar">
+    <div class="loadout-picked" id="lo-picked"></div>
+    <button class="btn btn-primary big" id="btn-deploy">Deploy</button>
+  </div>
+</section>
+
 <!-- ===================== GAME ===================== -->
 <section class="screen" id="screen-game">
   <div class="game-wrap">
@@ -211,22 +226,29 @@
   <div class="help-card">
     <h2>How to play</h2>
     <ol>
-      <li>Pick a tower or hero from the right panel, then click the grass to place it. You can't build on the track.</li>
-      <li>Press <b>Start Round</b> to send in the legion. Clear every round to finish the level.</li>
-      <li>Every trooper that reaches the bastion costs you lives. Kills earn cash for more towers.</li>
+      <li>Every mission starts on the <b>squad screen</b>: pick which heroes you're taking before you
+          deploy. Only the ones you choose show up in the shop, so the map screen stays readable.</li>
+      <li>Pick a unit or hero from the right panel, then click the ground to place it. You can't build on the road.</li>
+      <li>Press <b>Start Round</b> to send in the legion. Clear every round to finish the mission.</li>
+      <li>Every trooper that reaches the bastion costs you lives. Kills earn cash — and <b>every round
+          you clear pays a bonus that grows as the mission goes on</b>, so the late rounds are where
+          the big upgrades get paid for.</li>
       <li>Hero slots grow with the campaign: <b>one</b> in the first city, <b>two</b> in the second,
-          <b>three</b> from the third on. Towers are the backbone; heroes are support.</li>
+          <b>three</b> from the third on. Units are the backbone; heroes are support.</li>
       <li>A hero's ultimate only unlocks once it is <b>fully upgraded</b>, and most get a single use
           per round. Lighter kits like Streak and Nocturne unlock earlier and get two.</li>
-      <li>Later missions open a <b>second road</b> — the legion arrives from two directions at once.</li>
-      <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it.</li>
-      <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other heroes.</li>
-      <li><b>Verdant</b>, <b>Streak</b> and <b>Paragon</b> have clickable ultimates — click them on the
-          map to fire. Each gets 1 use per round, 2 once upgraded, and 3 at max level.</li>
-      <li>From level 3 the legion sends <b>counter escorts</b>: some suppress heroes that carry a
-          matching tag while they're nearby, others are flatly immune to a damage type. Check the
-          level card before you pick your two heroes — and remember towers are never affected.</li>
-      <li>Beat all <b>10 levels</b> across four maps to finish the campaign.</li>
+      <li>The <b>Relay Mast</b> builds nothing of its own — it widens the range and speeds up the fire
+          of every unit standing inside its ring.</li>
+      <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it. Upgrades are flat: <b>500 / 1500</b>
+          for a unit, <b>1000 / 2500</b> for a hero.</li>
+      <li>Stars pay <b>gems</b>, and a whole city taken at 3★ pays a bounty. Spend gems on cases to
+          unlock the rest of the roster.</li>
+      <li>Most heroes have a clickable ultimate — click them on the map, or press <b>Q</b>, to fire.</li>
+      <li>From mission 3 the legion sends <b>counter escorts</b>: some suppress heroes that carry a
+          matching tag while they're nearby, others are flatly immune to a damage type. The squad
+          screen marks the tags an escort shuts down in red — and units are never affected.</li>
+      <li>Take all three stars on every mission in a city to open the next one. <b>Six cities,
+          30 missions.</b></li>
     </ol>
     <button class="btn btn-primary" id="btn-help-close">Got it</button>
   </div>

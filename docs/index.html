@@ -411,6 +411,63 @@ button{font-family:inherit}
 .res-stars span:nth-child(3).show{animation-delay:.32s}
 @keyframes starPop{to{transform:scale(1); opacity:1}}
 
+/* ============ LOADOUT ============ */
+#screen-loadout{flex-direction:column; padding:22px 30px 0; overflow:hidden}
+.loadout-grid{
+  flex:1; min-height:0; overflow-y:auto;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+  gap:12px; align-content:start; padding-bottom:16px;
+}
+.lo-card{
+  position:relative; text-align:left; cursor:pointer; color:var(--txt);
+  padding:10px; border-radius:14px; border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  transition:transform .12s ease, border-color .12s ease;
+}
+.lo-card:hover:not(.locked){transform:translateY(-3px)}
+.lo-card.picked{border-color:var(--r); box-shadow:0 0 0 2px var(--r), 0 0 22px -6px var(--r)}
+.lo-card.locked{opacity:.35; cursor:not-allowed; filter:grayscale(.8)}
+.lo-card.full:not(.picked){opacity:.45}
+.lo-card canvas{margin-top:2px}
+.lo-card .lo-name{font-size:13.5px; font-weight:900}
+.lo-card .lo-role{font-size:10.5px; color:var(--muted); text-align:center}
+.lo-card .lo-ult{
+  font-size:10px; font-weight:800; letter-spacing:.03em; margin-top:4px;
+  color:var(--r); opacity:.9; text-align:center;
+}
+.lo-card .lo-tags{display:flex; gap:4px; flex-wrap:wrap; justify-content:center; margin-top:5px}
+.lo-card .lo-tags span{
+  font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 6px; border-radius:999px; background:rgba(255,255,255,.1); color:#c3cdf0;
+}
+.lo-card .lo-rar{
+  position:absolute; top:6px; left:6px; width:8px; height:8px; border-radius:2px;
+  background:var(--r); box-shadow:0 0 8px var(--r);
+}
+.lo-card .lo-tick{
+  position:absolute; top:5px; right:7px; font-size:13px; font-weight:900; color:var(--r);
+}
+.loadout-bar{
+  display:flex; align-items:center; gap:14px; padding:12px 0 max(14px,env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+}
+.loadout-picked{flex:1; display:flex; gap:8px; min-height:44px; align-items:center; flex-wrap:wrap}
+.loadout-slot{
+  display:flex; align-items:center; gap:7px; padding:5px 12px 5px 6px; border-radius:999px;
+  background:rgba(255,255,255,.07); border:1px solid var(--line); font-size:12.5px; font-weight:800;
+}
+.loadout-slot.empty{color:var(--muted); font-weight:700; padding-left:14px; border-style:dashed}
+@media (max-width:640px){
+  #screen-loadout{padding:16px 14px 0}
+  .loadout-grid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:8px}
+  .lo-card{padding:7px}
+  .lo-card .lo-name{font-size:12px}
+  .lo-card .lo-tags{display:none}
+  .loadout-bar{flex-direction:column; align-items:stretch; gap:8px}
+  .loadout-bar .btn{width:100%}
+}
+
 /* ============ GAME ============ */
 #screen-game{flex-direction:column}
 .game-wrap{display:flex; width:100%; height:100%; gap:0}
@@ -1101,6 +1158,21 @@ body{ user-select:none; -webkit-user-select:none; }
   <div class="level-grid" id="level-grid"><!-- built by JS --></div>
 </section>
 
+<!-- ===================== LOADOUT ===================== -->
+<section class="screen" id="screen-loadout">
+  <header class="sub-head">
+    <button class="btn small" id="btn-loadout-back">&larr; Missions</button>
+    <h2 id="lo-title">Choose your squad</h2>
+    <span class="progress-chip" id="lo-count">0 / 1 picked</span>
+  </header>
+  <p class="chapter-blurb" id="lo-sub"></p>
+  <div class="loadout-grid" id="loadout-grid"><!-- built by JS --></div>
+  <div class="loadout-bar">
+    <div class="loadout-picked" id="lo-picked"></div>
+    <button class="btn btn-primary big" id="btn-deploy">Deploy</button>
+  </div>
+</section>
+
 <!-- ===================== GAME ===================== -->
 <section class="screen" id="screen-game">
   <div class="game-wrap">
@@ -1211,22 +1283,29 @@ body{ user-select:none; -webkit-user-select:none; }
   <div class="help-card">
     <h2>How to play</h2>
     <ol>
-      <li>Pick a tower or hero from the right panel, then click the grass to place it. You can't build on the track.</li>
-      <li>Press <b>Start Round</b> to send in the legion. Clear every round to finish the level.</li>
-      <li>Every trooper that reaches the bastion costs you lives. Kills earn cash for more towers.</li>
+      <li>Every mission starts on the <b>squad screen</b>: pick which heroes you're taking before you
+          deploy. Only the ones you choose show up in the shop, so the map screen stays readable.</li>
+      <li>Pick a unit or hero from the right panel, then click the ground to place it. You can't build on the road.</li>
+      <li>Press <b>Start Round</b> to send in the legion. Clear every round to finish the mission.</li>
+      <li>Every trooper that reaches the bastion costs you lives. Kills earn cash — and <b>every round
+          you clear pays a bonus that grows as the mission goes on</b>, so the late rounds are where
+          the big upgrades get paid for.</li>
       <li>Hero slots grow with the campaign: <b>one</b> in the first city, <b>two</b> in the second,
-          <b>three</b> from the third on. Towers are the backbone; heroes are support.</li>
+          <b>three</b> from the third on. Units are the backbone; heroes are support.</li>
       <li>A hero's ultimate only unlocks once it is <b>fully upgraded</b>, and most get a single use
           per round. Lighter kits like Streak and Nocturne unlock earlier and get two.</li>
-      <li>Later missions open a <b>second road</b> — the legion arrives from two directions at once.</li>
-      <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it.</li>
-      <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other heroes.</li>
-      <li><b>Verdant</b>, <b>Streak</b> and <b>Paragon</b> have clickable ultimates — click them on the
-          map to fire. Each gets 1 use per round, 2 once upgraded, and 3 at max level.</li>
-      <li>From level 3 the legion sends <b>counter escorts</b>: some suppress heroes that carry a
-          matching tag while they're nearby, others are flatly immune to a damage type. Check the
-          level card before you pick your two heroes — and remember towers are never affected.</li>
-      <li>Beat all <b>10 levels</b> across four maps to finish the campaign.</li>
+      <li>The <b>Relay Mast</b> builds nothing of its own — it widens the range and speeds up the fire
+          of every unit standing inside its ring.</li>
+      <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it. Upgrades are flat: <b>500 / 1500</b>
+          for a unit, <b>1000 / 2500</b> for a hero.</li>
+      <li>Stars pay <b>gems</b>, and a whole city taken at 3★ pays a bounty. Spend gems on cases to
+          unlock the rest of the roster.</li>
+      <li>Most heroes have a clickable ultimate — click them on the map, or press <b>Q</b>, to fire.</li>
+      <li>From mission 3 the legion sends <b>counter escorts</b>: some suppress heroes that carry a
+          matching tag while they're nearby, others are flatly immune to a damage type. The squad
+          screen marks the tags an escort shuts down in red — and units are never affected.</li>
+      <li>Take all three stars on every mission in a city to open the next one. <b>Six cities,
+          30 missions.</b></li>
     </ol>
     <button class="btn btn-primary" id="btn-help-close">Got it</button>
   </div>
@@ -1574,11 +1653,9 @@ const MAPS = [];
 CHAPTERS.forEach((ch, ci) => {
   for (let i = 0; i < MISSIONS_PER_CHAPTER; i++) {
     const seed = 9000 + ci * 137 + i * 29;
-    /* from the second city on, the later missions open a second road, so the
-       legion arrives from two directions and one strongpoint is not enough */
-    const twoLanes = ci >= 1 && i >= 2;
+    /* one road per map — a second entrance read as clutter rather than a
+       decision, so the pressure comes from the waves instead */
     const routes = [generateRoute(seed)];
-    if (twoLanes) routes.push(generateRoute(seed + 5171));
     MAPS.push({
       id: `${ch.id}-${i + 1}`,
       name: `${ch.name} ${['I', 'II', 'III', 'IV', 'V'][i]}`,
@@ -1774,6 +1851,18 @@ CHAPTERS.forEach((ch, ci) => {
 const LEVEL_COUNT = LEVELS.length;
 const LEVEL_BY_N = Object.fromEntries(LEVELS.map((l) => [l.n, l]));
 
+/**
+ * What clearing a round pays. It starts small and grows steeply, so the back
+ * half of a mission is where upgrades become affordable — early rounds are
+ * about surviving on what you have.
+ */
+function roundBonus(roundNo, totalRounds, missionNo) {
+  const p = totalRounds > 1 ? (roundNo - 1) / (totalRounds - 1) : 1;
+  const base = 120 + missionNo * 12;
+  const ramp = Math.pow(p, 1.6) * (900 + missionNo * 45);
+  return Math.round(base + ramp);
+}
+
 /** gems paid out for finishing a mission (first clear pays double) */
 function levelReward(lv) { return 16 + lv.n * 3; }
 
@@ -1935,6 +2024,87 @@ const Art = {
     ctx.restore();
     ctx.fillStyle = lvl > 1 ? '#ffcf5c' : '#8a92ad';
     ctx.beginPath(); ctx.arc(-4, 2, 6, 0, TAU); ctx.fill();
+  },
+
+  /* --- more base units --- */
+  precinct(ctx, lvl, t) {
+    Art.base(ctx, '#4a6fa8', '#1f3358');
+    /* riot shield */
+    ctx.fillStyle = '#2b3d5c';
+    roundRect(ctx, 6, -10, 7, 20, 3); ctx.fill();
+    ctx.fillStyle = '#8fb2e0';
+    roundRect(ctx, 7.5, -8, 4, 16, 2); ctx.fill();
+    /* sidearm */
+    ctx.fillStyle = '#161a24';
+    roundRect(ctx, 2, -3.5, 18, 6, 2.5); ctx.fill();
+    ctx.fillStyle = lvl > 1 ? '#ffcf5c' : '#6e8ec0';
+    ctx.beginPath(); ctx.arc(-3, 0, 6.5, 0, TAU); ctx.fill();
+    /* the light bar */
+    const flash = Math.sin(t * 8) > 0;
+    ctx.fillStyle = flash ? '#ff5a6e' : '#3a4d70';
+    roundRect(ctx, -8, -15, 7, 4, 1.5); ctx.fill();
+    ctx.fillStyle = flash ? '#3a4d70' : '#5bc8ff';
+    roundRect(ctx, 1, -15, 7, 4, 1.5); ctx.fill();
+  },
+  cryo(ctx, lvl, t) {
+    Art.base(ctx, '#a8e4f0', '#2f6a8c');
+    /* coolant tanks */
+    ctx.fillStyle = '#1d3a4c';
+    roundRect(ctx, -11, -12, 8, 16, 3); ctx.fill();
+    roundRect(ctx, 3, -12, 8, 16, 3); ctx.fill();
+    ctx.fillStyle = `rgba(180,240,255,${.6 + Math.sin(t * 3) * .3})`;
+    roundRect(ctx, -9.5, -10, 5, 12, 2); ctx.fill();
+    roundRect(ctx, 4.5, -10, 5, 12, 2); ctx.fill();
+    /* emitter */
+    ctx.fillStyle = '#dff6ff';
+    roundRect(ctx, -4, -20, 8, 9, 3); ctx.fill();
+    ctx.strokeStyle = `rgba(220,250,255,${.5 + Math.sin(t * 5) * .4})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, -16, 12 + Math.sin(t * 2) * 2, -2.4, -.7); ctx.stroke();
+    if (lvl > 2) {
+      ctx.fillStyle = '#ffffff';
+      starPath(ctx, 0, -26, 6, 4, 1.8, t); ctx.fill();
+    }
+  },
+  siege(ctx, lvl, t) {
+    /* tracks */
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 10, 22, 8, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#20242f';
+    roundRect(ctx, -19, -3, 38, 15, 6); ctx.fill();
+    ctx.fillStyle = '#39414f';
+    for (let i = -2; i <= 2; i++) roundRect(ctx, i * 7 - 2.5, 0, 5, 9, 2), ctx.fill();
+    /* hull */
+    const g = ctx.createLinearGradient(0, -14, 0, 4);
+    g.addColorStop(0, '#6c7789'); g.addColorStop(1, '#333a48');
+    ctx.fillStyle = g;
+    roundRect(ctx, -15, -13, 30, 15, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1.6; ctx.stroke();
+    /* the gun */
+    ctx.fillStyle = '#1b1f29';
+    roundRect(ctx, 0, -8, 30, 8, 3); ctx.fill();
+    ctx.fillStyle = '#4c556b';
+    roundRect(ctx, 26, -10, 8, 12, 3); ctx.fill();
+    ctx.fillStyle = lvl > 1 ? '#ffcf5c' : '#8a92ad';
+    ctx.beginPath(); ctx.arc(-4, -6, 5.5, 0, TAU); ctx.fill();
+  },
+  relay(ctx, lvl, t) {
+    Art.base(ctx, '#8a7fd0', '#3b3168');
+    /* mast */
+    ctx.strokeStyle = '#c9c2f0'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, -22); ctx.stroke();
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 3; i++) {
+      const y = -6 - i * 6;
+      ctx.beginPath(); ctx.moveTo(-6 + i, y); ctx.lineTo(6 - i, y); ctx.stroke();
+    }
+    /* the pulse it sends out */
+    const p = (t * .8) % 1;
+    ctx.strokeStyle = `rgba(190,170,255,${.7 * (1 - p)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, -22, 6 + p * 16, 0, TAU); ctx.stroke();
+    ctx.fillStyle = lvl > 2 ? '#ffd977' : '#e0d8ff';
+    ctx.beginPath(); ctx.arc(0, -22, 3.4, 0, TAU); ctx.fill();
   },
 
   /* --- heroes --- */
@@ -2898,29 +3068,174 @@ const Art = {
     }
     ctx.restore();
   },
+  adamant(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.9) * 2;
+    ctx.save(); ctx.translate(0, bob);
+
+    /* he hangs in a charged field */
+    const halo = ctx.createRadialGradient(0, 0, 4, 0, 0, 30);
+    halo.addColorStop(0, `rgba(255,215,90,${.2 + Math.sin(t * 4) * .1})`);
+    halo.addColorStop(1, 'rgba(255,215,90,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.fill();
+
+    /* black cape */
+    ctx.fillStyle = '#14141c';
+    ctx.beginPath();
+    ctx.moveTo(-7, -11);
+    ctx.quadraticCurveTo(-21 - Math.sin(t * 2) * 4, 2, -13, 16);
+    ctx.lineTo(13, 16);
+    ctx.quadraticCurveTo(21 + Math.sin(t * 2) * 4, 2, 7, -11);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#1b1b24';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3a3a48'); g.addColorStop(1, '#101017');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -11); ctx.lineTo(9, -11);
+    ctx.quadraticCurveTo(11.5, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11.5, -2, -9, -11);
+    ctx.fill();
+
+    /* the bolt on his chest */
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath();
+    ctx.moveTo(1.5, -11); ctx.lineTo(-4, -3.5); ctx.lineTo(-.5, -3.5);
+    ctx.lineTo(-3, 4); ctx.lineTo(4.5, -5.5); ctx.lineTo(1, -5.5);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#e8c9a8';
+    ctx.beginPath(); ctx.arc(0, -15, 6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#14141c';
+    ctx.beginPath(); ctx.arc(0, -17.5, 6.2, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillStyle = `rgba(255,225,120,${.6 + Math.sin(t * 5) * .4})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.3, -15.4, 1.8, 1.1, 0, 0, TAU);
+    ctx.ellipse(2.3, -15.4, 1.8, 1.1, 0, 0, TAU);
+    ctx.fill();
+
+    /* arcs snapping off his fists */
+    ctx.strokeStyle = `rgba(255,225,120,${.5 + Math.sin(t * 15) * .4})`;
+    ctx.lineWidth = 1.6;
+    for (const s2 of [-1, 1]) {
+      const a = t * 7 * s2;
+      ctx.beginPath();
+      ctx.moveTo(s2 * 12, 0);
+      ctx.lineTo(s2 * 15 + Math.cos(a) * 3, 5 + Math.sin(a) * 3);
+      ctx.lineTo(s2 * 13, 10);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  breaker(ctx, lvl, t) {
+    const heave = Math.sin(t * 1.4) * 1.6;
+    ctx.save(); ctx.translate(0, heave * .4);
+    ctx.fillStyle = 'rgba(0,0,0,.36)';
+    ctx.beginPath(); ctx.ellipse(0, 16, 22, 7, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#3b3550';
+    roundRect(ctx, -10, 5, 9, 11, 3); ctx.fill();
+    roundRect(ctx, 1, 5, 9, 11, 3); ctx.fill();
+
+    /* a slab of a body */
+    const g = ctx.createLinearGradient(0, -15, 0, 9);
+    g.addColorStop(0, '#b8b0c8'); g.addColorStop(1, '#4a4460');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-14, -8);
+    ctx.quadraticCurveTo(-16, 6, -10, 8);
+    ctx.lineTo(10, 8);
+    ctx.quadraticCurveTo(16, 6, 14, -8);
+    ctx.quadraticCurveTo(8, -14, 0, -13);
+    ctx.quadraticCurveTo(-8, -14, -14, -8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.6; ctx.stroke();
+
+    /* bone spurs down the arms and shoulders */
+    ctx.fillStyle = '#efe9f5';
+    const spur = (x, y, h2, lean) => {
+      ctx.beginPath();
+      ctx.moveTo(x - 2.4, y); ctx.lineTo(x + lean, y - h2); ctx.lineTo(x + 2.4, y);
+      ctx.closePath(); ctx.fill();
+    };
+    spur(-11, -8, 9, -3); spur(-6, -12, 7, -2);
+    spur(11, -8, 9, 3); spur(6, -12, 7, 2);
+    spur(-15, 2, 6, -4); spur(15, 2, 6, 4);
+
+    /* arms */
+    ctx.fillStyle = '#8f87a8';
+    ctx.save(); ctx.translate(-15, -3); ctx.rotate(-.2 + heave * .05);
+    roundRect(ctx, -5, 0, 10, 17, 5); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(15, -3); ctx.rotate(.2 - heave * .05);
+    roundRect(ctx, -5, 0, 10, 17, 5); ctx.fill(); ctx.restore();
+
+    /* small hard head */
+    ctx.fillStyle = '#a89fbf';
+    roundRect(ctx, -6.5, -22, 13, 11, 4.5); ctx.fill();
+    ctx.fillStyle = '#efe9f5';
+    spur(-4, -22, 6, -2); spur(4, -22, 6, 2);
+    ctx.fillStyle = `rgba(255,90,90,${.65 + Math.sin(t * 4) * .35})`;
+    roundRect(ctx, -4.5, -18.5, 3.4, 2, .9); ctx.fill();
+    roundRect(ctx, 1.1, -18.5, 3.4, 2, .9); ctx.fill();
+
+    if (lvl > 2) {
+      ctx.strokeStyle = `rgba(220,200,255,${.3 + Math.sin(t * 5) * .2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, -2, 26, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
 const TOWERS = [
   {
-    id: 'sentry', name: 'Dart Sentry', cost: 200, art: Art.sentry, rotates: true,
+    id: 'sentry', name: 'Auto-Sentry', cost: 200, art: Art.sentry, rotates: true,
     range: 132, cooldown: .58, damage: 1, pierce: 2, projSpeed: 560, kind: 'dart',
-    color: '#8fa3d8', desc: 'Reliable single-target darts.',
+    color: '#8fa3d8', desc: 'City-issue autoturret. Cheap, reliable, everywhere.',
   },
   {
-    id: 'tack', name: 'Tack Ring', cost: 320, art: Art.tack,
+    id: 'precinct', name: 'Precinct Squad', cost: 300, art: Art.precinct, rotates: true,
+    range: 118, cooldown: .26, damage: 1, pierce: 1, projSpeed: 620, kind: 'dart',
+    color: '#6e8ec0', desc: 'Two officers behind a riot shield. Fast, light, close range.',
+  },
+  {
+    id: 'tack', name: 'Shrapnel Ring', cost: 320, art: Art.tack,
     range: 96, cooldown: 1.05, damage: 1, pierce: 1, projSpeed: 330, kind: 'burst', shots: 8,
-    color: '#d79a54', desc: 'Fires eight tacks in a ring. Great on corners.',
+    color: '#d79a54', desc: 'Throws fragments in every direction. Best on a tight corner.',
   },
   {
-    id: 'frost', name: 'Frost Totem', cost: 380, art: Art.frost,
+    id: 'frost', name: 'Frost Pylon', cost: 380, art: Art.frost,
     range: 112, cooldown: 1.7, damage: 1, kind: 'frost', slow: .45, slowTime: 2.2,
-    color: '#9fe4ff', desc: 'Chilling pulse slows every balloon in range.',
+    color: '#9fe4ff', desc: 'Chilling pulse. Slows everything caught in it.',
   },
   {
-    id: 'bomb', name: 'Bomb Lobber', cost: 480, art: Art.bomb, rotates: true,
+    id: 'mortar', name: 'Mortar Post', cost: 480, art: Art.bomb, rotates: true,
     range: 158, cooldown: 1.5, damage: 2, projSpeed: 300, kind: 'bomb', blast: 54,
-    color: '#8a92ad', desc: 'Lobs explosives that damage a whole cluster.',
+    color: '#8a92ad', desc: 'Lobs shells that catch a whole cluster.',
+  },
+  {
+    id: 'cryo', name: 'Cryo Battery', cost: 620, art: Art.cryo,
+    range: 150, cooldown: 2.4, damage: 2, kind: 'frost', slow: .22, slowTime: 3.4,
+    color: '#a8e4f0',
+    desc: 'Frostline hardware. Wide, deep freeze — the heaviest slow in the game.',
+  },
+  {
+    id: 'relay', name: 'Relay Mast', cost: 700, art: Art.relay,
+    range: 150, cooldown: 99, damage: 0, kind: 'support',
+    buff: { range: .22, rate: .78 },
+    color: '#b0a4ff',
+    desc: 'Fires nothing. Everything else inside its ring gains range and shoots faster.',
+  },
+  {
+    id: 'siege', name: 'Siege Tank', cost: 950, art: Art.siege, rotates: true,
+    range: 210, cooldown: 2.6, damage: 8, projSpeed: 420, kind: 'bomb', blast: 78,
+    color: '#6c7789',
+    desc: 'One enormous shell at a time. Slow to reload, ruinous on arrival.',
   },
 ];
 
@@ -3187,6 +3502,38 @@ const HEROES = [
     },
     desc: 'Quick baton work at close range. Expose finds the seams in every suit of armour on the '
         + 'field, so shields stop working and everything takes an extra point per hit.',
+  },
+  {
+    id: 'adamant', name: 'Adamant', role: 'Storm Tyrant', art: Art.adamant,
+    rarity: 'Legendary', rarityColor: '#ffd23f', glow: 'rgba(255,210,63,.5)',
+    range: 190, cooldown: .9, damage: 4, kind: 'chain', chains: 5,
+    color: '#ffd23f', tags: ['electric', 'storm'],
+    ability: {
+      kind: 'judgement',
+      name: 'Judgement',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [3, 4, 5],
+      hint: 'Click Adamant to pass sentence',
+    },
+    desc: 'An old god with no patience: heavy forked lightning on a short cycle. Judgement holds '
+        + 'the whole field in place under a standing storm and burns it down.',
+  },
+  {
+    id: 'breaker', name: 'Breaker', role: 'Engine of Ruin', art: Art.breaker,
+    rarity: 'Legendary', rarityColor: '#cfc4e8', glow: 'rgba(200,190,235,.45)',
+    range: 104, cooldown: 1.25, damage: 9, kind: 'smash',
+    color: '#b8b0c8', tags: ['kinetic'],
+    ability: {
+      kind: 'rampage',
+      name: 'Rampage',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [6, 8, 10],
+      hint: 'Click Breaker to let it off the leash',
+    },
+    desc: 'Hits harder than anything else in the roster and cannot reach past its own arms. '
+        + 'Rampage doubles its reach and swings, and every kill feeds the next.',
   },
 ];
 
@@ -3832,6 +4179,18 @@ const Sfx = {
     this.noise({ dur: .35, gain: .16, type: 'bandpass', freq: 3000, freqTo: 900, q: 2.4, attack: .002 });
   },
 
+  judgement() {
+    this.tone({ freq: 60, to: 40, dur: 1.6, type: 'sine', gain: .2, attack: .02, hold: .5 });
+    this.noise({ dur: .3, gain: .3, type: 'highpass', freq: 2000, attack: .001 });
+    [1400, 900, 600].forEach((f, i) =>
+      this.tone({ freq: f, to: f * .4, dur: .5, type: 'sawtooth', gain: .05, delay: i * .12 }));
+  },
+  rampage() {
+    this.tone({ freq: 90, to: 46, dur: .8, type: 'square', gain: .16, attack: .004, hold: .2 });
+    this.noise({ dur: .8, gain: .18, type: 'lowpass', freq: 1400, freqTo: 200, attack: .004, hold: .15 });
+    this.tone({ freq: 220, to: 120, dur: .9, type: 'sawtooth', gain: .06, delay: .1, attack: .02 });
+  },
+
   /** can't afford it / can't do that */
   deny() {
     this.tone({ freq: 225, to: 155, dur: .12, type: 'square', gain: .05, attack: .002 });
@@ -4280,26 +4639,36 @@ class Tower {
     this.charges = this.maxCharges;
     this.ultAnim = 0;
     this.overdrive = 0;      // Streak's supersonic window
+    this.rampage = 0;        // Breaker off the leash
+    this.rampageKills = 0;
     this.disabled = 0;       // knocked offline by a boss power
   }
 
   get mods() { return levelMods(this.level); }
   get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
   get ultReady() { return !!this.def.ability && this.charges > 0; }
-  get range() { return this.def.range * this.mods.range; }
   get rate() { return this.def.cooldown * this.mods.rate; }
   get damage() { return this.def.damage + this.mods.damage; }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
+  /** a Relay Mast in range widens the reach and shortens the cycle */
+  get range() {
+    const rampage = this.rampage > 0 ? 2 : 1;
+    return this.def.range * this.mods.range * (this.buffRange || 1) * rampage;
+  }
   /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
   firingRateIn(game) {
     let r = this.overdrive > 0 ? this.rate * .17 : this.rate;
     if (game && game.rally > 0) r *= .5;
+    if (this.buffRate) r *= this.buffRate;
+    /* each kill during a Rampage shortens the next swing */
+    if (this.rampage > 0) r *= Math.max(.28, .5 - this.rampageKills * .02);
     return r;
   }
 
   update(dt, game) {
     this.placeAnim = Math.min(1, this.placeAnim + dt * 3.2);
     if (this.ultAnim > 0) this.ultAnim = Math.max(0, this.ultAnim - dt);
+    if (this.rampage > 0) this.rampage = Math.max(0, this.rampage - dt);
     if (this.overdrive > 0) {
       this.overdrive = Math.max(0, this.overdrive - dt);
       /* he blurs through his own after-images while it lasts */
@@ -4328,6 +4697,8 @@ class Tower {
       this.angle += diff * Math.min(1, dt * 12);
       this.facing = Math.cos(want) < 0 ? -1 : 1;
     }
+
+    if (this.def.kind === 'support') return;
 
     if (this.cd <= 0) {
       const kind = this.def.kind;
@@ -4458,7 +4829,9 @@ class Tower {
         for (const b of game.enemies) {
           if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
           b.d = Math.max(0, b.d - 18);
+          const was = b.dead;
           game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
+          if (!was && b.dead && this.rampage > 0) this.rampageKills++;
         }
         game.shake = Math.max(game.shake, 5);
         Sfx.smash();
@@ -4649,6 +5022,23 @@ class Tower {
       this.def.art(ctx, this.level, time);
     }
     ctx.restore();
+
+    /* a mast quietly shows what it is covering */
+    if (this.def.kind === 'support') {
+      ctx.save();
+      ctx.strokeStyle = `rgba(176,164,255,${selected ? .55 : .22})`;
+      ctx.fillStyle = `rgba(176,164,255,${selected ? .1 : .045})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, TAU);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    } else if (this.buffRange > 1) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(190,175,255,${.35 + Math.sin(time * 3) * .15})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(this.x, this.y, 21, -1.1, -2.05, true); ctx.stroke();
+      ctx.restore();
+    }
 
     if (selected) {
       ctx.save();
@@ -5161,6 +5551,9 @@ class Game {
     this.webs = [];
     this.strikes = [];
     this.rally = 0;
+    this.judgement = 0;
+    this.judgementDmg = 6;
+    this.judgementTick = 0;
     this.downpour = 0;
     this.downpourDmg = 2;
     this.downpourTick = 0;
@@ -5843,6 +6236,27 @@ class Game {
         break;
       }
 
+      case 'judgement': {
+        /* a standing storm: everything pinned and struck, repeatedly */
+        this.judgement = Math.max(this.judgement, ab.duration[t.level - 1]);
+        this.judgementDmg = 4 + t.level * 2;
+        burst('#ffd23f', 34);
+        this.flash = Math.max(this.flash, .4);
+        this.floatText(t.x, t.y - 70, 'JUDGEMENT', '#ffe27a', 1.8, 20);
+        Sfx.judgement();
+        break;
+      }
+
+      case 'rampage': {
+        t.rampage = ab.duration[t.level - 1];
+        t.rampageKills = 0;
+        burst('#cfc4e8', 32);
+        this.shake = Math.max(this.shake, 12);
+        this.floatText(t.x, t.y - 66, 'RAMPAGE', '#e8dcff', 1.6, 18);
+        Sfx.rampage();
+        break;
+      }
+
       case 'wildcard': {
         /* every hostile draws a card and lives with it */
         let blown = 0, stunned = 0, turned = 0, robbed = 0;
@@ -5917,7 +6331,7 @@ class Game {
 
   finishRound() {
     this.running = false;
-    const bonus = 95 + this.round * 14 + this.levelNo * 10;
+    const bonus = roundBonus(this.round, this.waves.length, this.levelNo);
     this.cash += bonus;
     this.floatText(CANVAS_W / 2, 90, `Round ${this.round} cleared  +$${bonus}`, '#4ade80', 2.2, 22);
     for (let i = 0; i < 12; i++) {
@@ -6061,6 +6475,26 @@ class Game {
         Sfx.bossNull();
         break;
       }
+    }
+  }
+
+  /* ---------------- support masts ---------------- */
+  /** recomputed each step: who is standing inside a Relay Mast's ring */
+  updateBuffs() {
+    const masts = this.towers.filter((t) => t.def.kind === 'support');
+    for (const t of this.towers) {
+      let range = 1, rate = 1;
+      if (t.def.kind !== 'support') {
+        for (const m of masts) {
+          const r = m.def.range * m.mods.range;
+          if (distSq(m.x, m.y, t.x, t.y) > r * r) continue;
+          /* masts do not stack in full — the best one wins, plus a little */
+          range = Math.max(range, 1 + m.def.buff.range * (1 + (m.level - 1) * .25));
+          rate = Math.min(rate, m.def.buff.rate - (m.level - 1) * .05);
+        }
+      }
+      t.buffRange = range;
+      t.buffRate = rate;
     }
   }
 
@@ -6317,12 +6751,28 @@ class Game {
 
     for (const b of this.enemies) if (!b.dead) b.update(dt, this);
     this.updateSuppression();
+    this.updateBuffs();
     for (const t of this.towers) t.update(dt, this);
     for (const p of this.projectiles) if (!p.dead) p.update(dt, this);
     for (const sw of this.saws) if (!sw.dead) sw.update(dt, this);
     for (const ln of this.lances) if (!ln.dead) ln.update(dt, this);
     if (this.rally > 0) this.rally -= dt;
     if (this.exposed > 0) this.exposed -= dt;
+    if (this.judgement > 0) {
+      this.judgement -= dt;
+      this.judgementTick -= dt;
+      for (const e of this.enemies) if (!e.dead) e.chill(0, .25);
+      if (this.judgementTick <= 0) {
+        this.judgementTick = .45;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          this.damage(e, this.judgementDmg, { x: e.x, y: e.y, silent: true, tags: ['electric'] });
+          if (Math.random() < .4) this.spark(e.x, e.y, '#ffe27a', 4);
+        }
+        this.shake = Math.max(this.shake, 4);
+        Sfx.zap();
+      }
+    }
     if (this.downpour > 0) {
       this.downpour -= dt;
       this.downpourTick -= dt;
@@ -6516,6 +6966,25 @@ class Game {
       ctx.restore();
     }
 
+    /* Judgement: the sky itself is the weapon */
+    if (this.judgement > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(255,220,120,${.06 + Math.sin(this.time * 20) * .05})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.strokeStyle = 'rgba(255,230,150,.75)';
+      ctx.lineWidth = 2;
+      const n = this.fx > .75 ? 5 : 3;
+      for (let i = 0; i < n; i++) {
+        const x = ((this.time * 300 + i * 331) % CANVAS_W);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        let y = 0;
+        while (y < CANVAS_H) { y += 70; ctx.lineTo(x + rand(-26, 26), y); }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     /* Downpour: rain across the whole board while it lasts */
     if (this.downpour > 0) {
       ctx.save();
@@ -6580,6 +7049,19 @@ const UI = {
     $('#btn-help-close').onclick = () => { $('#overlay-help').hidden = true; Save.data.seenHelp = true; Save.flush(); };
     $$('[data-back]').forEach((b) => (b.onclick = () => this.show('menu')));
     $('#btn-res-again').onclick = () => { $('#overlay-result').hidden = true; this.startRun(); };
+
+    /* ---- loadout ---- */
+    $('#btn-loadout-back').onclick = () => {
+      Sfx.click();
+      const lv = LEVEL_BY_N[this.loadoutLevel];
+      this.renderLevels(lv ? lv.chapter : undefined);
+      this.show('levels');
+    };
+    $('#btn-deploy').onclick = () => {
+      if (!this.loadout || !this.loadout.length) { Sfx.deny(); return; }
+      Sfx.click();
+      this.startRun(this.loadoutLevel);
+    };
 
     /* ---- collection ---- */
     $('#btn-crate-continue').onclick = () => this.closeCrate();
@@ -6710,10 +7192,149 @@ const UI = {
       card.onclick = () => {
         if (!unlocked) { Sfx.deny(); return; }
         Sfx.click();
-        this.startRun(lv.n);
+        this.openLoadout(lv.n);
       };
       grid.appendChild(card);
     }
+  },
+
+  /* =================== loadout =================== */
+  /* Twenty heroes in the shop rail was noise — the squad is chosen here, before
+     the mission, and only those heroes show up on the map screen. */
+  openLoadout(levelNo) {
+    this.loadoutLevel = levelNo;
+    const lv = LEVEL_BY_N[levelNo];
+    const slots = lv.heroSlots;
+    const owned = HEROES.filter((h) => Save.owns(h.id));
+
+    /* carry the last squad forward, then top up to the slot count so a map that
+       hands out another slot never opens with it empty */
+    const squad = (this.loadout || []).filter((id) => Save.owns(id)).slice(0, slots);
+    for (const h of owned) {
+      if (squad.length >= slots) break;
+      if (!squad.includes(h.id)) squad.push(h.id);
+    }
+    this.loadout = squad;
+
+    $('#lo-title').textContent = lv.name.split(' — ')[1] || lv.name;
+    const escorts = (lv.specials || []).map((s) => SPECIALS[s].short);
+    $('#lo-sub').textContent =
+      `Mission ${lv.mission} of ${CHAPTER_BY_ID[lv.chapter].name} — `
+      + `${slots} hero slot${slots > 1 ? 's' : ''} on this map. `
+      + (escorts.length
+        ? `Counter escorts on the field: ${escorts.join(', ')} — tags they shut down are marked in red.`
+        : 'No counter escorts on this one.');
+
+    this.renderLoadout();
+    this.show('loadout');
+  },
+
+  renderLoadout() {
+    const lv = LEVEL_BY_N[this.loadoutLevel];
+    const slots = lv.heroSlots;
+    const grid = $('#loadout-grid');
+    grid.innerHTML = '';
+
+    /* suppressed tags on this map, so the choice can be an informed one */
+    const jammed = new Set();
+    for (const sid of lv.specials || []) {
+      const sp = SPECIALS[sid];
+      for (const t of (sp.suppress || []).concat(sp.immune || [])) jammed.add(t);
+    }
+
+    for (const def of HEROES) {
+      const owned = Save.owns(def.id);
+      const picked = this.loadout.includes(def.id);
+
+      const card = document.createElement('button');
+      card.className = 'lo-card' + (picked ? ' picked' : '') + (owned ? '' : ' locked');
+      card.style.setProperty('--r', def.rarityColor);
+
+      const icon = document.createElement('canvas');
+      icon.width = 64; icon.height = 64;
+      const c = icon.getContext('2d');
+      c.translate(32, 42); c.scale(1.05, 1.05);
+      def.art(c, 1, 0);
+
+      const rar = document.createElement('i');
+      rar.className = 'lo-rar';
+      card.appendChild(rar);
+      card.appendChild(icon);
+
+      const name = document.createElement('span');
+      name.className = 'lo-name';
+      name.textContent = owned ? def.name : '???';
+      const role = document.createElement('span');
+      role.className = 'lo-role';
+      role.textContent = owned ? def.role : 'Locked — found in cases';
+      card.appendChild(name);
+      card.appendChild(role);
+
+      if (owned && def.ability) {
+        const ult = document.createElement('span');
+        ult.className = 'lo-ult';
+        ult.textContent = def.ability.name || 'Ultimate';
+        card.appendChild(ult);
+      }
+
+      if (owned) {
+        const tags = document.createElement('span');
+        tags.className = 'lo-tags';
+        for (const t of def.tags || []) {
+          const s = document.createElement('span');
+          s.textContent = t;
+          if (jammed.has(t)) { s.style.background = 'rgba(255,90,90,.22)'; s.style.color = '#ffb0b0'; }
+          tags.appendChild(s);
+        }
+        card.appendChild(tags);
+      }
+
+      if (picked) {
+        const tick = document.createElement('i');
+        tick.className = 'lo-tick';
+        tick.textContent = '✓';
+        card.appendChild(tick);
+      }
+
+      card.onclick = () => {
+        if (!owned) { Sfx.deny(); return; }
+        const at = this.loadout.indexOf(def.id);
+        if (at >= 0) this.loadout.splice(at, 1);
+        else if (this.loadout.length >= slots) {
+          /* full — swap out the oldest pick rather than making them untick first */
+          this.loadout.shift();
+          this.loadout.push(def.id);
+        } else this.loadout.push(def.id);
+        Sfx.click();
+        this.renderLoadout();
+      };
+      grid.appendChild(card);
+    }
+
+    $('#lo-count').textContent = `${this.loadout.length} / ${slots} picked`;
+
+    const bar = $('#lo-picked');
+    bar.innerHTML = '';
+    for (let i = 0; i < slots; i++) {
+      const id = this.loadout[i];
+      const slot = document.createElement('div');
+      slot.className = 'loadout-slot' + (id ? '' : ' empty');
+      if (!id) { slot.textContent = 'Empty slot'; bar.appendChild(slot); continue; }
+      const def = HERO_BY_ID[id];
+      const icon = document.createElement('canvas');
+      icon.width = 30; icon.height = 30;
+      const c = icon.getContext('2d');
+      c.translate(15, 21); c.scale(.52, .52);
+      def.art(c, 1, 0);
+      slot.appendChild(icon);
+      slot.appendChild(document.createTextNode(def.name));
+      bar.appendChild(slot);
+    }
+
+    $('#btn-deploy').disabled = this.loadout.length === 0;
+    $('#btn-deploy').textContent = this.loadout.length
+      ? `Deploy ${this.loadout.length === 1 ? HERO_BY_ID[this.loadout[0]].name : this.loadout.length + ' heroes'} →`
+      : 'Pick a hero';
   },
 
   startRun(levelNo) {
@@ -6742,7 +7363,12 @@ const UI = {
     this.shopItems = [];
 
     TOWERS.forEach((def) => towerWrap.appendChild(this.shopItem(def, false)));
-    HEROES.forEach((def) => heroWrap.appendChild(this.shopItem(def, true)));
+    /* only the squad picked on the loadout screen — the rail used to carry the
+       whole roster, which read as twenty options for two slots */
+    const squad = (this.loadout && this.loadout.length)
+      ? this.loadout.map((id) => HERO_BY_ID[id]).filter(Boolean)
+      : HEROES.filter((h) => Save.owns(h.id));
+    squad.forEach((def) => heroWrap.appendChild(this.shopItem(def, true)));
     this.syncShop();
   },
 
@@ -6829,12 +7455,17 @@ const UI = {
     panel.hidden = false;
     $('#ins-name').textContent = t.def.name;
     $('#ins-level').textContent = `Lv ${t.level}`;
+    const support = t.def.kind === 'support';
     const rate = (1 / t.rate).toFixed(1);
-    $('#ins-stats').innerHTML = `
-      <div>Damage <b>${t.damage}</b></div>
-      <div>Range <b>${Math.round(t.range)}</b></div>
-      <div>Rate <b>${rate}/s</b></div>
-      <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`;
+    $('#ins-stats').innerHTML = support
+      ? `<div>Boost <b>+${Math.round(t.def.buff.range * 100)}% range</b></div>
+         <div>Reach <b>${Math.round(t.range)}</b></div>
+         <div>Rate <b>+${Math.round((1 - t.def.buff.rate) * 100)}%</b></div>
+         <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`
+      : `<div>Damage <b>${t.damage}</b></div>
+         <div>Range <b>${Math.round(t.range)}</b></div>
+         <div>Rate <b>${rate}/s</b></div>
+         <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`;
     const warn = $('#ins-warn');
     if (t.suppressed) {
       warn.hidden = false;
@@ -6964,10 +7595,13 @@ const UI = {
     /* offer the next level straight from the result card */
     const again = $('#btn-res-again');
     const hasNext = win && g.levelNo < LEVEL_COUNT;
-    again.textContent = hasNext ? `Level ${g.levelNo + 1} →` : win ? 'Play again' : 'Retry level';
+    again.textContent = hasNext ? `Mission ${g.levelNo + 1} →` : win ? 'Play again' : 'Retry mission';
     again.onclick = () => {
       $('#overlay-result').hidden = true;
-      this.startRun(hasNext ? g.levelNo + 1 : g.levelNo);
+      /* a new mission may hand out another hero slot, so re-pick the squad;
+         a retry keeps the one you already chose */
+      if (hasNext) this.openLoadout(g.levelNo + 1);
+      else this.startRun(g.levelNo);
     };
     $('#btn-res-menu').textContent = 'Missions';
     $('#btn-res-menu').onclick = () => {

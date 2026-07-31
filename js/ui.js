@@ -22,6 +22,19 @@ const UI = {
     $$('[data-back]').forEach((b) => (b.onclick = () => this.show('menu')));
     $('#btn-res-again').onclick = () => { $('#overlay-result').hidden = true; this.startRun(); };
 
+    /* ---- loadout ---- */
+    $('#btn-loadout-back').onclick = () => {
+      Sfx.click();
+      const lv = LEVEL_BY_N[this.loadoutLevel];
+      this.renderLevels(lv ? lv.chapter : undefined);
+      this.show('levels');
+    };
+    $('#btn-deploy').onclick = () => {
+      if (!this.loadout || !this.loadout.length) { Sfx.deny(); return; }
+      Sfx.click();
+      this.startRun(this.loadoutLevel);
+    };
+
     /* ---- collection ---- */
     $('#btn-crate-continue').onclick = () => this.closeCrate();
 
@@ -151,10 +164,149 @@ const UI = {
       card.onclick = () => {
         if (!unlocked) { Sfx.deny(); return; }
         Sfx.click();
-        this.startRun(lv.n);
+        this.openLoadout(lv.n);
       };
       grid.appendChild(card);
     }
+  },
+
+  /* =================== loadout =================== */
+  /* Twenty heroes in the shop rail was noise — the squad is chosen here, before
+     the mission, and only those heroes show up on the map screen. */
+  openLoadout(levelNo) {
+    this.loadoutLevel = levelNo;
+    const lv = LEVEL_BY_N[levelNo];
+    const slots = lv.heroSlots;
+    const owned = HEROES.filter((h) => Save.owns(h.id));
+
+    /* carry the last squad forward, then top up to the slot count so a map that
+       hands out another slot never opens with it empty */
+    const squad = (this.loadout || []).filter((id) => Save.owns(id)).slice(0, slots);
+    for (const h of owned) {
+      if (squad.length >= slots) break;
+      if (!squad.includes(h.id)) squad.push(h.id);
+    }
+    this.loadout = squad;
+
+    $('#lo-title').textContent = lv.name.split(' — ')[1] || lv.name;
+    const escorts = (lv.specials || []).map((s) => SPECIALS[s].short);
+    $('#lo-sub').textContent =
+      `Mission ${lv.mission} of ${CHAPTER_BY_ID[lv.chapter].name} — `
+      + `${slots} hero slot${slots > 1 ? 's' : ''} on this map. `
+      + (escorts.length
+        ? `Counter escorts on the field: ${escorts.join(', ')} — tags they shut down are marked in red.`
+        : 'No counter escorts on this one.');
+
+    this.renderLoadout();
+    this.show('loadout');
+  },
+
+  renderLoadout() {
+    const lv = LEVEL_BY_N[this.loadoutLevel];
+    const slots = lv.heroSlots;
+    const grid = $('#loadout-grid');
+    grid.innerHTML = '';
+
+    /* suppressed tags on this map, so the choice can be an informed one */
+    const jammed = new Set();
+    for (const sid of lv.specials || []) {
+      const sp = SPECIALS[sid];
+      for (const t of (sp.suppress || []).concat(sp.immune || [])) jammed.add(t);
+    }
+
+    for (const def of HEROES) {
+      const owned = Save.owns(def.id);
+      const picked = this.loadout.includes(def.id);
+
+      const card = document.createElement('button');
+      card.className = 'lo-card' + (picked ? ' picked' : '') + (owned ? '' : ' locked');
+      card.style.setProperty('--r', def.rarityColor);
+
+      const icon = document.createElement('canvas');
+      icon.width = 64; icon.height = 64;
+      const c = icon.getContext('2d');
+      c.translate(32, 42); c.scale(1.05, 1.05);
+      def.art(c, 1, 0);
+
+      const rar = document.createElement('i');
+      rar.className = 'lo-rar';
+      card.appendChild(rar);
+      card.appendChild(icon);
+
+      const name = document.createElement('span');
+      name.className = 'lo-name';
+      name.textContent = owned ? def.name : '???';
+      const role = document.createElement('span');
+      role.className = 'lo-role';
+      role.textContent = owned ? def.role : 'Locked — found in cases';
+      card.appendChild(name);
+      card.appendChild(role);
+
+      if (owned && def.ability) {
+        const ult = document.createElement('span');
+        ult.className = 'lo-ult';
+        ult.textContent = def.ability.name || 'Ultimate';
+        card.appendChild(ult);
+      }
+
+      if (owned) {
+        const tags = document.createElement('span');
+        tags.className = 'lo-tags';
+        for (const t of def.tags || []) {
+          const s = document.createElement('span');
+          s.textContent = t;
+          if (jammed.has(t)) { s.style.background = 'rgba(255,90,90,.22)'; s.style.color = '#ffb0b0'; }
+          tags.appendChild(s);
+        }
+        card.appendChild(tags);
+      }
+
+      if (picked) {
+        const tick = document.createElement('i');
+        tick.className = 'lo-tick';
+        tick.textContent = '✓';
+        card.appendChild(tick);
+      }
+
+      card.onclick = () => {
+        if (!owned) { Sfx.deny(); return; }
+        const at = this.loadout.indexOf(def.id);
+        if (at >= 0) this.loadout.splice(at, 1);
+        else if (this.loadout.length >= slots) {
+          /* full — swap out the oldest pick rather than making them untick first */
+          this.loadout.shift();
+          this.loadout.push(def.id);
+        } else this.loadout.push(def.id);
+        Sfx.click();
+        this.renderLoadout();
+      };
+      grid.appendChild(card);
+    }
+
+    $('#lo-count').textContent = `${this.loadout.length} / ${slots} picked`;
+
+    const bar = $('#lo-picked');
+    bar.innerHTML = '';
+    for (let i = 0; i < slots; i++) {
+      const id = this.loadout[i];
+      const slot = document.createElement('div');
+      slot.className = 'loadout-slot' + (id ? '' : ' empty');
+      if (!id) { slot.textContent = 'Empty slot'; bar.appendChild(slot); continue; }
+      const def = HERO_BY_ID[id];
+      const icon = document.createElement('canvas');
+      icon.width = 30; icon.height = 30;
+      const c = icon.getContext('2d');
+      c.translate(15, 21); c.scale(.52, .52);
+      def.art(c, 1, 0);
+      slot.appendChild(icon);
+      slot.appendChild(document.createTextNode(def.name));
+      bar.appendChild(slot);
+    }
+
+    $('#btn-deploy').disabled = this.loadout.length === 0;
+    $('#btn-deploy').textContent = this.loadout.length
+      ? `Deploy ${this.loadout.length === 1 ? HERO_BY_ID[this.loadout[0]].name : this.loadout.length + ' heroes'} →`
+      : 'Pick a hero';
   },
 
   startRun(levelNo) {
@@ -183,7 +335,12 @@ const UI = {
     this.shopItems = [];
 
     TOWERS.forEach((def) => towerWrap.appendChild(this.shopItem(def, false)));
-    HEROES.forEach((def) => heroWrap.appendChild(this.shopItem(def, true)));
+    /* only the squad picked on the loadout screen — the rail used to carry the
+       whole roster, which read as twenty options for two slots */
+    const squad = (this.loadout && this.loadout.length)
+      ? this.loadout.map((id) => HERO_BY_ID[id]).filter(Boolean)
+      : HEROES.filter((h) => Save.owns(h.id));
+    squad.forEach((def) => heroWrap.appendChild(this.shopItem(def, true)));
     this.syncShop();
   },
 
@@ -270,12 +427,17 @@ const UI = {
     panel.hidden = false;
     $('#ins-name').textContent = t.def.name;
     $('#ins-level').textContent = `Lv ${t.level}`;
+    const support = t.def.kind === 'support';
     const rate = (1 / t.rate).toFixed(1);
-    $('#ins-stats').innerHTML = `
-      <div>Damage <b>${t.damage}</b></div>
-      <div>Range <b>${Math.round(t.range)}</b></div>
-      <div>Rate <b>${rate}/s</b></div>
-      <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`;
+    $('#ins-stats').innerHTML = support
+      ? `<div>Boost <b>+${Math.round(t.def.buff.range * 100)}% range</b></div>
+         <div>Reach <b>${Math.round(t.range)}</b></div>
+         <div>Rate <b>+${Math.round((1 - t.def.buff.rate) * 100)}%</b></div>
+         <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`
+      : `<div>Damage <b>${t.damage}</b></div>
+         <div>Range <b>${Math.round(t.range)}</b></div>
+         <div>Rate <b>${rate}/s</b></div>
+         <div>Value <b>$${Math.round(t.spent * .7)}</b></div>`;
     const warn = $('#ins-warn');
     if (t.suppressed) {
       warn.hidden = false;
@@ -405,10 +567,13 @@ const UI = {
     /* offer the next level straight from the result card */
     const again = $('#btn-res-again');
     const hasNext = win && g.levelNo < LEVEL_COUNT;
-    again.textContent = hasNext ? `Level ${g.levelNo + 1} →` : win ? 'Play again' : 'Retry level';
+    again.textContent = hasNext ? `Mission ${g.levelNo + 1} →` : win ? 'Play again' : 'Retry mission';
     again.onclick = () => {
       $('#overlay-result').hidden = true;
-      this.startRun(hasNext ? g.levelNo + 1 : g.levelNo);
+      /* a new mission may hand out another hero slot, so re-pick the squad;
+         a retry keeps the one you already chose */
+      if (hasNext) this.openLoadout(g.levelNo + 1);
+      else this.startRun(g.levelNo);
     };
     $('#btn-res-menu').textContent = 'Missions';
     $('#btn-res-menu').onclick = () => {

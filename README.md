@@ -1,8 +1,8 @@
 # Void Bastion — hero collector demo
 
 A round-based tower-defense campaign that runs in the browser. **Six cities, 30
-missions, 30 maps, 15 collectible heroes**, counter escorts built to shut your
-roster down, and a warlord waiting at the end of every city.
+missions, 30 maps, 20 collectible heroes, 8 base units**, counter escorts built
+to shut your roster down, and a warlord waiting at the end of every city.
 
 **Play it:** open `index.html` in any modern browser. No build step, no server,
 no dependencies, no asset files — every sprite is drawn procedurally on canvas
@@ -10,14 +10,21 @@ and all sound is synthesised with WebAudio.
 
 ## The loop
 
-1. Pick a level from the campaign screen. Levels unlock in order.
-2. Place towers and up to **two heroes** on open ground (not on the route).
-3. Start a round; troopers march the route and cost you lives if they reach the
-   bastion. Kills pay cash.
-4. Clear every round in a level to win it. The clear pays a little; **stars pay
+1. Pick a mission from the campaign screen. Missions unlock in order.
+2. **Choose your squad.** Every mission opens on a loadout screen: the whole
+   roster is laid out with roles, tags and ultimate names, and you pick as many
+   heroes as the mission has slots. Tags that the mission's counter escorts shut
+   down are flagged red on the card, so the pick is informed. Only the heroes you
+   bring appear in the in-game shop.
+3. Place units and your chosen heroes on open ground (not on the route).
+4. Start a round; troopers march the route and cost you lives if they reach the
+   bastion. Kills pay cash, and **finishing a round pays a bonus that ramps** —
+   small early, several times larger by the last rounds, so a mission's back half
+   is where you can actually afford to max something out.
+5. Clear every round in a mission to win it. The clear pays a little; **stars pay
    properly** — 10 / 30 / 80 gems the first time you reach each one, plus a
    250+ bounty for taking every star in a city.
-5. Spend gems on cases: a **Field Case** (220) is mostly Rares, a **Vault Case**
+6. Spend gems on cases: a **Field Case** (220) is mostly Rares, a **Vault Case**
    (750) is where Legendaries actually come from. Both spin a reel that lands on
    what you won. Duplicates refund by rarity. Progress is saved to
    `localStorage`.
@@ -38,9 +45,10 @@ city**, so the campaign asks you to go back and play well, not just play on.
 | **The Emerald Reach** | the cosmos | The Void Sovereign | Null pulse: every hero offline, and reinforcements |
 
 **Hero slots grow with the campaign** — one in the first city, two in the
-second, three from the third on — so the early missions are solved with towers.
-From the second city, later missions open a **second road** and the legion
-arrives from two directions at once.
+second, three from the third on — so the early missions are solved with units,
+and the loadout screen only lets you take as many heroes as the mission allows.
+Every map has **one road**; the pressure comes from the waves on it, not from
+splitting your attention.
 
 **Stars** come from how much of the bastion survived: 3★ needs 90% of your
 lives, 2★ needs 55%, 1★ is any clear. Every mission's route is generated from
@@ -59,8 +67,9 @@ take sustained fire and spill a squad of Shockers when they break.
 
 From level 3 the legion sends escorts built to shut specific heroes down. Each
 carries a **tag** it works against, and every hero carries tags of its own — so
-the two heroes you bring are a real decision, not a power ranking. **Towers are
-never affected**, so a counter wave is a problem to solve rather than a loss.
+the squad you pick on the loadout screen is a real decision, not a power ranking.
+**Base units are never affected**, so a counter wave is a problem to solve rather
+than a loss.
 
 | Escort | Effect |
 |---|---|
@@ -71,13 +80,14 @@ never affected**, so a counter wave is a problem to solve rather than a loss.
 
 A suppressed hero drains of colour, wears a struck-through ring in the jammer's
 colour, stops firing and can't use its ultimate until the escort is dead or out
-of range. `kinetic` heroes — **Terra** and **Havoc** — are never countered, so
-brute force always has a seat.
+of range. `kinetic` heroes — **Terra**, **Havoc**, **Breaker** — are never
+countered, so brute force always has a seat.
 
 ## Heroes
 
-Only **two may be deployed per mission**, so the roster choice is part of the
-level.
+The squad is chosen **before** the mission on the loadout screen, up to the
+mission's slot count, so the roster choice is a decision you make with the map's
+escorts in front of you rather than a rail of twenty icons mid-fight.
 
 | Hero | Role | Tags | Ability |
 |---|---|---|---|
@@ -96,12 +106,17 @@ level.
 | **Bulwark** | Shield Bearer | kinetic | Ricochet shield + **Rally** |
 | **Valkyra** | Warrior Princess | kinetic, mystic | Close-quarters sweep + **Lasso of Truth** |
 | **Arcanist** | Sorcerer Supreme | mystic | Piercing bolts + **Mirror Portal** |
+| **Quiver** | Marksman | kinetic | Longest-reach heavy arrows + **Full Quiver** |
+| **Tempest** | Weather Witch | storm | A standing cold front + **Downpour** |
+| **Sable** | Infiltrator | kinetic, tech | Fast close-range baton work + **Expose** |
+| **Adamant** | Storm Tyrant | electric, storm | Chained lightning + **Judgement** |
+| **Breaker** | Engine of Ruin | kinetic | Bone-crushing smash + **Rampage** |
 
-Ember is the starter; every other hero comes out of crates.
+Ember is the starter; every other hero comes out of cases.
 
 ### Clickable ultimates
 
-Three heroes have an ability you fire yourself — **click the hero on the map**,
+Most heroes have an ability you fire yourself — **click the hero on the map**,
 press `Q`, or use the green button in the inspect panel.
 
 - **Buzzsaw Construct** (Verdant) — he swells and rolls a giant sawblade the
@@ -129,6 +144,13 @@ press `Q`, or use the green button in the inspect panel.
   backwards.
 - **Mirror Portal** (Arcanist) — folds the route and drops the entire legion up
   to two thirds of the way back.
+- **Judgement** (Adamant) — the sky opens over the whole map and a standing
+  lightning field burns everything on the route for the duration.
+- **Rampage** (Breaker) — he goes berserk: double reach, and every kill makes the
+  next swing faster.
+- **Full Quiver** (Quiver) — empties the quiver in one volley down the route.
+- **Downpour** (Tempest) — drowns the whole field: everything slows to a crawl.
+- **Expose** (Sable) — finds the seams in every suit of armour on the map.
 
 **An ultimate has to be earned.** Most heroes unlock theirs only at **level 3**
 — a 3500 investment — and get a **single use per round**. The lighter kits
@@ -139,9 +161,21 @@ locked.
 Upgrades are flat and steep: **500 then 1500** for a tower, **1000 then 2500**
 for a hero. Maxing one hero is most of a mission's income.
 
-## Towers
+## Base units
 
-Dart Sentry ($200) · Tack Ring ($320) · Frost Totem ($380) · Bomb Lobber ($480).
+Eight of them, named for what they are rather than what they shoot:
+
+| Unit | Cost | What it does |
+|---|---|---|
+| **Auto-Sentry** | $200 | The cheap workhorse — single-target, fast |
+| **Precinct Squad** | $300 | A city patrol: two officers, steady paired fire |
+| **Shrapnel Ring** | $320 | Fires a ring of shrapnel in every direction |
+| **Frost Pylon** | $380 | Chills everything in reach so it walks slower |
+| **Mortar Post** | $480 | Lobs a shell that detonates on impact |
+| **Cryo Battery** | $620 | A deep freeze — heavy slow over a wide radius |
+| **Relay Mast** | $700 | Fires nothing. Gives every unit in its ring more range and a faster trigger |
+| **Siege Tank** | $950 | Slow, enormous shells, tears through armour grades |
+
 Everything upgrades twice (more range, faster fire, extra pierce, +1 damage at
 level 3) and sells back for 70%.
 
@@ -193,7 +227,7 @@ stays smooth.
 | Click a placed unit | Inspect / upgrade / sell |
 | Click a hero with a charge | Fire their ultimate |
 | `Space` | Start next round |
-| `1`–`4` | Quick-select a tower |
+| `1`–`8` | Quick-select a base unit |
 | `Q` | Fire an ultimate |
 | `F` / speed button | 1× → 2× → 3× |
 | `Esc` / right-click | Cancel placement |
@@ -227,13 +261,13 @@ thing, mixed through a compressor so a wave of simultaneous kills can't clip.
 
 ```
 index.html        screens + markup
-css/styles.css    menu, campaign, collection, HUD, crate animations
+css/styles.css    menu, campaign, loadout, collection, HUD, case animations
 js/utils.js       math, colour, path and seeded-RNG helpers
-js/data.js        maps, troop tiers, campaign, tower/hero defs + all artwork
+js/data.js        maps, troop tiers, campaign, unit/hero defs + all artwork
 js/save.js        localStorage profile (gems, heroes, campaign progress)
 js/audio.js       WebAudio synthesis
 js/game.js        simulation and rendering
-js/ui.js          screens, campaign select, shop, crate ceremony
+js/ui.js          screens, campaign select, loadout, shop, case ceremony
 js/main.js        boot + render loop
 ```
 
@@ -241,9 +275,9 @@ Console handle for tinkering: `BB.game`, `BB.Save`, `BB.UI`.
 
 ## Demo scope
 
-30 missions across 6 cities on 30 generated maps, 15 heroes, 4 towers, 5 troop
-grades, 4 counter escorts, 6 city warlords and Dreadnought walkers that get
-tougher as the campaign runs. No meta progression beyond crate unlocks, stars
+30 missions across 6 cities on 30 generated maps, 20 heroes, 8 base units,
+5 troop grades, 4 counter escorts, 6 city warlords and Dreadnought walkers that
+get tougher as the campaign runs. No meta progression beyond case unlocks, stars
 and city unlocks; hero levels reset each run.
 
 Every hero, warlord and city here is an original built for this demo — not a

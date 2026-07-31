@@ -23,7 +23,7 @@ function buildBody() {
   return body.replace(/\s*<script src="[^"]+"><\/script>/g, '').trim();
 }
 
-function buildPage({ standalone }) {
+function buildPage({ standalone, sidecar }) {
   const css = read('css/styles.css');
   const js = SCRIPTS.map(read).join('\n');
   const head = standalone ? `<!DOCTYPE html>
@@ -38,9 +38,9 @@ function buildPage({ standalone }) {
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Void Bastion" />
-<link rel="manifest" href="manifest.webmanifest" />
+${sidecar ? `<link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icon-180.png" />
-<link rel="icon" href="icon-192.png" />
+<link rel="icon" href="icon-192.png" />` : '<!-- single file: no sidecar manifest or icons to link -->'}
 <style>
 html,body{background:#0b1020;color-scheme:dark}
 ${css}
@@ -84,11 +84,14 @@ const single = buildPage({ standalone: true });
 fs.writeFileSync(path.join(ROOT, 'dist/void-bastion.html'), single);
 console.log('dist/void-bastion.html', (single.length / 1024).toFixed(1) + ' KB');
 
+/* the docs/ copy sits next to a manifest and icons, so it links them */
+const app = buildPage({ standalone: true, sidecar: true });
+
 /* ---------- installable web app for GitHub Pages ---------- */
 if (process.argv.includes('--pwa')) {
   const docs = path.join(ROOT, 'docs');
   fs.mkdirSync(docs, { recursive: true });
-  fs.writeFileSync(path.join(docs, 'index.html'), single);
+  fs.writeFileSync(path.join(docs, 'index.html'), app);
   fs.writeFileSync(path.join(docs, '.nojekyll'), '');
 
   fs.writeFileSync(path.join(docs, 'manifest.webmanifest'), JSON.stringify({
