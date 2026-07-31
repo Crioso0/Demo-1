@@ -6,6 +6,8 @@
    Without a floor, a fast melee hero re-knocks the same trooper every swing and
    nothing ever walks past it — the line stops being a race and becomes a wall. */
 const PUSH_CAP = 110;
+/* the live cap for the mission in progress — Brute Squad doubles it */
+let pushCapNow = PUSH_CAP;
 
 /* =============================== VOID LEGION TROOPER =============================== */
 class Enemy {
@@ -111,7 +113,7 @@ class Enemy {
       Ultimates pass `hard` and ignore the floor — that is what makes them
       ultimates. */
   push(dist, hard) {
-    const floor = hard ? 0 : Math.max(0, this.dMax - PUSH_CAP);
+    const floor = hard ? 0 : Math.max(0, this.dMax - pushCapNow);
     const to = Math.max(floor, this.d - dist);
     if (to >= this.d) return 0;
     const moved = this.d - to;
@@ -449,33 +451,48 @@ class Tower {
     this.overdrive = 0;      // Streak's supersonic window
     this.rampage = 0;        // Breaker off the leash
     this.rampageKills = 0;
+    this.frenzy = false;     // Claw's version: damage climbs, reach does not
+    this.stored = 0;         // Panther's suit, drinking the round
     this.disabled = 0;       // knocked offline by a boss power
   }
 
   get mods() { return levelMods(this.level); }
-  get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
+  get maxCharges() {
+    if (!this.def.ability) return 0;
+    const base = this.def.ability.charges[this.level - 1];
+    /* a synergy only adds charges to an ultimate that has already unlocked */
+    return base > 0 ? base + (this.synCharges || 0) : 0;
+  }
   get ultReady() { return !!this.def.ability && this.charges > 0; }
   /** the hero's class card — Vanguard, Specialist or Icon. Base units have none
       and take no class modifiers at all. */
   get cls() { return classOf(this.def); }
   /** how hard this hero's ultimate lands, relative to its printed numbers */
-  get ultScale() { return this.cls ? this.cls.ult : 1; }
-  get rate() { return this.def.cooldown * this.mods.rate * (this.cls ? this.cls.rate : 1); }
+  get ultScale() { return (this.cls ? this.cls.ult : 1) + (this.synUlt || 0); }
+  get rate() {
+    return this.def.cooldown * this.mods.rate * (this.cls ? this.cls.rate : 1)
+      * (this.synRate === undefined ? 1 : this.synRate);
+  }
   get damage() {
-    const base = this.def.damage + this.mods.damage;
-    return this.cls ? Math.max(1, Math.round(base * this.cls.damage)) : base;
+    let base = this.def.damage + this.mods.damage;
+    /* Frenzy stacks: every kill it makes feeds the next swing */
+    if (this.frenzy && this.rampage > 0) base += Math.min(8, this.rampageKills);
+    const k = (this.cls ? this.cls.damage : 1) * (this.synDamage === undefined ? 1 : this.synDamage);
+    return k === 1 ? base : Math.max(1, Math.round(base * k));
   }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
   /** a Relay Mast in range widens the reach and shortens the cycle */
   get range() {
-    const rampage = this.rampage > 0 ? 2 : 1;
+    /* Frenzy is Rampage's engine without the reach — Claw stays short-armed */
+    const rampage = this.rampage > 0 && !this.frenzy ? 2 : 1;
     return this.def.range * this.mods.range * (this.buffRange || 1) * rampage
-      * (this.cls ? this.cls.range : 1);
+      * (this.cls ? this.cls.range : 1) * (this.synRange === undefined ? 1 : this.synRange);
   }
   /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
   firingRateIn(game) {
     let r = this.overdrive > 0 ? this.rate * .17 : this.rate;
     if (game && game.rally > 0) r *= .5;
+    if (game && game.overclock > 0) r *= .34;      // Circuit: triple rate, everything
     if (this.buffRate) r *= this.buffRate;
     /* each kill during a Rampage shortens the next swing */
     if (this.rampage > 0) r *= Math.max(.28, .5 - this.rampageKills * .02);
@@ -484,8 +501,17 @@ class Tower {
 
   update(dt, game) {
     this.placeAnim = Math.min(1, this.placeAnim + dt * 3.2);
+    /* the suit drinks the fight going on around it */
+    if (this.def.absorbs) {
+      if (this.lastImpact === undefined) this.lastImpact = game.impact;
+      this.stored = Math.min(120, this.stored + (game.impact - this.lastImpact) * .3);
+      this.lastImpact = game.impact;
+    }
     if (this.ultAnim > 0) this.ultAnim = Math.max(0, this.ultAnim - dt);
-    if (this.rampage > 0) this.rampage = Math.max(0, this.rampage - dt);
+    if (this.rampage > 0) {
+      this.rampage = Math.max(0, this.rampage - dt);
+      if (this.rampage === 0) this.frenzy = false;
+    }
     if (this.overdrive > 0) {
       this.overdrive = Math.max(0, this.overdrive - dt);
       /* he blurs through his own after-images while it lasts */
@@ -729,6 +755,31 @@ class Tower {
         }
         game.shake = Math.max(game.shake, 6);
         Sfx.slam();
+        break;
+      }
+      case 'wave': {
+        /* a sheet of water thrown down the road: everything in the arc in front
+           of him takes it and gets shoved, but only in front */
+        const face = this.angle;
+        game.rings.push({ x: this.x, y: this.y, r: 12, max: this.range, life: .4,
+          maxLife: .4, color: '#7fe6ff', thick: 10 });
+        for (let i = 0, n = game.n(16); i < n; i++) {
+          const a2 = face + rand(-.7, .7);
+          game.particles.push(new Particle(this.x, this.y - 4, {
+            vx: Math.cos(a2) * rand(120, 300), vy: Math.sin(a2) * rand(120, 300) - 30,
+            life: rand(.3, .6), size: rand(2.5, 5.5),
+            color: pick(['#bff2ff', '#7fe6ff', '#3fd0b0']), kind: 'spark', gravity: 180,
+          }));
+        }
+        for (const b of game.enemies) {
+          if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
+          const a2 = Math.atan2(b.y - this.y, b.x - this.x);
+          if (Math.abs(((a2 - face + Math.PI * 3) % TAU) - Math.PI) > .95) continue;
+          b.push(d.knock === undefined ? 8 : d.knock);
+          b.chill(.6, 1.1);
+          game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
+        }
+        Sfx.wave();
         break;
       }
       case 'smash': {
@@ -1275,15 +1326,20 @@ class Saw {
 /* Paragon's ultimate: a sustained beam that tracks the leading trooper and
    burns everything standing in the line. */
 class Lance {
-  constructor(tower, duration) {
+  /* Paragon's Solar Lance by default; Nova's Binary passes its own colours,
+     width and damage through `o` so the two read as different weapons */
+  constructor(tower, duration, o = {}) {
     this.t = tower;
     this.life = duration;
     this.max = duration;
     this.tick = 0;
     this.angle = tower.angle;
     this.dead = false;
-    this.width = 15 + tower.level * 3;
-    this.damage = 2 + tower.level;
+    this.width = o.width || 15 + tower.level * 3;
+    this.damage = o.damage || 2 + tower.level;
+    this.core = o.color || '#ffbe6e';
+    this.edge = o.edge || '#ff6e3c';
+    this.tags = o.tags || ['solar'];
     this.voice = Sfx.startLance();
     this.end = { x: tower.x, y: tower.y };
   }
@@ -1315,7 +1371,7 @@ class Lance {
         if (e.dead) continue;
         const d2 = pointSegDistSq(e.x, e.y, this.t.x, this.t.y, this.end.x, this.end.y);
         if (d2 > (w + e.r) * (w + e.r)) continue;
-        game.damage(e, this.damage, { source: this.t, x: e.x, y: e.y, silent: true, tags: ['solar'] });
+        game.damage(e, this.damage, { source: this.t, x: e.x, y: e.y, silent: true, tags: this.tags });
         e.ignite(1.2);
         if (Math.random() < .5) game.spark(e.x, e.y, '#ffd9a0', 4);
       }
@@ -1347,8 +1403,8 @@ class Lance {
 
     const grad = ctx.createLinearGradient(this.t.x, this.t.y, this.end.x, this.end.y);
     grad.addColorStop(0, `rgba(255,255,235,${.95 * k})`);
-    grad.addColorStop(.25, `rgba(255,190,110,${.75 * k})`);
-    grad.addColorStop(1, 'rgba(255,110,60,0)');
+    grad.addColorStop(.25, rgba(this.core, .75 * k));
+    grad.addColorStop(1, rgba(this.edge, 0));
 
     /* outer bloom, then the searing core */
     ctx.lineCap = 'round';
@@ -1486,6 +1542,16 @@ class Game {
     this.reset(1);
   }
 
+  /** the squad picked on the loadout screen, and what it earns them */
+  setSquad(ids) {
+    this.squad = (ids || []).filter((id) => HERO_BY_ID[id]);
+    const defs = this.squad.map((id) => HERO_BY_ID[id]);
+    const slots = (this.level && this.level.heroSlots) || 1;
+    this.synergies = defs.length ? synergiesFor(defs, slots) : [];
+    this.syn = synergyEffect(this.synergies);
+    pushCapNow = PUSH_CAP * (1 + (this.syn.pushCap || 0));
+  }
+
   reset(levelNo = this.levelNo || 1) {
     Sfx.stopAll();
     /* phones render the same fight with a lighter particle budget */
@@ -1496,9 +1562,10 @@ class Game {
     if (!this.map || this.map !== this.level.map) this.setMapAndBake(this.level.map);
     this.waves = buildLevelWaves(this.level);
 
+    this.setSquad(this.squad);
     this.time = 0;
     this.lives = this.level.lives;
-    this.cash = this.level.cash;
+    this.cash = this.level.cash + (this.syn.startCash || 0);
     this.round = 0;
     this.runGems = 0;
     this.speed = 1;
@@ -1521,6 +1588,11 @@ class Game {
     this.downpour = 0;
     this.downpourDmg = 2;
     this.downpourTick = 0;
+    this.impact = 0;                  // grades stripped this run, for absorbers
+    this.riptide = 0;                 // Tide flooded the route
+    this.riptideDmg = 2;
+    this.riptideTick = 0;
+    this.overclock = 0;               // Circuit pushed the field into the red
     this.exposed = 0;
     this.streak = 0;
     this.streakT = 0;
@@ -1898,7 +1970,7 @@ class Game {
   tryPlace(x, y) {
     const p = this.placing;
     if (!p) return false;
-    const cost = p.isHero ? 0 : p.def.cost;
+    const cost = p.isHero ? 0 : this.costOf(p.def);
     if (p.isHero && !this.heroesPlaced.has(p.def.id) && this.heroSlotsFree <= 0) {
       this.floatText(x, y - 20,
         `Only ${this.heroSlots} hero${this.heroSlots > 1 ? 'es' : ''} on this mission`,
@@ -1944,7 +2016,7 @@ class Game {
 
   upgrade(t) {
     if (t.level >= MAX_LEVEL) return;
-    const cost = upgradeCost(t.def, t.level);
+    const cost = this.upgradeCostOf(t);
     if (this.cash < cost) { Sfx.deny(); return; }
     this.cash -= cost;
     t.spent += cost;
@@ -2231,6 +2303,135 @@ class Game {
         break;
       }
 
+      case 'riptide': {
+        /* the whole route becomes a river: everything on it wades and takes the
+           current the entire time */
+        this.riptide = Math.max(this.riptide, dur(ab.duration));
+        this.riptideDmg = Math.max(1, Math.round((1 + t.level) * k));
+        burst('#7fe6ff', 30);
+        this.floatText(t.x, t.y - 66, 'RIPTIDE', '#bff2ff', 1.6, 18);
+        Sfx.riptide();
+        break;
+      }
+
+      case 'mindwipe': {
+        /* orders erased — they turn round, and everything hits them double */
+        const span = dur(ab.duration);
+        let n = 0;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          e.backward = Math.max(e.backward, span);
+          e.marked = Math.max(e.marked, span);
+          this.spark(e.x, e.y, '#7fffc0', 3);
+          n++;
+        }
+        this.markedUntil = this.time + span;
+        burst('#4cd085', 30);
+        this.flash = Math.max(this.flash, .28);
+        this.floatText(t.x, t.y - 66, `${n} wiped`, '#9dffcb', 1.5, 17);
+        Sfx.mindwipe();
+        break;
+      }
+
+      case 'frenzy': {
+        /* the same engine Rampage uses, but it feeds on kills alone */
+        t.rampage = dur(ab.duration);
+        t.rampageKills = 0;
+        t.frenzy = true;
+        burst('#ffd23f', 30);
+        this.floatText(t.x, t.y - 66, 'FRENZY', '#ffe89a', 1.5, 17);
+        Sfx.frenzy();
+        break;
+      }
+
+      case 'fold': {
+        /* only the leading half of the road, but it costs almost nothing */
+        const frac = Math.min(.6, ab.send[t.level - 1] * k);
+        const lead = this.enemies.filter((e) => !e.dead).sort((a2, b2) => b2.d - a2.d);
+        const take = lead.slice(0, Math.max(1, Math.ceil(lead.length * .5)));
+        let n = 0;
+        for (const e of take) {
+          if (e.push(e.path.length * frac, true) > 0) n++;
+          const p2 = e.path.at(e.d);
+          this.rings.push({ x: p2.x, y: p2.y, r: 3, max: 22, life: .35, maxLife: .35,
+            color: '#c48aff', thick: 2.5 });
+          e.x = p2.x; e.y = p2.y;
+        }
+        burst('#b06cf0', 26);
+        this.floatText(t.x, t.y - 66, `${n} folded back`, '#d6b0ff', 1.4, 16);
+        Sfx.fold();
+        break;
+      }
+
+      case 'binary': {
+        /* she becomes a standing beam for the duration */
+        this.lances.push(new Lance(t, dur(ab.duration), {
+          color: '#ffd27a', edge: '#ff9a3d', width: 22 + t.level * 5,
+          damage: Math.round((3 + t.level * 2) * k),
+        }));
+        burst('#ffd27a', 34);
+        this.flash = Math.max(this.flash, .4);
+        Sfx.binary();
+        break;
+      }
+
+      case 'overclock': {
+        /* every unit on the field into the red */
+        this.overclock = Math.max(this.overclock, dur(ab.duration));
+        for (const u of this.towers) {
+          this.rings.push({ x: u.x, y: u.y, r: 6, max: 40, life: .45, maxLife: .45,
+            color: '#5bc8ff', thick: 3 });
+        }
+        burst('#5bc8ff', 32);
+        this.flash = Math.max(this.flash, .3);
+        this.floatText(t.x, t.y - 66, 'OVERCLOCK — TRIPLE RATE', '#a9e9ff', 1.8, 16);
+        Sfx.overclock();
+        break;
+      }
+
+      case 'release': {
+        /* everything the suit drank this round, handed back at once */
+        const stored = Math.round(t.stored * k);
+        const radius = 150 + Math.min(160, stored * 4);
+        this.rings.push({ x: t.x, y: t.y, r: 14, max: radius, life: .8, maxLife: .8,
+          color: '#9a7bff', thick: 14 });
+        this.rings.push({ x: t.x, y: t.y, r: 8, max: radius * .6, life: .55, maxLife: .55,
+          color: '#ffffff', thick: 7 });
+        let hit = 0;
+        for (const e of this.enemies) {
+          if (e.dead || distSq(e.x, e.y, t.x, t.y) > radius * radius) continue;
+          e.push(60, true);
+          this.damage(e, Math.max(3, Math.round(stored * .6)),
+            { source: t, x: e.x, y: e.y, tags: t.def.tags });
+          hit++;
+        }
+        t.stored = 0;
+        this.shake = Math.max(this.shake, 16);
+        burst('#9a7bff', 38);
+        this.floatText(t.x, t.y - 66, `${stored} GIVEN BACK`, '#c9b6ff', 1.8, 18);
+        Sfx.release();
+        break;
+      }
+
+      case 'unmake': {
+        /* the clean answer to a plated wave: the plating simply stops having
+           happened, and the survivors drop a grade */
+        const strip = Math.round(ab.strip[t.level - 1] * k);
+        let stripped = 0, dropped = 0;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          if (e.plate > 0) { stripped += Math.min(e.plate, strip); e.plate = Math.max(0, e.plate - strip); }
+          this.damage(e, 1, { source: t, x: e.x, y: e.y, silent: true, tags: t.def.tags });
+          dropped++;
+          if (Math.random() < .5) this.spark(e.x, e.y, '#ff8a9c', 3);
+        }
+        burst('#ff5a6e', 34);
+        this.flash = Math.max(this.flash, .35);
+        this.floatText(t.x, t.y - 66, `${stripped} plate unmade`, '#ffa8b6', 1.7, 17);
+        Sfx.unmake();
+        break;
+      }
+
       case 'wildcard': {
         /* every hostile draws a card and lives with it */
         let blown = 0, stunned = 0, turned = 0, robbed = 0;
@@ -2339,9 +2540,13 @@ class Game {
 
       this.runGems = levelReward(this.level) * (first ? 2 : 1) + bounty + cityBonus;
       Save.addGems(this.runGems);
+      /* every hero that actually took the field is paid for the clear */
+      const fought = [...new Set(this.towers.filter((t) => t.isHero).map((t) => t.def.id))];
+      const mastery = Save.awardMastery(fought, this.levelNo, stars);
       Sfx.fanfare();
       this.onEvent('victory', {
         gems: this.runGems, first, level: this.levelNo, stars, best, bounty, cityBonus,
+        mastery, synergies: this.synergies || [],
       });
     } else {
       /* a failed run still pays for the rounds that were held */
@@ -2357,6 +2562,13 @@ class Game {
     const dmg = b.boss ? DREAD.leak : b.tier + 1;
     this.lives -= dmg;
     this.shake = Math.max(this.shake, 7);
+    /* Panther's suit drinks every hit the bastion takes — the worse the round
+       has gone, the harder Kinetic Release comes back */
+    for (const t of this.towers) {
+      if (!t.def.absorbs) continue;
+      t.stored = Math.min(120, t.stored + dmg * 3);
+      this.floatText(t.x, t.y - 34, `+${dmg * 3}`, '#c9b6ff', .8, 12);
+    }
     /* the road may exit off-canvas, so pin the warning where it's visible */
     const lane = b.path || PATH;
     const exit = lane.at(lane.length - 70);
@@ -2456,10 +2668,12 @@ class Game {
   /* ---------------- support masts ---------------- */
   /** recomputed each step: who is standing inside a Relay Mast's ring */
   updateBuffs() {
-    const masts = this.towers.filter((t) => t.def.kind === 'support');
+    /* anything carrying a `buff` projects a field: the Relay Mast, and Circuit,
+       who is the only hero that does it */
+    const masts = this.towers.filter((t) => t.def.buff);
     for (const t of this.towers) {
       let range = 1, rate = 1;
-      if (t.def.kind !== 'support') {
+      if (!t.def.buff) {
         for (const m of masts) {
           const r = m.def.range * m.mods.range;
           if (distSq(m.x, m.y, t.x, t.y) > r * r) continue;
@@ -2470,6 +2684,15 @@ class Game {
       }
       t.buffRange = range;
       t.buffRate = rate;
+      /* the squad's synergies land on the units themselves */
+      const sy = this.syn || {};
+      /* and everything this hero has earned across every run before this one */
+      const m = t.isHero ? masteryPerk(Save.masteryOf(t.def.id)) : null;
+      t.synDamage = 1 + (t.isHero ? (sy.heroDamage || 0) + m.damage : 0);
+      t.synRange = 1 + (t.isHero ? (sy.heroRange || 0) + m.range : 0);
+      t.synRate = 1 + (t.isHero ? (sy.heroRate || 0) : (sy.towerRate || 0));
+      t.synUlt = sy.ultScale || 0;
+      t.synCharges = (sy.charges || 0) + (m ? m.charges : 0);
     }
   }
 
@@ -2484,7 +2707,8 @@ class Game {
       if (!e.dead && e.special && e.special.suppress) auras.push(e);
     }
     for (const t of this.towers) {
-      if (!t.isHero || !t.def.tags) { t.suppressed = null; continue; }
+      /* Claw carries nothing the legion knows how to switch off */
+      if (!t.isHero || !t.def.tags || t.def.unstoppable) { t.suppressed = null; continue; }
       let hit = null;
       for (const e of auras) {
         const r = e.special.aura;
@@ -2500,6 +2724,20 @@ class Game {
       t.suppressed = hit;
     }
   }
+
+  /* ---------------- squad synergies ---------------- */
+  /** what a base unit costs to build, after the squad's trade discounts */
+  costOf(def) {
+    const k = 1 + ((this.syn && this.syn.towerCost) || 0);
+    return Math.max(50, Math.round((def.cost || 0) * k / 10) * 10);
+  }
+  /** what the next level on this unit costs */
+  upgradeCostOf(t) {
+    const k = 1 + ((this.syn && this.syn.upgradeCost) || 0);
+    return Math.max(50, Math.round(upgradeCost(t.def, t.level) * k / 10) * 10);
+  }
+  /** how far an ordinary hit shoves — Brute Squad doubles it */
+  get pushCap() { return pushCapNow; }
 
   /* ---------------- combat helpers ---------------- */
   firstInRange(x, y, r) {
@@ -2600,7 +2838,8 @@ class Game {
         continue;
       }
       const info = TROOPS[b.tier];
-      this.cash += info.reward;
+      this.cash += Math.round(info.reward * (1 + ((this.syn && this.syn.cash) || 0)));
+      this.impact++;                     // every grade stripped is an impact
       this.killFx(b.x, b.y, info.color, b.tier > 0);
       if (!opts.silent) Sfx.kill(b.tier);
       amount--;
@@ -2756,6 +2995,31 @@ class Game {
         }
         this.shake = Math.max(this.shake, 4);
         Sfx.zap();
+      }
+    }
+    if (this.overclock > 0) this.overclock -= dt;
+    if (this.riptide > 0) {
+      this.riptide -= dt;
+      this.riptideTick -= dt;
+      /* the road is a river: everything on it wades and takes the current */
+      for (const e of this.enemies) if (!e.dead) e.chill(.45, .3);
+      if (this.riptideTick <= 0) {
+        this.riptideTick = .5;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          this.damage(e, this.riptideDmg, { x: e.x, y: e.y, silent: true, tags: ['water'] });
+          e.push(6);
+          if (Math.random() < .3) this.spark(e.x, e.y, '#9fe8ff', 3);
+        }
+        Sfx.riptideTick();
+      }
+      /* spray drifting along the route */
+      if (Math.random() < dt * 26) {
+        const p = PATH.at(rand(0, PATH.length));
+        this.particles.push(new Particle(p.x + rand(-10, 10), p.y + rand(-8, 8), {
+          vx: rand(-30, 30), vy: rand(-60, -15), life: rand(.35, .7), size: rand(2, 4.5),
+          color: pick(['#bff2ff', '#7fe6ff', '#4fc8e8']), kind: 'spark', gravity: 120,
+        }));
       }
     }
     if (this.downpour > 0) {

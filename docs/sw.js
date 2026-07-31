@@ -1,5 +1,5 @@
 /* Void Bastion offline shell */
-const CACHE = 'vb-ms95v3da';
+const CACHE = 'vb-ms979e36';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
   './icon-180.png', './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 

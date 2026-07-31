@@ -71,6 +71,11 @@ const UI = {
     $('#menu-roster-max').textContent = HEROES.length;
     $('#menu-stars').textContent = Save.totalStars();
     $('#menu-stars-max').textContent = LEVEL_COUNT * 3;
+    const tag = $('#menu-tagline');
+    if (tag) {
+      tag.innerHTML = `${CHAPTERS.length} cities &middot; ${LEVEL_COUNT} missions `
+        + `&middot; ${HEROES.length} heroes &middot; <em>hold the line</em>`;
+    }
 
     /* the play button points at wherever you left off */
     const next = LEVELS.find((l) => Save.isUnlocked(l.n) && Save.starsOn(l.n) === 0) || LEVELS[0];
@@ -194,10 +199,8 @@ const UI = {
       `Mission ${lv.mission} of ${CHAPTER_BY_ID[lv.chapter].name} — `
       + `<b>${slots} hero slot${slots > 1 ? 's' : ''}</b> on this map. `
       + (escorts.length
-        ? `Counter escorts on the field: <b>${escorts.join(', ')}</b> — tags they shut down are marked in red. `
-        : 'No counter escorts on this one. ')
-      + CLASS_LIST.map((c) =>
-        `<span class="lo-legend" style="--c:${c.color}" title="${c.blurb}">${c.name}</span>`).join('');
+        ? `Counter escorts on the field: <b>${escorts.join(', ')}</b> — the tags they shut down are marked in red.`
+        : 'No counter escorts on this one.');
 
     this.renderLoadout();
     this.show('loadout');
@@ -209,26 +212,34 @@ const UI = {
     const grid = $('#loadout-grid');
     grid.innerHTML = '';
 
-    /* suppressed tags on this map, so the choice can be an informed one */
+    /* tags this map's escorts shut down, so the choice can be an informed one */
     const jammed = new Set();
     for (const sid of lv.specials || []) {
       const sp = SPECIALS[sid];
       for (const t of (sp.suppress || []).concat(sp.immune || [])) jammed.add(t);
     }
 
-    for (const def of HEROES) {
+    this.loFilter = this.loFilter || 'all';
+    const shown = HEROES.filter((def) => {
+      if (this.loFilter === 'owned') return Save.owns(def.id);
+      if (this.loFilter === 'all') return true;
+      return def.clazz === this.loFilter;
+    }).sort((a, b) => {
+      /* owned first, then by rarity, then by mastery earned */
+      const ao = Save.owns(a.id) ? 0 : 1, bo = Save.owns(b.id) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      const ar = RARITY_ORDER.indexOf(a.rarity), br = RARITY_ORDER.indexOf(b.rarity);
+      if (ar !== br) return br - ar;
+      return Save.masteryOf(b.id) - Save.masteryOf(a.id);
+    });
+
+    for (const def of shown) {
       const owned = Save.owns(def.id);
       const picked = this.loadout.includes(def.id);
 
       const card = document.createElement('button');
       card.className = 'lo-card' + (picked ? ' picked' : '') + (owned ? '' : ' locked');
       card.style.setProperty('--r', def.rarityColor);
-
-      const icon = document.createElement('canvas');
-      icon.width = 64; icon.height = 64;
-      const c = icon.getContext('2d');
-      c.translate(32, 42); c.scale(1.05, 1.05);
-      def.art(c, 1, 0);
 
       const rar = document.createElement('i');
       rar.className = 'lo-rar';
@@ -240,6 +251,12 @@ const UI = {
         flag.textContent = 'RAREST';
         card.appendChild(flag);
       }
+
+      const icon = document.createElement('canvas');
+      icon.width = 64; icon.height = 64;
+      const c = icon.getContext('2d');
+      c.translate(32, 42); c.scale(1.05, 1.05);
+      def.art(c, owned ? 1 + Save.rankOf(def.id) : 1, 0);
       card.appendChild(icon);
 
       const name = document.createElement('span');
@@ -261,25 +278,38 @@ const UI = {
           chip.title = cls.blurb;
           card.appendChild(chip);
         }
-      }
 
-      if (owned && def.ability) {
-        const ult = document.createElement('span');
-        ult.className = 'lo-ult';
-        ult.textContent = def.ability.name || 'Ultimate';
-        card.appendChild(ult);
-      }
+        if (def.ability) {
+          const ult = document.createElement('span');
+          ult.className = 'lo-ult';
+          ult.textContent = def.ability.name;
+          card.appendChild(ult);
+        }
 
-      if (owned) {
         const tags = document.createElement('span');
         tags.className = 'lo-tags';
         for (const t of def.tags || []) {
-          const s = document.createElement('span');
-          s.textContent = t;
-          if (jammed.has(t)) { s.style.background = 'rgba(255,90,90,.22)'; s.style.color = '#ffb0b0'; }
-          tags.appendChild(s);
+          const sp = document.createElement('span');
+          sp.textContent = t;
+          if (jammed.has(t) && !def.unstoppable) {
+            sp.classList.add('jam');
+            sp.title = 'An escort on this map shuts this tag down';
+          }
+          tags.appendChild(sp);
         }
         card.appendChild(tags);
+
+        /* what this hero has earned across every run so far */
+        const mp = masteryProgress(Save.masteryOf(def.id));
+        const mast = document.createElement('span');
+        mast.className = 'lo-mastery' + (mp.rank >= MASTERY_RANKS.length ? ' maxed' : '');
+        mast.title = mp.next
+          ? `${mp.need} more to ${mp.next.name} (${mp.next.note})`
+          : 'Mastery complete';
+        mast.innerHTML = `<i class="mp-pips">${MASTERY_RANKS
+          .map((r, i) => `<b class="${i < mp.rank ? 'on' : ''}"></b>`).join('')}</i>`
+          + `<i class="mp-bar"><b style="width:${Math.round(mp.frac * 100)}%"></b></i>`;
+        card.appendChild(mast);
       }
 
       if (picked) {
@@ -304,6 +334,9 @@ const UI = {
       grid.appendChild(card);
     }
 
+    this.renderFilters();
+    this.renderSynergies(slots);
+
     $('#lo-count').textContent = `${this.loadout.length} / ${slots} picked`;
 
     const bar = $('#lo-picked');
@@ -321,6 +354,7 @@ const UI = {
       def.art(c, 1, 0);
       slot.appendChild(icon);
       slot.appendChild(document.createTextNode(def.name));
+      slot.style.setProperty('--c', def.rarityColor);
       bar.appendChild(slot);
     }
 
@@ -330,9 +364,58 @@ const UI = {
       : 'Pick a hero';
   },
 
+  /** the row of chips above the grid: all / owned / one per class */
+  renderFilters() {
+    const wrap = $('#lo-filters');
+    wrap.innerHTML = '';
+    const owned = Save.data.heroes.length;
+    const opts = [
+      { id: 'all', label: `All ${HEROES.length}`, color: '#93a0c8' },
+      { id: 'owned', label: `Yours ${owned}`, color: '#4ade80' },
+      ...CLASS_LIST.map((c) => ({ id: c.id, label: c.name, color: c.color })),
+    ];
+    for (const o of opts) {
+      const b = document.createElement('button');
+      b.className = 'lo-filter' + (this.loFilter === o.id ? ' on' : '');
+      b.textContent = o.label;
+      b.style.setProperty('--c', o.color);
+      b.onclick = () => { this.loFilter = o.id; Sfx.click(); this.renderLoadout(); };
+      wrap.appendChild(b);
+    }
+  },
+
+  /** every synergy, live: the ones the current squad has earned come up lit */
+  renderSynergies(slots) {
+    const defs = this.loadout.map((id) => HERO_BY_ID[id]).filter(Boolean);
+    const active = new Set(synergiesFor(defs, slots).map((s) => s.id));
+    const list = $('#syn-list');
+    list.innerHTML = '';
+
+    /* earned first, then the ones still within reach */
+    const sorted = [...SYNERGIES].sort((a, b) =>
+      (active.has(b.id) ? 1 : 0) - (active.has(a.id) ? 1 : 0));
+
+    for (const sy of sorted) {
+      const on = active.has(sy.id);
+      const row = document.createElement('div');
+      row.className = 'syn-row' + (on ? ' on' : '');
+      row.style.setProperty('--c', sy.color);
+      row.innerHTML = `<b>${sy.name}</b><span class="syn-rule">${sy.rule}</span>`
+        + `<span class="syn-note">${sy.note}</span>`;
+      list.appendChild(row);
+    }
+    const n = active.size;
+    $('.syn-hint').textContent = n
+      ? `${n} synergy${n > 1 ? ' bonuses' : ''} active for this squad.`
+      : 'Who you bring together changes the run.';
+  },
+
   startRun(levelNo) {
+    /* the game needs the squad before reset so synergies are live from frame 1 */
+    this.game.squad = (this.loadout || []).slice();
     this.game.reset(levelNo || this.game.levelNo || 1);
     this.buildShop();
+    this.renderSynStrip();
     this.syncHud(true);
     this.show('game');
     Sfx.resume();
@@ -386,7 +469,8 @@ const UI = {
     txt.innerHTML = owned
       ? `<span class="si-name">${def.name}</span>
          <span class="si-cost${isHero ? ' free' : ''}">${isHero
-            ? (def.tags ? def.tags.join(' · ') : 'HERO') : '$' + def.cost}</span>`
+            ? (def.tags ? def.tags.join(' · ') : 'HERO')
+            : '$' + this.game.costOf(def)}</span>`
       : `<span class="si-name">${def.name}</span><span class="si-lock">🔒 in crates</span>`;
     el.appendChild(txt);
 
@@ -421,10 +505,15 @@ const UI = {
       const owned = !it.isHero || Save.owns(it.def.id);
       const placed = it.isHero && g.heroesPlaced.has(it.def.id);
       const noSlot = it.isHero && !placed && g.heroSlotsFree <= 0;
-      const poor = !it.isHero && g.cash < it.def.cost;
+      const poor = !it.isHero && g.cash < g.costOf(it.def);
       const disabled = !owned || placed || poor || noSlot;
       it.el.classList.toggle('disabled', disabled);
       it.el.classList.toggle('selected', !!g.placing && g.placing.def === it.def);
+      if (!it.isHero) {
+        const cost = it.el.querySelector('.si-cost');
+        const want = '$' + g.costOf(it.def);
+        if (cost && cost.textContent !== want) cost.textContent = want;
+      }
       if (it.isHero && owned) {
         const cost = it.el.querySelector('.si-cost');
         const tower = placed && g.towers.find((t) => t.def === it.def);
@@ -439,6 +528,16 @@ const UI = {
     }
     const slots = $('#hero-slots');
     if (slots) slots.textContent = `${g.heroSlotsUsed} / ${g.heroSlots} deployed`;
+  },
+
+  /** the squad's live synergies, pinned above the shop so they stay honest */
+  renderSynStrip() {
+    const strip = $('#syn-strip');
+    if (!strip) return;
+    const list = this.game.synergies || [];
+    strip.hidden = !list.length;
+    strip.innerHTML = list.map((sy) =>
+      `<span class="syn-chip" style="--c:${sy.color}" title="${sy.note}">${sy.name}</span>`).join('');
   },
 
   syncInspect() {
@@ -496,7 +595,7 @@ const UI = {
     if (t.level >= MAX_LEVEL) {
       up.disabled = true; up.textContent = 'Max level';
     } else {
-      const cost = upgradeCost(t.def, t.level);
+      const cost = this.game.upgradeCostOf(t);
       up.disabled = this.game.cash < cost;
       up.textContent = `Upgrade $${cost}`;
     }
@@ -594,6 +693,29 @@ const UI = {
     const note = $('#res-gem-note');
     if (note) { note.textContent = bits.join(' · '); note.hidden = !bits.length; }
 
+    /* what the squad earned for itself, and what it was running on */
+    const mast = $('#res-mastery');
+    const gains = payload.mastery || [];
+    mast.hidden = !gains.length;
+    if (gains.length) {
+      mast.innerHTML = '<h4>Squad mastery</h4>' + gains.map((m) => {
+        const def = HERO_BY_ID[m.id];
+        const mp = masteryProgress(Save.masteryOf(m.id));
+        return `<div class="rm-row${m.rankUp ? ' up' : ''}" style="--c:${def.rarityColor}">
+          <b>${def.name}</b>
+          <i class="rm-bar"><b style="width:${Math.round(mp.frac * 100)}%"></b></i>
+          <span>+${m.gain} XP${m.rankUp ? ` — ${MASTERY_RANKS[m.rank - 1].name}!` : ''}</span>
+        </div>`;
+      }).join('');
+    }
+    const syn = $('#res-syn');
+    const syns = payload.synergies || [];
+    syn.hidden = !syns.length;
+    if (syns.length) {
+      syn.innerHTML = 'Ran with ' + syns.map((sy) =>
+        `<span style="color:${sy.color}">${sy.name}</span>`).join(' · ');
+    }
+
     /* offer the next level straight from the result card */
     const again = $('#btn-res-again');
     const hasNext = win && g.levelNo < LEVEL_COUNT;
@@ -622,7 +744,15 @@ const UI = {
     const wrap = $('#hero-cards');
     wrap.innerHTML = '';
 
-    for (const h of HEROES) {
+    /* owned first, then rarest, so the collection reads as a trophy shelf */
+    const order = [...HEROES].sort((a, b) => {
+      const ao = Save.owns(a.id) ? 0 : 1, bo = Save.owns(b.id) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      const ar = RARITY_ORDER.indexOf(a.rarity), br = RARITY_ORDER.indexOf(b.rarity);
+      if (ar !== br) return br - ar;
+      return Save.masteryOf(b.id) - Save.masteryOf(a.id);
+    });
+    for (const h of order) {
       const owned = Save.owns(h.id);
       const card = document.createElement('div');
       card.className = 'hero-card' + (owned ? '' : ' locked');
@@ -647,6 +777,18 @@ const UI = {
         <div class="desc">${owned ? h.desc : 'Locked. Open a case for a chance to recruit.'}</div>
         ${owned && h.tags ? `<div class="hero-tags">${h.tags
           .map((t) => `<span>${t}</span>`).join('')}</div>` : ''}
+        ${owned ? (() => {
+          const mp = masteryProgress(Save.masteryOf(h.id));
+          return `<div class="hero-mastery${mp.rank >= MASTERY_RANKS.length ? ' maxed' : ''}">
+            <span class="hm-head">
+              <b>${mp.rank ? MASTERY_RANKS[mp.rank - 1].name : 'Unblooded'}</b>
+              <i>${mp.next ? `${mp.need} to ${mp.next.name}` : 'mastered'}</i>
+            </span>
+            <span class="hm-bar"><b style="width:${Math.round(mp.frac * 100)}%"></b></span>
+            <span class="hm-perks">${MASTERY_RANKS.map((r, i) =>
+              `<em class="${i < mp.rank ? 'on' : ''}">${r.note}</em>`).join('')}</span>
+          </div>`;
+        })() : ''}
         <span class="state ${owned ? 'owned' : 'locked'}">${owned ? '✔ UNLOCKED' : '🔒 LOCKED'}</span>
         ${h.starter ? '<span class="starter">STARTER</span>' : ''}
         ${h.apex ? '<span class="apex">RAREST IN THE GAME</span>' : ''}`);

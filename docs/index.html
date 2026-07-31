@@ -270,6 +270,20 @@ button{font-family:inherit}
 .hero-card .apex{position:absolute; top:10px; right:10px; font-size:9.5px; font-weight:900;
   letter-spacing:.1em; color:#0b1020; padding:3px 9px; border-radius:999px;
   background:linear-gradient(120deg,#ffd23f,#ff8a3d); box-shadow:0 0 16px -2px #ffb03f}
+.hero-card .hero-mastery{margin-top:8px; display:flex; flex-direction:column; gap:5px}
+.hm-head{display:flex; justify-content:space-between; font-size:10.5px}
+.hm-head b{color:var(--gold); letter-spacing:.06em; text-transform:uppercase}
+.hm-head i{color:var(--muted); font-style:normal}
+.hm-bar{height:4px; border-radius:2px; background:rgba(255,255,255,.12); overflow:hidden}
+.hm-bar b{display:block; height:100%; background:linear-gradient(90deg,#7fd0ff,var(--gold))}
+.hero-mastery.maxed .hm-bar b{background:var(--gold); box-shadow:0 0 10px var(--gold)}
+.hm-perks{display:flex; gap:5px; flex-wrap:wrap}
+.hm-perks em{
+  font-style:normal; font-size:9px; font-weight:800; letter-spacing:.04em;
+  padding:2px 6px; border-radius:999px; color:var(--muted);
+  background:rgba(255,255,255,.06); border:1px solid var(--line);
+}
+.hm-perks em.on{color:#0b1020; background:var(--gold); border-color:var(--gold)}
 .hero-card .hero-class{font-size:10.5px; line-height:1.4; margin:2px 0 6px; color:var(--c)}
 .hero-card .hero-class b{letter-spacing:.06em; text-transform:uppercase}
 
@@ -437,6 +451,73 @@ button{font-family:inherit}
 .lo-card canvas{margin-top:2px}
 .lo-card .lo-name{font-size:13.5px; font-weight:900}
 .lo-card .lo-role{font-size:10.5px; color:var(--muted); text-align:center}
+.syn-strip{display:flex; gap:6px; flex-wrap:wrap; padding:0 0 4px}
+.syn-chip{
+  font-size:9.5px; font-weight:900; letter-spacing:.07em; text-transform:uppercase;
+  padding:3px 9px; border-radius:999px; color:var(--c);
+  background:color-mix(in srgb, var(--c) 14%, transparent);
+  border:1px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.res-mastery{margin:12px 0 4px; text-align:left}
+.res-mastery h4{margin:0 0 7px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.rm-row{display:grid; grid-template-columns:88px 1fr auto; align-items:center; gap:9px;
+  font-size:12px; padding:3px 0}
+.rm-row b:first-child{color:var(--c)}
+.rm-bar{height:4px; border-radius:2px; background:rgba(255,255,255,.12); overflow:hidden}
+.rm-bar b{display:block; height:100%; background:linear-gradient(90deg,#7fd0ff,var(--gold))}
+.rm-row span{color:var(--muted); font-weight:700}
+.rm-row.up span{color:var(--gold)}
+.res-syn{margin-top:6px; font-size:11.5px; color:var(--muted); font-weight:700}
+.lo-filters{display:flex; gap:8px; flex-wrap:wrap; padding:0 0 12px}
+.lo-filter{
+  appearance:none; cursor:pointer; font:inherit;
+  font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  padding:6px 13px; border-radius:999px; color:var(--c);
+  background:color-mix(in srgb, var(--c) 10%, transparent);
+  border:1px solid color-mix(in srgb, var(--c) 34%, transparent);
+  transition:background .12s ease, transform .08s ease;
+}
+.lo-filter:hover{background:color-mix(in srgb, var(--c) 20%, transparent)}
+.lo-filter.on{background:var(--c); color:#0b1020; border-color:var(--c)}
+
+.loadout-body{flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 268px; gap:16px}
+.synergy-panel{
+  min-width:0; overflow-y:auto; padding:14px 14px 10px; border-radius:16px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:1px solid var(--line);
+}
+.synergy-panel h4{margin:0 0 4px; font-size:14px; letter-spacing:.05em}
+.syn-hint{margin:0 0 10px; font-size:11.5px; line-height:1.4}
+.syn-list{display:flex; flex-direction:column; gap:7px}
+.syn-row{
+  padding:8px 10px; border-radius:11px; border:1px solid var(--line);
+  background:rgba(255,255,255,.03); opacity:.5;
+  display:flex; flex-direction:column; gap:2px;
+  transition:opacity .15s ease, border-color .15s ease, background .15s ease;
+}
+.syn-row.on{
+  opacity:1; border-color:color-mix(in srgb, var(--c) 60%, transparent);
+  background:color-mix(in srgb, var(--c) 12%, transparent);
+  box-shadow:0 0 18px -8px var(--c);
+}
+.syn-row b{font-size:12.5px; color:var(--c); letter-spacing:.03em}
+.syn-row.on b::after{content:' ✓'}
+.syn-rule{font-size:10px; color:var(--muted); line-height:1.35}
+.syn-note{font-size:10.5px; color:#cfd8f0; line-height:1.35}
+
+.lo-card .lo-mastery{display:flex; align-items:center; gap:6px; margin-top:6px; width:100%}
+.mp-pips{display:flex; gap:3px}
+.mp-pips b{
+  width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.18);
+  transition:background .2s ease;
+}
+.mp-pips b.on{background:var(--gold); box-shadow:0 0 6px var(--gold)}
+.mp-bar{flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.12); overflow:hidden}
+.mp-bar b{display:block; height:100%; background:linear-gradient(90deg,#7fd0ff,var(--gold))}
+.lo-mastery.maxed .mp-bar b{background:var(--gold)}
+.lo-card .lo-tags span.jam{background:rgba(255,90,90,.22); color:#ffb0b0}
+.loadout-slot{border-color:color-mix(in srgb, var(--c,#2c3a68) 50%, var(--line))}
+
 .lo-card.apex{border-color:rgba(255,210,63,.55); box-shadow:0 0 26px -10px #ffd23f}
 .lo-card .lo-apex{
   position:absolute; top:-1px; right:-1px; font-size:8px; font-weight:900;
@@ -491,8 +572,19 @@ button{font-family:inherit}
   background:rgba(255,255,255,.07); border:1px solid var(--line); font-size:12.5px; font-weight:800;
 }
 .loadout-slot.empty{color:var(--muted); font-weight:700; padding-left:14px; border-style:dashed}
+@media (max-width:980px){
+  /* the panel drops under the grid, and the whole column scrolls as one —
+     leaving the grid its own scroller made it overflow onto the panel */
+  .loadout-body{display:flex; flex-direction:column; gap:14px; overflow-y:auto; min-height:0}
+  .loadout-grid{flex:none; overflow:visible; min-height:0; padding-bottom:0}
+  .synergy-panel{flex:none; overflow:visible; max-height:none}
+  .syn-list{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+}
 @media (max-width:640px){
   #screen-loadout{padding:16px 14px 0}
+  .lo-filters{padding-bottom:8px; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none}
+  .lo-filters::-webkit-scrollbar{display:none}
+  .lo-filter{flex:0 0 auto}
   .loadout-grid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:8px}
   .lo-card{padding:7px}
   .lo-card .lo-name{font-size:12px}
@@ -1120,7 +1212,7 @@ body{ user-select:none; -webkit-user-select:none; }
       <span class="logo-top">VOID</span>
       <span class="logo-bot">BASTION</span>
     </h1>
-    <p class="tagline">Six cities &middot; 30 missions &middot; 15 heroes &middot; <em>hold the line</em></p>
+    <p class="tagline" id="menu-tagline">Six cities &middot; 30 missions &middot; 28 heroes &middot; <em>hold the line</em></p>
 
     <div class="menu-buttons">
       <button class="btn btn-primary big" id="btn-play">
@@ -1143,7 +1235,7 @@ body{ user-select:none; -webkit-user-select:none; }
     <div class="menu-foot">
       <span class="stat-chip"><i class="gem"></i><b id="menu-gems">0</b><span>gems</span></span>
       <span class="stat-chip"><i class="ico-star"></i><b id="menu-stars">0</b><span>/ <span id="menu-stars-max">90</span> stars</span></span>
-      <span class="stat-chip"><i class="ico-cape"></i><b id="menu-roster">1</b><span>/ <span id="menu-roster-max">15</span> heroes</span></span>
+      <span class="stat-chip"><i class="ico-cape"></i><b id="menu-roster">1</b><span>/ <span id="menu-roster-max">28</span> heroes</span></span>
     </div>
   </div>
 </section>
@@ -1199,7 +1291,15 @@ body{ user-select:none; -webkit-user-select:none; }
     <span class="progress-chip" id="lo-count">0 / 1 picked</span>
   </header>
   <p class="chapter-blurb" id="lo-sub"></p>
-  <div class="loadout-grid" id="loadout-grid"><!-- built by JS --></div>
+  <div class="lo-filters" id="lo-filters"><!-- built by JS --></div>
+  <div class="loadout-body">
+    <div class="loadout-grid" id="loadout-grid"><!-- built by JS --></div>
+    <aside class="synergy-panel">
+      <h4>Squad synergies</h4>
+      <p class="muted syn-hint">Who you bring together changes the run.</p>
+      <div class="syn-list" id="syn-list"><!-- built by JS --></div>
+    </aside>
+  </div>
   <div class="loadout-bar">
     <div class="loadout-picked" id="lo-picked"></div>
     <button class="btn btn-primary big" id="btn-deploy">Deploy</button>
@@ -1233,8 +1333,9 @@ body{ user-select:none; -webkit-user-select:none; }
         <span>Turn sideways for a bigger battlefield</span>
         <button class="rot-x" id="rotate-hint-x" aria-label="Dismiss">&times;</button>
       </div>
+      <div class="syn-strip" id="syn-strip" hidden><!-- built by JS --></div>
       <div class="shop-section">
-        <h4>Towers</h4>
+        <h4>Base units</h4>
         <div class="shop-grid" id="shop-towers"></div>
       </div>
       <div class="shop-section">
@@ -1279,6 +1380,8 @@ body{ user-select:none; -webkit-user-select:none; }
     <p id="res-sub">You defended the bastion.</p>
     <div class="reward-row"><i class="gem"></i><span id="res-gems">+0</span> gems earned</div>
     <div class="res-gem-note" id="res-gem-note" hidden></div>
+    <div class="res-mastery" id="res-mastery" hidden><!-- built by JS --></div>
+    <div class="res-syn" id="res-syn" hidden><!-- built by JS --></div>
     <div class="result-actions">
       <button class="btn btn-primary" id="btn-res-again">Play again</button>
       <button class="btn" id="btn-res-menu">Menu</button>
@@ -1339,6 +1442,13 @@ body{ user-select:none; -webkit-user-select:none; }
           hits, faster cycle, a lighter ultimate. A <b>Specialist</b> is quiet on the field and
           devastating on the button. Every Legendary is an <b>Icon</b> and is good at both. Pair
           them deliberately.</li>
+      <li>Who you bring <i>together</i> matters: the squad screen lists <b>synergies</b> and lights
+          up the ones your picks have earned — cheaper units, extra ultimate charges, more cash,
+          harder ultimates. Two kinetic heroes shove twice as far; one hero on a map that offered
+          you three is its own reward.</li>
+      <li>Heroes earn <b>mastery</b> for every mission they clear, and keep it between runs. Three
+          ranks: <b>+8% damage</b>, then <b>+10% reach</b>, then <b>an extra ultimate charge</b>.
+          The heroes you actually play become the heroes you rely on.</li>
       <li>From the third city on, troopers arrive in <b>plating</b> — welded rings you can see
           around them. Plating has to be stripped before their armour grades start coming off, so
           late missions need sustained fire, not one big hit.</li>
@@ -1843,6 +1953,152 @@ const CLASSES = {
 const CLASS_LIST = Object.values(CLASSES);
 /** a hero's class card, or null for a base unit (units are never classed) */
 function classOf(def) { return (def && CLASSES[def.clazz]) || null; }
+
+/* ---------------- hero mastery ----------------
+   A hero you keep bringing gets better at the job. Missions cleared with a hero
+   deployed pay it experience worth the mission number, and every rank is a small
+   permanent edge that hero keeps between runs. Three ranks, and the last one is
+   the only way outside a synergy to get a second use of an ultimate. */
+const MASTERY_RANKS = [
+  { at: 40,  name: 'Veteran',  perk: { damage: .08 }, note: '+8% damage' },
+  { at: 140, name: 'Elite',    perk: { range: .1 },   note: '+10% reach' },
+  { at: 340, name: 'Legend',   perk: { charges: 1 },  note: '+1 ultimate charge' },
+];
+const MASTERY_MAX = MASTERY_RANKS[MASTERY_RANKS.length - 1].at;
+
+/** how many ranks `xp` is worth */
+function masteryRank(xp) {
+  let r = 0;
+  for (const m of MASTERY_RANKS) if ((xp || 0) >= m.at) r++;
+  return r;
+}
+/** the combined perk of every rank reached */
+function masteryPerk(xp) {
+  const out = { damage: 0, range: 0, charges: 0 };
+  for (let i = 0; i < masteryRank(xp); i++) {
+    for (const [k, v] of Object.entries(MASTERY_RANKS[i].perk)) out[k] += v;
+  }
+  return out;
+}
+/** progress toward the next rank, for the bar under a hero card */
+function masteryProgress(xp) {
+  const r = masteryRank(xp);
+  if (r >= MASTERY_RANKS.length) return { rank: r, frac: 1, need: 0, next: null };
+  const from = r === 0 ? 0 : MASTERY_RANKS[r - 1].at;
+  const to = MASTERY_RANKS[r].at;
+  return { rank: r, frac: clamp(((xp || 0) - from) / (to - from), 0, 1),
+           need: to - (xp || 0), next: MASTERY_RANKS[r] };
+}
+/** what clearing a mission with this hero deployed is worth */
+function masteryGain(missionNo, stars) {
+  return Math.round((6 + missionNo * 1.4) * (1 + (stars - 1) * .25));
+}
+
+/* ---------------- squad synergies ----------------
+   The loadout screen is where the game is really played, so the squad itself
+   has to be a decision rather than a power ranking. Every synergy is a rule
+   about the heroes you brought together; matching one changes the run.
+
+   Each carries a `test(defs)` over the chosen hero definitions and an `effect`
+   of flat modifiers the game reads while the mission runs. They stack. */
+const SYNERGY_KEYS = ['heroDamage', 'heroRate', 'heroRange', 'towerRate', 'towerCost',
+                      'upgradeCost', 'cash', 'charges', 'pushCap', 'ultScale', 'startCash'];
+
+const countTag = (defs, tag) => defs.filter((d) => (d.tags || []).includes(tag)).length;
+const countTags = (defs, tags) =>
+  defs.filter((d) => (d.tags || []).some((t) => tags.includes(t))).length;
+const countClass = (defs, c) => defs.filter((d) => d.clazz === c).length;
+
+const SYNERGIES = [
+  {
+    id: 'stormfront', name: 'Storm Front', color: '#ffd23f',
+    rule: 'Two heroes carrying storm or electric',
+    effect: { heroDamage: .25, heroRate: -.1 },
+    note: '+25% hero damage, 10% faster',
+    test: (d) => countTags(d, ['storm', 'electric']) >= 2,
+  },
+  {
+    id: 'oldguard', name: 'Old Guard', color: '#8fd0ff',
+    rule: 'A Vanguard and a Specialist together',
+    effect: { heroDamage: .1, charges: 1 },
+    note: '+10% hero damage and one extra ultimate charge each',
+    test: (d) => countClass(d, 'vanguard') >= 1 && countClass(d, 'specialist') >= 1,
+  },
+  {
+    id: 'trinity', name: 'Trinity', color: '#ffb03f',
+    rule: 'Three Icons on the field',
+    effect: { heroDamage: .18, heroRange: .1, ultScale: .2 },
+    note: '+18% damage, +10% reach, ultimates land 20% harder',
+    test: (d) => countClass(d, 'icon') >= 3,
+  },
+  {
+    id: 'streetlevel', name: 'Street Level', color: '#c9a06a',
+    rule: 'Two heroes who are just very good at their job — kinetic, agility or tech',
+    effect: { towerCost: -.15, upgradeCost: -.12 },
+    note: 'Base units cost 15% less, upgrades 12% less',
+    test: (d) => countTags(d, ['kinetic', 'agility', 'tech']) >= 2,
+  },
+  {
+    id: 'mysticcircle', name: 'Mystic Circle', color: '#b06cf0',
+    rule: 'Two heroes carrying mystic',
+    effect: { ultScale: .35 },
+    note: 'Ultimates land 35% harder and last 35% longer',
+    test: (d) => countTag(d, 'mystic') >= 2,
+  },
+  {
+    id: 'sciencediv', name: 'Science Division', color: '#5bc8ff',
+    rule: 'Two heroes carrying tech',
+    effect: { towerRate: -.18, upgradeCost: -.15 },
+    note: 'Every base unit fires 18% faster, upgrades cost 15% less',
+    test: (d) => countTag(d, 'tech') >= 2,
+  },
+  {
+    id: 'brutesquad', name: 'Brute Squad', color: '#6ccf52',
+    rule: 'Two heroes carrying kinetic',
+    effect: { heroDamage: .2, pushCap: 1 },
+    note: '+20% hero damage, and knockback shoves twice as far',
+    test: (d) => countTag(d, 'kinetic') >= 2,
+  },
+  {
+    id: 'shadowops', name: 'Shadow Ops', color: '#8fa8d8',
+    rule: 'Two heroes carrying mind',
+    effect: { cash: .2, ultScale: .15 },
+    note: '+20% cash from kills, ultimates 15% harder',
+    test: (d) => countTag(d, 'mind') >= 2,
+  },
+  {
+    id: 'soloact', name: 'Solo Act', color: '#ff5a6e',
+    rule: 'One hero, on a map that offered you more',
+    effect: { heroDamage: .45, heroRange: .12, charges: 1, startCash: 250 },
+    note: '+45% damage, +12% reach, an extra charge and 250 to start',
+    test: (d, slots) => d.length === 1 && slots > 1,
+  },
+  {
+    id: 'fullhouse', name: 'Full House', color: '#4ade80',
+    rule: 'One of every class at once',
+    effect: { cash: .25, heroRate: -.08 },
+    note: '+25% cash from kills, heroes 8% faster',
+    test: (d) => countClass(d, 'vanguard') >= 1 && countClass(d, 'specialist') >= 1
+              && countClass(d, 'icon') >= 1,
+  },
+];
+
+/** which synergies a chosen squad triggers on a map with `slots` hero slots */
+function synergiesFor(defs, slots) {
+  return SYNERGIES.filter((sy) => {
+    try { return !!sy.test(defs, slots); } catch (e) { return false; }
+  });
+}
+
+/** collapse a list of synergies into one set of modifiers the game can read */
+function synergyEffect(list) {
+  const out = {};
+  for (const key of SYNERGY_KEYS) out[key] = key === 'charges' || key === 'startCash' ? 0 : 0;
+  for (const sy of list) {
+    for (const [k, v] of Object.entries(sy.effect)) out[k] = (out[k] || 0) + v;
+  }
+  return out;
+}
 
 /* ---------------- crates ----------------
    Two tiers so gems have somewhere to go. The premium case costs most of a
@@ -3293,6 +3549,451 @@ const Art = {
     }
     ctx.restore();
   },
+  /* ---- the eight recruits ---- */
+  tide(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.9) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    /* scale-mail legs */
+    ctx.fillStyle = '#1f6f52';
+    roundRect(ctx, -7.5, 1, 6.5, 13, 3); ctx.fill();
+    roundRect(ctx, 1, 1, 6.5, 13, 3); ctx.fill();
+
+    /* gold scale torso */
+    const g = ctx.createLinearGradient(0, -12, 0, 5);
+    g.addColorStop(0, '#f2c65a'); g.addColorStop(1, '#b8862c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90,60,10,.35)'; ctx.lineWidth = .8;
+    for (let r = -9; r < 4; r += 3.4) {
+      ctx.beginPath(); ctx.moveTo(-7.5, r); ctx.lineTo(7.5, r); ctx.stroke();
+    }
+
+    /* head, long hair, beard */
+    ctx.fillStyle = '#c8913f';
+    ctx.beginPath(); ctx.arc(-1, -16, 7.6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(.6, -16, 5.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#b9832f';
+    ctx.beginPath(); ctx.ellipse(.6, -11.6, 4, 3, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-.8, -17, 1.1, 0, TAU); ctx.arc(3.2, -17, 1.1, 0, TAU); ctx.fill();
+
+    /* trident */
+    ctx.save(); ctx.translate(12, -2); ctx.rotate(Math.sin(t * 2) * .08);
+    ctx.strokeStyle = '#3f8f7a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, -12); ctx.stroke();
+    ctx.strokeStyle = '#8fe6d0'; ctx.lineWidth = 1.8;
+    for (const dx of [-3.4, 0, 3.4]) {
+      ctx.beginPath(); ctx.moveTo(dx, -10); ctx.lineTo(dx, -18); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(-3.4, -10); ctx.lineTo(3.4, -10); ctx.stroke();
+    ctx.restore();
+
+    /* water curling round the feet */
+    for (let i = 0; i < 3 + lvl; i++) {
+      const a = t * 1.6 + i * 1.5;
+      ctx.fillStyle = `rgba(120,220,255,${.18 + Math.sin(a) * .14})`;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * 13, 12 + Math.sin(a * 1.4) * 2, 4.5, 1.6, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  },
+
+  circuit(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.7) * 1.1;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#2a3040';
+    roundRect(ctx, -8, 1, 7, 13, 3); ctx.fill();
+    roundRect(ctx, 1, 1, 7, 13, 3); ctx.fill();
+
+    /* half flesh, half plate */
+    const g = ctx.createLinearGradient(-9, 0, 9, 0);
+    g.addColorStop(0, '#6b4a34'); g.addColorStop(.48, '#6b4a34');
+    g.addColorStop(.52, '#9aa6bb'); g.addColorStop(1, '#5f6b80');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -11); ctx.lineTo(9, -11);
+    ctx.quadraticCurveTo(11.5, -2, 8.5, 5); ctx.lineTo(-8.5, 5);
+    ctx.quadraticCurveTo(-11.5, -2, -9, -11);
+    ctx.fill();
+
+    /* chest reactor */
+    const pulse = .6 + Math.sin(t * 4) * .4;
+    ctx.fillStyle = `rgba(90,200,255,${pulse})`;
+    ctx.beginPath(); ctx.arc(2, -4, 3.4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,240,255,.8)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(2, -4, 5, 0, TAU); ctx.stroke();
+
+    /* circuit traces on the plated side */
+    ctx.strokeStyle = `rgba(120,220,255,${.35 + pulse * .3})`; ctx.lineWidth = .9;
+    ctx.beginPath();
+    ctx.moveTo(5, -9); ctx.lineTo(8, -9); ctx.lineTo(8, -5);
+    ctx.moveTo(5, 1); ctx.lineTo(8.5, 1);
+    ctx.stroke();
+
+    /* head: one eye human, one a red optic */
+    ctx.fillStyle = '#6b4a34';
+    ctx.beginPath(); ctx.arc(-2, -16, 6.4, Math.PI * .5, Math.PI * 1.5); ctx.fill();
+    ctx.fillStyle = '#9aa6bb';
+    ctx.beginPath(); ctx.arc(-2, -16, 6.4, Math.PI * 1.5, Math.PI * .5); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-4.4, -16.5, 1.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,80,70,${.7 + pulse * .3})`;
+    roundRect(ctx, -.4, -17.4, 4.4, 1.9, .9); ctx.fill();
+
+    /* the support pylon it plants: a soft field ring */
+    ctx.strokeStyle = `rgba(90,200,255,${.2 + Math.sin(t * 2.4) * .12})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(0, 12, 19 + lvl * 2, 6, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
+  },
+
+  wraith(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.5) * 2.4;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.globalAlpha = .9;
+    const pool = ctx.createRadialGradient(0, 14, 1, 0, 14, 16);
+    pool.addColorStop(0, 'rgba(120,255,190,.3)');
+    pool.addColorStop(1, 'rgba(120,255,190,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath(); ctx.ellipse(0, 14, 16, 5.5, 0, 0, TAU); ctx.fill();
+
+    /* cape that fades out rather than ending */
+    const cape = ctx.createLinearGradient(0, -12, 0, 16);
+    cape.addColorStop(0, 'rgba(160,40,60,.95)');
+    cape.addColorStop(1, 'rgba(160,40,60,0)');
+    ctx.fillStyle = cape;
+    ctx.beginPath();
+    ctx.moveTo(-8, -10);
+    ctx.quadraticCurveTo(-16 - Math.sin(t * 1.8) * 3, 4, -9, 16);
+    ctx.lineTo(9, 16);
+    ctx.quadraticCurveTo(16 + Math.sin(t * 1.8) * 3, 4, 8, -10);
+    ctx.closePath(); ctx.fill();
+
+    /* green torso with the crossed straps */
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3fbf74'); g.addColorStop(1, '#1c6b42');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 6); ctx.lineTo(-7.5, 6);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+    ctx.strokeStyle = '#a8202c'; ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-7, -10); ctx.lineTo(6, 4);
+    ctx.moveTo(7, -10); ctx.lineTo(-6, 4);
+    ctx.stroke();
+
+    /* long green head, deep-set eyes */
+    ctx.fillStyle = '#4cd085';
+    ctx.beginPath(); ctx.ellipse(0, -17, 6, 7.6, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#0d2b1b';
+    ctx.beginPath();
+    ctx.ellipse(-2.5, -18, 2, 1.4, -.25, 0, TAU);
+    ctx.ellipse(2.5, -18, 2, 1.4, .25, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = `rgba(190,255,220,${.5 + Math.sin(t * 3) * .4})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.5, -18, 1, .7, -.25, 0, TAU);
+    ctx.ellipse(2.5, -18, 1, .7, .25, 0, TAU);
+    ctx.fill();
+
+    if (lvl > 1) {
+      ctx.strokeStyle = `rgba(120,255,190,${.25 + Math.sin(t * 3.4) * .2})`;
+      ctx.lineWidth = 1.3;
+      for (let i = 0; i < lvl; i++) {
+        ctx.beginPath(); ctx.arc(0, -17, 11 + i * 4 + Math.sin(t * 2 + i) * 1.5, 0, TAU); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  },
+
+  panther(ctx, lvl, t) {
+    const crouch = Math.abs(Math.sin(t * 2.6)) * 1.4;
+    ctx.save(); ctx.translate(0, crouch);
+    ctx.fillStyle = 'rgba(0,0,0,.36)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 13, 4.6, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#14161d';
+    roundRect(ctx, -7.5, 1, 6.5, 13, 3); ctx.fill();
+    roundRect(ctx, 1, 1, 6.5, 13, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#22242e'); g.addColorStop(1, '#0d0e13');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+
+    /* stored kinetic charge glowing through the weave */
+    const charge = .35 + Math.sin(t * 3.2) * .3;
+    ctx.strokeStyle = `rgba(150,110,255,${charge})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -8); ctx.lineTo(-2, -2); ctx.lineTo(-6, 3);
+    ctx.moveTo(6, -8); ctx.lineTo(2, -2); ctx.lineTo(6, 3);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(170,140,255,${charge})`;
+    ctx.beginPath();
+    ctx.moveTo(0, -9); ctx.lineTo(3, -4); ctx.lineTo(0, 1); ctx.lineTo(-3, -4);
+    ctx.closePath(); ctx.fill();
+
+    /* masked head with the ears */
+    ctx.fillStyle = '#14161d';
+    ctx.beginPath(); ctx.arc(0, -16, 6.4, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-5, -20); ctx.lineTo(-3.4, -25); ctx.lineTo(-1.4, -20.5); ctx.closePath();
+    ctx.moveTo(5, -20); ctx.lineTo(3.4, -25); ctx.lineTo(1.4, -20.5); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(200,180,255,${.65 + Math.sin(t * 4) * .3})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.4, -16.6, 1.8, 1, -.2, 0, TAU);
+    ctx.ellipse(2.4, -16.6, 1.8, 1, .2, 0, TAU);
+    ctx.fill();
+
+    /* claws out */
+    ctx.strokeStyle = '#c9b6ff'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(9, -2 + i * 2.6); ctx.lineTo(14 + lvl, -3.5 + i * 3.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+
+  claw(ctx, lvl, t) {
+    const bob = Math.abs(Math.sin(t * 3)) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 13.5, 4.8, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#2b4a9a';
+    roundRect(ctx, -7.5, 2, 6.5, 12, 3); ctx.fill();
+    roundRect(ctx, 1, 2, 6.5, 12, 3); ctx.fill();
+
+    /* stocky yellow-and-blue torso */
+    const g = ctx.createLinearGradient(0, -11, 0, 6);
+    g.addColorStop(0, '#ffd23f'); g.addColorStop(1, '#c98a1a');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -10); ctx.lineTo(9, -10);
+    ctx.quadraticCurveTo(11.5, -1, 8.5, 6); ctx.lineTo(-8.5, 6);
+    ctx.quadraticCurveTo(-11.5, -1, -9, -10);
+    ctx.fill();
+    ctx.fillStyle = '#2b4a9a';
+    ctx.beginPath();
+    ctx.moveTo(-9, -10); ctx.lineTo(-3, -10); ctx.lineTo(-6, 6); ctx.lineTo(-8.5, 6);
+    ctx.closePath();
+    ctx.moveTo(9, -10); ctx.lineTo(3, -10); ctx.lineTo(6, 6); ctx.lineTo(8.5, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    /* cowl with the swept points */
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath(); ctx.arc(0, -15.5, 6.2, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-6, -18); ctx.lineTo(-10, -25); ctx.lineTo(-2.5, -20); ctx.closePath();
+    ctx.moveTo(6, -18); ctx.lineTo(10, -25); ctx.lineTo(2.5, -20); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.ellipse(.5, -14, 4, 4.4, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-1, -14.5, 1, 0, TAU); ctx.arc(2.4, -14.5, 1, 0, TAU); ctx.fill();
+    /* a snarl */
+    ctx.strokeStyle = '#16121c'; ctx.lineWidth = .9;
+    ctx.beginPath(); ctx.moveTo(-1.4, -11.4); ctx.lineTo(2.6, -11.4); ctx.stroke();
+
+    /* three blades out of each fist */
+    ctx.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.translate(s * 10, 0); ctx.rotate(s * .25 + Math.sin(t * 4) * .06);
+      ctx.strokeStyle = '#e6ecf7'; ctx.lineWidth = 1.6;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 2.4, 0); ctx.lineTo(i * 2.8, -11 - lvl * 1.6);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+
+  nova(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.8) * 2;
+    ctx.save(); ctx.translate(0, bob);
+    const pool = ctx.createRadialGradient(0, 14, 1, 0, 14, 20);
+    pool.addColorStop(0, 'rgba(255,200,90,.35)');
+    pool.addColorStop(1, 'rgba(255,200,90,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath(); ctx.ellipse(0, 14, 20, 7, 0, 0, TAU); ctx.fill();
+
+    /* sash */
+    ctx.fillStyle = '#d8323f';
+    ctx.beginPath();
+    ctx.moveTo(-6, -11); ctx.quadraticCurveTo(-14 - Math.sin(t * 2) * 2, 2, -8, 15);
+    ctx.lineTo(-2, 13); ctx.lineTo(-3, -10); ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#0f2b6b';
+    roundRect(ctx, -7.5, 2, 6.5, 12, 3); ctx.fill();
+    roundRect(ctx, 1, 2, 6.5, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#2f5fd8'); g.addColorStop(1, '#12266e');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+
+    /* eight-point star on the chest */
+    const flare = .65 + Math.sin(t * 3.4) * .35;
+    ctx.fillStyle = `rgba(255,214,120,${flare})`;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU - Math.PI / 2;
+      const r = i % 2 ? 2.6 : 6.4;
+      ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, -4 + Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill();
+
+    /* head with the mohawk of light */
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -16, 6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c98a3a';
+    ctx.beginPath(); ctx.arc(0, -18.5, 6.2, Math.PI, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,220,140,${flare})`;
+    ctx.beginPath();
+    ctx.moveTo(-1.5, -21); ctx.lineTo(0, -28 - lvl * 2); ctx.lineTo(1.5, -21);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-2, -16, 1, 0, TAU); ctx.arc(2, -16, 1, 0, TAU); ctx.fill();
+
+    /* fists burning */
+    for (const s of [-1, 1]) {
+      const gg = ctx.createRadialGradient(s * 10, 0, .5, s * 10, 0, 6 + lvl);
+      gg.addColorStop(0, `rgba(255,240,190,${flare})`);
+      gg.addColorStop(1, 'rgba(255,180,60,0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.arc(s * 10, 0, 6 + lvl, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  },
+
+  hex(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.6) * 2.2;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath(); ctx.ellipse(0, 15, 13, 4.5, 0, 0, TAU); ctx.fill();
+
+    /* long coat flaring */
+    const g = ctx.createLinearGradient(0, -12, 0, 16);
+    g.addColorStop(0, '#d8323f'); g.addColorStop(1, '#6b0f22');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(13 + Math.sin(t * 2) * 2, 4, 10, 15);
+    ctx.lineTo(-10, 15);
+    ctx.quadraticCurveTo(-13 - Math.sin(t * 2) * 2, 4, -8, -11);
+    ctx.fill();
+
+    /* head + headpiece */
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -16, 5.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#8a1020';
+    ctx.beginPath(); ctx.arc(0, -18, 6.2, Math.PI, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-2.6, -22.5); ctx.lineTo(0, -29); ctx.lineTo(2.6, -22.5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-2, -16, 1, 0, TAU); ctx.arc(2, -16, 1, 0, TAU); ctx.fill();
+
+    /* reality coming apart in her hands */
+    for (const s of [-1, 1]) {
+      const spin = t * (2.2 + lvl * .3) * s;
+      ctx.save(); ctx.translate(s * 11, 1); ctx.rotate(spin);
+      ctx.strokeStyle = `rgba(255,90,110,${.4 + Math.sin(t * 5 + s) * .3})`;
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, 3 + i * 2.2, i * .8, i * .8 + 2.2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (lvl > 2) {
+      ctx.strokeStyle = `rgba(255,120,140,${.2 + Math.sin(t * 3) * .15})`;
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath(); ctx.arc(0, -4, 24, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  },
+
+  blink(ctx, lvl, t) {
+    /* she is never quite in one place: an after-image trails the real one */
+    const phase = (t * 1.4) % 1;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 12, 4.4, 0, 0, TAU); ctx.fill();
+
+    const body = (alpha, dx) => {
+      ctx.save(); ctx.globalAlpha = alpha; ctx.translate(dx, 0);
+      ctx.fillStyle = '#1b1230';
+      roundRect(ctx, -7, 1, 6, 13, 3); ctx.fill();
+      roundRect(ctx, 1, 1, 6, 13, 3); ctx.fill();
+      const g = ctx.createLinearGradient(0, -12, 0, 5);
+      g.addColorStop(0, '#3a2160'); g.addColorStop(1, '#160c28');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+      ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+      ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+      ctx.fill();
+      ctx.fillStyle = '#8fe6ff';
+      ctx.beginPath(); ctx.arc(0, -5, 2.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#4f7fd8';
+      ctx.beginPath(); ctx.arc(0, -16, 6.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath(); ctx.arc(-2.2, -16.4, 1.2, 0, TAU); ctx.arc(2.2, -16.4, 1.2, 0, TAU); ctx.fill();
+      /* pointed tail */
+      ctx.strokeStyle = '#4f7fd8'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-6, 4);
+      ctx.quadraticCurveTo(-15, 2 + Math.sin(t * 3) * 4, -11, -8);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    body(.28, -9 - phase * 5);
+    body(1, 0);
+
+    /* the fold she steps through */
+    ctx.strokeStyle = `rgba(190,120,255,${.35 + Math.sin(t * 4) * .25})`;
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 1 + lvl; i++) {
+      ctx.beginPath();
+      ctx.ellipse(-12, -3, 3 + i * 2.4, 7 + i * 3.2, .3, 0, TAU);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
@@ -3669,6 +4370,153 @@ const HEROES = [
     desc: 'Hits harder than anything else in the roster and cannot reach past its own arms. '
         + 'Rampage doubles its reach and swings, and every kill feeds the next.',
   },
+  {
+    id: 'tide', name: 'Tide', role: 'Deep King', art: Art.tide,
+    rarity: 'Epic', rarityColor: '#3fd0b0', glow: 'rgba(60,210,180,.45)',
+    clazz: 'vanguard',
+    range: 148, cooldown: .9, damage: 3, kind: 'wave', knock: 8,
+    color: '#3fd0b0', tags: ['water', 'kinetic'],
+    ability: {
+      kind: 'riptide',
+      name: 'Riptide',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      duration: [4, 5.5, 7],
+      hint: 'Click Tide to turn the road into a river',
+    },
+    desc: 'Sweeps the road with a wall of water that hits everything in front of him and shoves it '
+        + 'back. Riptide floods the whole route: the legion wades instead of marching, and takes '
+        + 'the current the entire time.',
+  },
+  {
+    id: 'wraith', name: 'Wraith', role: 'The Watcher', art: Art.wraith,
+    rarity: 'Epic', rarityColor: '#4cd085', glow: 'rgba(76,208,133,.45)',
+    clazz: 'specialist',
+    range: 178, cooldown: 1.15, damage: 2, kind: 'chain', chains: 3,
+    color: '#4cd085', tags: ['mind'],
+    ability: {
+      kind: 'mindwipe',
+      name: 'Mindwipe',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [5, 6.5, 8],
+      hint: 'Click Wraith to take the whole legion apart',
+    },
+    desc: 'Reaches into several minds at once and burns the thought out. Mindwipe erases the '
+        + 'legion’s orders outright — they turn round and march back the way they came, and take '
+        + 'double from everything while they do.',
+  },
+  {
+    id: 'claw', name: 'Claw', role: 'The Feral', art: Art.claw,
+    rarity: 'Rare', rarityColor: '#ffd23f', glow: 'rgba(255,210,63,.42)',
+    clazz: 'vanguard',
+    range: 108, cooldown: .38, damage: 3, kind: 'smash', knock: 3,
+    color: '#ffd23f', tags: ['kinetic'],
+    unstoppable: true,
+    ability: {
+      kind: 'frenzy',
+      name: 'Frenzy',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      duration: [6, 8, 10],
+      hint: 'Click Claw to let it go',
+    },
+    desc: 'Short reach, no patience, and nothing the legion carries can switch him off — no escort '
+        + 'suppresses him, ever. Frenzy stacks his damage with every kill and keeps it for the '
+        + 'duration.',
+  },
+  {
+    id: 'blink', name: 'Blink', role: 'The Displaced', art: Art.blink,
+    rarity: 'Rare', rarityColor: '#b06cf0', glow: 'rgba(176,108,240,.42)',
+    clazz: 'vanguard',
+    range: 162, cooldown: .5, damage: 2, pierce: 2, projSpeed: 900, kind: 'dart',
+    color: '#b06cf0', tags: ['agility', 'mystic'],
+    ability: {
+      kind: 'fold',
+      name: 'Fold Space',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      send: [.18, .26, .34],
+      hint: 'Click Blink to fold the road',
+    },
+    desc: 'Never quite where the legion aims. Fold Space grabs everything on the leading half of '
+        + 'the road and drops it back down the route — cheap, repeatable, and it buys the whole '
+        + 'line time.',
+  },
+  {
+    id: 'nova', name: 'Nova', role: 'Cosmic Ace', art: Art.nova,
+    rarity: 'Epic', rarityColor: '#ffb03f', glow: 'rgba(255,176,63,.5)',
+    clazz: 'specialist',
+    range: 195, cooldown: 1.4, damage: 3, pierce: 4, projSpeed: 860, kind: 'dart',
+    color: '#ffb03f', tags: ['solar', 'cosmic'],
+    ability: {
+      kind: 'binary',
+      name: 'Binary',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [4, 5.5, 7],
+      hint: 'Click Nova to go binary',
+    },
+    desc: 'Photon bolts that punch through a whole file. Binary lights her up: for the duration '
+        + 'she burns a permanent beam down the road and everything caught in it cooks.',
+  },
+  {
+    id: 'circuit', name: 'Circuit', role: 'Machine Mind', art: Art.circuit,
+    rarity: 'Legendary', rarityColor: '#5bc8ff', glow: 'rgba(91,200,255,.45)',
+    clazz: 'icon',
+    range: 168, cooldown: .55, damage: 2, kind: 'ray', rayColor: '#5bc8ff',
+    color: '#5bc8ff', tags: ['tech'],
+    /* the only hero that buffs, so he stacks with a Relay Mast */
+    buff: { range: .16, rate: .86 },
+    ability: {
+      kind: 'overclock',
+      name: 'Overclock',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [5, 6.5, 8],
+      hint: 'Click Circuit to overclock the field',
+    },
+    desc: 'Half of him is the network. A steady tech beam of his own, and everything you own '
+        + 'standing in his field shoots further and faster. Overclock pushes the whole field into '
+        + 'the red: every unit fires at triple rate until it burns out.',
+  },
+  {
+    id: 'panther', name: 'Panther', role: 'Kinetic Stalker', art: Art.panther,
+    rarity: 'Legendary', rarityColor: '#9a7bff', glow: 'rgba(154,123,255,.45)',
+    clazz: 'icon',
+    range: 158, cooldown: .34, damage: 2, pierce: 1, projSpeed: 940, kind: 'dart',
+    color: '#9a7bff', tags: ['kinetic', 'tech'],
+    /* every hit taken by the bastion feeds the suit */
+    absorbs: true,
+    ability: {
+      kind: 'release',
+      name: 'Kinetic Release',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      hint: 'Click Panther to give it all back',
+    },
+    desc: 'The suit drinks every impact on the field and stores it. Kinetic Release gives the whole '
+        + 'lot back at once, in a shockwave that scales with how hard the round has been going — '
+        + 'the worse the fight, the bigger the answer.',
+  },
+  {
+    id: 'hex', name: 'Hex', role: 'Reality Witch', art: Art.hex,
+    rarity: 'Legendary', rarityColor: '#ff5a6e', glow: 'rgba(255,90,110,.45)',
+    clazz: 'icon',
+    range: 186, cooldown: 1.1, damage: 3, pierce: 2, projSpeed: 760, kind: 'dart',
+    color: '#ff5a6e', tags: ['mystic', 'chaos'],
+    ability: {
+      kind: 'unmake',
+      name: 'Unmake',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      strip: [3, 5, 8],
+      hint: 'Click Hex to un-happen their armour',
+    },
+    desc: 'Decides that things are simply otherwise. Unmake tears the plating off every trooper on '
+        + 'the field and knocks the survivors down a grade — the one clean answer to a heavily '
+        + 'plated late-campaign wave.',
+  },
 ];
 
 const HERO_BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
@@ -3701,7 +4549,8 @@ function levelMods(level) {
 const SAVE_KEY = 'balloon-bastion-demo-v1';
 
 const Save = {
-  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0, stars: {} },
+  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0, stars: {},
+          mastery: {} },
 
   load() {
     try {
@@ -3716,6 +4565,8 @@ const Save = {
     }
     // the starter hero can never be missing
     if (!this.data.heroes.includes('ember')) this.data.heroes.unshift('ember');
+    // profiles written before mastery existed simply start at zero
+    if (!this.data.mastery) this.data.mastery = {};
     return this.data;
   },
 
@@ -3738,6 +4589,25 @@ const Save = {
   unlock(id) {
     if (this.owns(id)) return false;
     this.data.heroes.push(id); this.flush(); return true;
+  },
+
+  /* ---- hero mastery ---- */
+  masteryOf(id) { return (this.data.mastery && this.data.mastery[id]) || 0; },
+  rankOf(id) { return masteryRank(this.masteryOf(id)); },
+  /** pay a squad for a cleared mission; returns what each hero gained */
+  awardMastery(ids, missionNo, stars) {
+    const gain = masteryGain(missionNo, stars);
+    const out = [];
+    for (const id of ids || []) {
+      if (!HERO_BY_ID[id]) continue;
+      const before = this.masteryOf(id);
+      const after = Math.min(MASTERY_MAX, before + gain);
+      this.data.mastery[id] = after;
+      out.push({ id, gain: after - before, rankUp: masteryRank(after) > masteryRank(before),
+                 rank: masteryRank(after) });
+    }
+    if (out.length) this.flush();
+    return out;
   },
 
   recordRound(r) {
@@ -4325,6 +5195,73 @@ const Sfx = {
     this.tone({ freq: 220, to: 120, dur: .9, type: 'sawtooth', gain: .06, delay: .1, attack: .02 });
   },
 
+  /* ---- the eight recruits ---- */
+  /** a sheet of water thrown forward: a wash of noise sliding down in pitch */
+  wave() {
+    this.noise({ dur: .34, gain: .2, type: 'lowpass', freq: 2600, freqTo: 420,
+                 attack: .008, hold: .06 });
+    this.tone({ freq: 240, to: 90, dur: .3, type: 'sine', gain: .05, attack: .01 });
+  },
+  /** the road turning into a river — a long swell that keeps running */
+  riptide() {
+    this.noise({ dur: 1.8, gain: .16, type: 'lowpass', freq: 500, freqTo: 2200,
+                 attack: .3, hold: .7 });
+    this.tone({ freq: 70, to: 130, dur: 1.4, type: 'sine', gain: .1, attack: .1, hold: .5 });
+  },
+  /** the current, ticking over while the flood holds */
+  riptideTick() {
+    this.noise({ dur: .16, gain: .07, type: 'bandpass', freq: 700, freqTo: 1800, q: 1.2,
+                 attack: .01 });
+  },
+  /** a mind coming apart: a descending pair with the floor dropping out */
+  mindwipe() {
+    this.tone({ freq: 900, to: 130, dur: .9, type: 'sine', gain: .09, attack: .01, hold: .12 });
+    this.tone({ freq: 906, to: 128, dur: .9, type: 'sine', gain: .07, attack: .01, hold: .12 });
+    this.noise({ dur: .7, gain: .1, type: 'bandpass', freq: 2400, freqTo: 300, q: .8, attack: .05 });
+  },
+  /** claws out — three metal rips over a snarl */
+  frenzy() {
+    this.tone({ freq: 140, to: 80, dur: .5, type: 'sawtooth', gain: .1, attack: .01, hold: .1 });
+    for (let i = 0; i < 3; i++) {
+      this.noise({ dur: .13, gain: .2, type: 'bandpass', freq: 3400, freqTo: 1600, q: 3,
+                   delay: i * .07, attack: .001 });
+    }
+  },
+  /** the road folding: a short suck inward, then the drop */
+  fold() {
+    this.tone({ freq: 300, to: 1200, dur: .16, type: 'triangle', gain: .06, attack: .004 });
+    this.tone({ freq: 1200, to: 200, dur: .3, type: 'triangle', gain: .07, delay: .14, attack: .004 });
+    this.noise({ dur: .3, gain: .1, type: 'bandpass', freq: 1800, freqTo: 500, q: 1.4, delay: .12 });
+  },
+  /** going binary: a rising pair that locks into a hard bright hold */
+  binary() {
+    this.tone({ freq: 300, to: 1500, dur: .45, type: 'sawtooth', gain: .09, attack: .01, hold: .1 });
+    this.tone({ freq: 302, to: 1490, dur: .45, type: 'square', gain: .05, attack: .01, hold: .1 });
+    this.noise({ dur: .6, gain: .16, type: 'highpass', freq: 1800, freqTo: 5000, attack: .05, hold: .2 });
+  },
+  /** the whole field into the red: a machine spinning far past its rating */
+  overclock() {
+    this.tone({ freq: 180, to: 760, dur: .7, type: 'square', gain: .07, attack: .02, hold: .18 });
+    this.tone({ freq: 90, to: 380, dur: .7, type: 'sawtooth', gain: .06, attack: .02, hold: .18 });
+    for (let i = 0; i < 4; i++) {
+      this.tone({ freq: 900 + i * 260, to: 1400 + i * 260, dur: .12, type: 'square',
+                  gain: .035, delay: .1 + i * .07, attack: .002 });
+    }
+  },
+  /** everything the suit drank, handed back at once */
+  release() {
+    this.tone({ freq: 55, to: 30, dur: 1.1, type: 'sine', gain: .26, attack: .002, hold: .3 });
+    this.noise({ dur: .5, gain: .3, type: 'lowpass', freq: 3000, freqTo: 260, attack: .001, hold: .1 });
+    this.tone({ freq: 420, to: 90, dur: .6, type: 'sawtooth', gain: .08, attack: .004, hold: .08 });
+  },
+  /** armour that stops having happened: a reversed, unresolved swell */
+  unmake() {
+    this.tone({ freq: 520, to: 130, dur: .8, type: 'triangle', gain: .1, attack: .12, hold: .1 });
+    this.tone({ freq: 780, to: 190, dur: .8, type: 'sine', gain: .06, attack: .18, hold: .1 });
+    this.noise({ dur: .55, gain: .14, type: 'bandpass', freq: 400, freqTo: 3000, q: 1.1,
+                 attack: .18 });
+  },
+
   /** can't afford it / can't do that */
   deny() {
     this.tone({ freq: 225, to: 155, dur: .12, type: 'square', gain: .05, attack: .002 });
@@ -4377,6 +5314,8 @@ const Sfx = {
    Without a floor, a fast melee hero re-knocks the same trooper every swing and
    nothing ever walks past it — the line stops being a race and becomes a wall. */
 const PUSH_CAP = 110;
+/* the live cap for the mission in progress — Brute Squad doubles it */
+let pushCapNow = PUSH_CAP;
 
 /* =============================== VOID LEGION TROOPER =============================== */
 class Enemy {
@@ -4482,7 +5421,7 @@ class Enemy {
       Ultimates pass `hard` and ignore the floor — that is what makes them
       ultimates. */
   push(dist, hard) {
-    const floor = hard ? 0 : Math.max(0, this.dMax - PUSH_CAP);
+    const floor = hard ? 0 : Math.max(0, this.dMax - pushCapNow);
     const to = Math.max(floor, this.d - dist);
     if (to >= this.d) return 0;
     const moved = this.d - to;
@@ -4820,33 +5759,48 @@ class Tower {
     this.overdrive = 0;      // Streak's supersonic window
     this.rampage = 0;        // Breaker off the leash
     this.rampageKills = 0;
+    this.frenzy = false;     // Claw's version: damage climbs, reach does not
+    this.stored = 0;         // Panther's suit, drinking the round
     this.disabled = 0;       // knocked offline by a boss power
   }
 
   get mods() { return levelMods(this.level); }
-  get maxCharges() { return this.def.ability ? this.def.ability.charges[this.level - 1] : 0; }
+  get maxCharges() {
+    if (!this.def.ability) return 0;
+    const base = this.def.ability.charges[this.level - 1];
+    /* a synergy only adds charges to an ultimate that has already unlocked */
+    return base > 0 ? base + (this.synCharges || 0) : 0;
+  }
   get ultReady() { return !!this.def.ability && this.charges > 0; }
   /** the hero's class card — Vanguard, Specialist or Icon. Base units have none
       and take no class modifiers at all. */
   get cls() { return classOf(this.def); }
   /** how hard this hero's ultimate lands, relative to its printed numbers */
-  get ultScale() { return this.cls ? this.cls.ult : 1; }
-  get rate() { return this.def.cooldown * this.mods.rate * (this.cls ? this.cls.rate : 1); }
+  get ultScale() { return (this.cls ? this.cls.ult : 1) + (this.synUlt || 0); }
+  get rate() {
+    return this.def.cooldown * this.mods.rate * (this.cls ? this.cls.rate : 1)
+      * (this.synRate === undefined ? 1 : this.synRate);
+  }
   get damage() {
-    const base = this.def.damage + this.mods.damage;
-    return this.cls ? Math.max(1, Math.round(base * this.cls.damage)) : base;
+    let base = this.def.damage + this.mods.damage;
+    /* Frenzy stacks: every kill it makes feeds the next swing */
+    if (this.frenzy && this.rampage > 0) base += Math.min(8, this.rampageKills);
+    const k = (this.cls ? this.cls.damage : 1) * (this.synDamage === undefined ? 1 : this.synDamage);
+    return k === 1 ? base : Math.max(1, Math.round(base * k));
   }
   get pierce() { return (this.def.pierce || 1) + this.mods.pierce; }
   /** a Relay Mast in range widens the reach and shortens the cycle */
   get range() {
-    const rampage = this.rampage > 0 ? 2 : 1;
+    /* Frenzy is Rampage's engine without the reach — Claw stays short-armed */
+    const rampage = this.rampage > 0 && !this.frenzy ? 2 : 1;
     return this.def.range * this.mods.range * (this.buffRange || 1) * rampage
-      * (this.cls ? this.cls.range : 1);
+      * (this.cls ? this.cls.range : 1) * (this.synRange === undefined ? 1 : this.synRange);
   }
   /** Overdrive collapses the cooldown to a fraction of normal; Rally speeds everything up */
   firingRateIn(game) {
     let r = this.overdrive > 0 ? this.rate * .17 : this.rate;
     if (game && game.rally > 0) r *= .5;
+    if (game && game.overclock > 0) r *= .34;      // Circuit: triple rate, everything
     if (this.buffRate) r *= this.buffRate;
     /* each kill during a Rampage shortens the next swing */
     if (this.rampage > 0) r *= Math.max(.28, .5 - this.rampageKills * .02);
@@ -4855,8 +5809,17 @@ class Tower {
 
   update(dt, game) {
     this.placeAnim = Math.min(1, this.placeAnim + dt * 3.2);
+    /* the suit drinks the fight going on around it */
+    if (this.def.absorbs) {
+      if (this.lastImpact === undefined) this.lastImpact = game.impact;
+      this.stored = Math.min(120, this.stored + (game.impact - this.lastImpact) * .3);
+      this.lastImpact = game.impact;
+    }
     if (this.ultAnim > 0) this.ultAnim = Math.max(0, this.ultAnim - dt);
-    if (this.rampage > 0) this.rampage = Math.max(0, this.rampage - dt);
+    if (this.rampage > 0) {
+      this.rampage = Math.max(0, this.rampage - dt);
+      if (this.rampage === 0) this.frenzy = false;
+    }
     if (this.overdrive > 0) {
       this.overdrive = Math.max(0, this.overdrive - dt);
       /* he blurs through his own after-images while it lasts */
@@ -5100,6 +6063,31 @@ class Tower {
         }
         game.shake = Math.max(game.shake, 6);
         Sfx.slam();
+        break;
+      }
+      case 'wave': {
+        /* a sheet of water thrown down the road: everything in the arc in front
+           of him takes it and gets shoved, but only in front */
+        const face = this.angle;
+        game.rings.push({ x: this.x, y: this.y, r: 12, max: this.range, life: .4,
+          maxLife: .4, color: '#7fe6ff', thick: 10 });
+        for (let i = 0, n = game.n(16); i < n; i++) {
+          const a2 = face + rand(-.7, .7);
+          game.particles.push(new Particle(this.x, this.y - 4, {
+            vx: Math.cos(a2) * rand(120, 300), vy: Math.sin(a2) * rand(120, 300) - 30,
+            life: rand(.3, .6), size: rand(2.5, 5.5),
+            color: pick(['#bff2ff', '#7fe6ff', '#3fd0b0']), kind: 'spark', gravity: 180,
+          }));
+        }
+        for (const b of game.enemies) {
+          if (b.dead || distSq(b.x, b.y, this.x, this.y) > this.range * this.range) continue;
+          const a2 = Math.atan2(b.y - this.y, b.x - this.x);
+          if (Math.abs(((a2 - face + Math.PI * 3) % TAU) - Math.PI) > .95) continue;
+          b.push(d.knock === undefined ? 8 : d.knock);
+          b.chill(.6, 1.1);
+          game.damage(b, this.damage, { source: this, x: b.x, y: b.y, tags: d.tags });
+        }
+        Sfx.wave();
         break;
       }
       case 'smash': {
@@ -5646,15 +6634,20 @@ class Saw {
 /* Paragon's ultimate: a sustained beam that tracks the leading trooper and
    burns everything standing in the line. */
 class Lance {
-  constructor(tower, duration) {
+  /* Paragon's Solar Lance by default; Nova's Binary passes its own colours,
+     width and damage through `o` so the two read as different weapons */
+  constructor(tower, duration, o = {}) {
     this.t = tower;
     this.life = duration;
     this.max = duration;
     this.tick = 0;
     this.angle = tower.angle;
     this.dead = false;
-    this.width = 15 + tower.level * 3;
-    this.damage = 2 + tower.level;
+    this.width = o.width || 15 + tower.level * 3;
+    this.damage = o.damage || 2 + tower.level;
+    this.core = o.color || '#ffbe6e';
+    this.edge = o.edge || '#ff6e3c';
+    this.tags = o.tags || ['solar'];
     this.voice = Sfx.startLance();
     this.end = { x: tower.x, y: tower.y };
   }
@@ -5686,7 +6679,7 @@ class Lance {
         if (e.dead) continue;
         const d2 = pointSegDistSq(e.x, e.y, this.t.x, this.t.y, this.end.x, this.end.y);
         if (d2 > (w + e.r) * (w + e.r)) continue;
-        game.damage(e, this.damage, { source: this.t, x: e.x, y: e.y, silent: true, tags: ['solar'] });
+        game.damage(e, this.damage, { source: this.t, x: e.x, y: e.y, silent: true, tags: this.tags });
         e.ignite(1.2);
         if (Math.random() < .5) game.spark(e.x, e.y, '#ffd9a0', 4);
       }
@@ -5718,8 +6711,8 @@ class Lance {
 
     const grad = ctx.createLinearGradient(this.t.x, this.t.y, this.end.x, this.end.y);
     grad.addColorStop(0, `rgba(255,255,235,${.95 * k})`);
-    grad.addColorStop(.25, `rgba(255,190,110,${.75 * k})`);
-    grad.addColorStop(1, 'rgba(255,110,60,0)');
+    grad.addColorStop(.25, rgba(this.core, .75 * k));
+    grad.addColorStop(1, rgba(this.edge, 0));
 
     /* outer bloom, then the searing core */
     ctx.lineCap = 'round';
@@ -5857,6 +6850,16 @@ class Game {
     this.reset(1);
   }
 
+  /** the squad picked on the loadout screen, and what it earns them */
+  setSquad(ids) {
+    this.squad = (ids || []).filter((id) => HERO_BY_ID[id]);
+    const defs = this.squad.map((id) => HERO_BY_ID[id]);
+    const slots = (this.level && this.level.heroSlots) || 1;
+    this.synergies = defs.length ? synergiesFor(defs, slots) : [];
+    this.syn = synergyEffect(this.synergies);
+    pushCapNow = PUSH_CAP * (1 + (this.syn.pushCap || 0));
+  }
+
   reset(levelNo = this.levelNo || 1) {
     Sfx.stopAll();
     /* phones render the same fight with a lighter particle budget */
@@ -5867,9 +6870,10 @@ class Game {
     if (!this.map || this.map !== this.level.map) this.setMapAndBake(this.level.map);
     this.waves = buildLevelWaves(this.level);
 
+    this.setSquad(this.squad);
     this.time = 0;
     this.lives = this.level.lives;
-    this.cash = this.level.cash;
+    this.cash = this.level.cash + (this.syn.startCash || 0);
     this.round = 0;
     this.runGems = 0;
     this.speed = 1;
@@ -5892,6 +6896,11 @@ class Game {
     this.downpour = 0;
     this.downpourDmg = 2;
     this.downpourTick = 0;
+    this.impact = 0;                  // grades stripped this run, for absorbers
+    this.riptide = 0;                 // Tide flooded the route
+    this.riptideDmg = 2;
+    this.riptideTick = 0;
+    this.overclock = 0;               // Circuit pushed the field into the red
     this.exposed = 0;
     this.streak = 0;
     this.streakT = 0;
@@ -6269,7 +7278,7 @@ class Game {
   tryPlace(x, y) {
     const p = this.placing;
     if (!p) return false;
-    const cost = p.isHero ? 0 : p.def.cost;
+    const cost = p.isHero ? 0 : this.costOf(p.def);
     if (p.isHero && !this.heroesPlaced.has(p.def.id) && this.heroSlotsFree <= 0) {
       this.floatText(x, y - 20,
         `Only ${this.heroSlots} hero${this.heroSlots > 1 ? 'es' : ''} on this mission`,
@@ -6315,7 +7324,7 @@ class Game {
 
   upgrade(t) {
     if (t.level >= MAX_LEVEL) return;
-    const cost = upgradeCost(t.def, t.level);
+    const cost = this.upgradeCostOf(t);
     if (this.cash < cost) { Sfx.deny(); return; }
     this.cash -= cost;
     t.spent += cost;
@@ -6602,6 +7611,135 @@ class Game {
         break;
       }
 
+      case 'riptide': {
+        /* the whole route becomes a river: everything on it wades and takes the
+           current the entire time */
+        this.riptide = Math.max(this.riptide, dur(ab.duration));
+        this.riptideDmg = Math.max(1, Math.round((1 + t.level) * k));
+        burst('#7fe6ff', 30);
+        this.floatText(t.x, t.y - 66, 'RIPTIDE', '#bff2ff', 1.6, 18);
+        Sfx.riptide();
+        break;
+      }
+
+      case 'mindwipe': {
+        /* orders erased — they turn round, and everything hits them double */
+        const span = dur(ab.duration);
+        let n = 0;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          e.backward = Math.max(e.backward, span);
+          e.marked = Math.max(e.marked, span);
+          this.spark(e.x, e.y, '#7fffc0', 3);
+          n++;
+        }
+        this.markedUntil = this.time + span;
+        burst('#4cd085', 30);
+        this.flash = Math.max(this.flash, .28);
+        this.floatText(t.x, t.y - 66, `${n} wiped`, '#9dffcb', 1.5, 17);
+        Sfx.mindwipe();
+        break;
+      }
+
+      case 'frenzy': {
+        /* the same engine Rampage uses, but it feeds on kills alone */
+        t.rampage = dur(ab.duration);
+        t.rampageKills = 0;
+        t.frenzy = true;
+        burst('#ffd23f', 30);
+        this.floatText(t.x, t.y - 66, 'FRENZY', '#ffe89a', 1.5, 17);
+        Sfx.frenzy();
+        break;
+      }
+
+      case 'fold': {
+        /* only the leading half of the road, but it costs almost nothing */
+        const frac = Math.min(.6, ab.send[t.level - 1] * k);
+        const lead = this.enemies.filter((e) => !e.dead).sort((a2, b2) => b2.d - a2.d);
+        const take = lead.slice(0, Math.max(1, Math.ceil(lead.length * .5)));
+        let n = 0;
+        for (const e of take) {
+          if (e.push(e.path.length * frac, true) > 0) n++;
+          const p2 = e.path.at(e.d);
+          this.rings.push({ x: p2.x, y: p2.y, r: 3, max: 22, life: .35, maxLife: .35,
+            color: '#c48aff', thick: 2.5 });
+          e.x = p2.x; e.y = p2.y;
+        }
+        burst('#b06cf0', 26);
+        this.floatText(t.x, t.y - 66, `${n} folded back`, '#d6b0ff', 1.4, 16);
+        Sfx.fold();
+        break;
+      }
+
+      case 'binary': {
+        /* she becomes a standing beam for the duration */
+        this.lances.push(new Lance(t, dur(ab.duration), {
+          color: '#ffd27a', edge: '#ff9a3d', width: 22 + t.level * 5,
+          damage: Math.round((3 + t.level * 2) * k),
+        }));
+        burst('#ffd27a', 34);
+        this.flash = Math.max(this.flash, .4);
+        Sfx.binary();
+        break;
+      }
+
+      case 'overclock': {
+        /* every unit on the field into the red */
+        this.overclock = Math.max(this.overclock, dur(ab.duration));
+        for (const u of this.towers) {
+          this.rings.push({ x: u.x, y: u.y, r: 6, max: 40, life: .45, maxLife: .45,
+            color: '#5bc8ff', thick: 3 });
+        }
+        burst('#5bc8ff', 32);
+        this.flash = Math.max(this.flash, .3);
+        this.floatText(t.x, t.y - 66, 'OVERCLOCK — TRIPLE RATE', '#a9e9ff', 1.8, 16);
+        Sfx.overclock();
+        break;
+      }
+
+      case 'release': {
+        /* everything the suit drank this round, handed back at once */
+        const stored = Math.round(t.stored * k);
+        const radius = 150 + Math.min(160, stored * 4);
+        this.rings.push({ x: t.x, y: t.y, r: 14, max: radius, life: .8, maxLife: .8,
+          color: '#9a7bff', thick: 14 });
+        this.rings.push({ x: t.x, y: t.y, r: 8, max: radius * .6, life: .55, maxLife: .55,
+          color: '#ffffff', thick: 7 });
+        let hit = 0;
+        for (const e of this.enemies) {
+          if (e.dead || distSq(e.x, e.y, t.x, t.y) > radius * radius) continue;
+          e.push(60, true);
+          this.damage(e, Math.max(3, Math.round(stored * .6)),
+            { source: t, x: e.x, y: e.y, tags: t.def.tags });
+          hit++;
+        }
+        t.stored = 0;
+        this.shake = Math.max(this.shake, 16);
+        burst('#9a7bff', 38);
+        this.floatText(t.x, t.y - 66, `${stored} GIVEN BACK`, '#c9b6ff', 1.8, 18);
+        Sfx.release();
+        break;
+      }
+
+      case 'unmake': {
+        /* the clean answer to a plated wave: the plating simply stops having
+           happened, and the survivors drop a grade */
+        const strip = Math.round(ab.strip[t.level - 1] * k);
+        let stripped = 0, dropped = 0;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          if (e.plate > 0) { stripped += Math.min(e.plate, strip); e.plate = Math.max(0, e.plate - strip); }
+          this.damage(e, 1, { source: t, x: e.x, y: e.y, silent: true, tags: t.def.tags });
+          dropped++;
+          if (Math.random() < .5) this.spark(e.x, e.y, '#ff8a9c', 3);
+        }
+        burst('#ff5a6e', 34);
+        this.flash = Math.max(this.flash, .35);
+        this.floatText(t.x, t.y - 66, `${stripped} plate unmade`, '#ffa8b6', 1.7, 17);
+        Sfx.unmake();
+        break;
+      }
+
       case 'wildcard': {
         /* every hostile draws a card and lives with it */
         let blown = 0, stunned = 0, turned = 0, robbed = 0;
@@ -6710,9 +7848,13 @@ class Game {
 
       this.runGems = levelReward(this.level) * (first ? 2 : 1) + bounty + cityBonus;
       Save.addGems(this.runGems);
+      /* every hero that actually took the field is paid for the clear */
+      const fought = [...new Set(this.towers.filter((t) => t.isHero).map((t) => t.def.id))];
+      const mastery = Save.awardMastery(fought, this.levelNo, stars);
       Sfx.fanfare();
       this.onEvent('victory', {
         gems: this.runGems, first, level: this.levelNo, stars, best, bounty, cityBonus,
+        mastery, synergies: this.synergies || [],
       });
     } else {
       /* a failed run still pays for the rounds that were held */
@@ -6728,6 +7870,13 @@ class Game {
     const dmg = b.boss ? DREAD.leak : b.tier + 1;
     this.lives -= dmg;
     this.shake = Math.max(this.shake, 7);
+    /* Panther's suit drinks every hit the bastion takes — the worse the round
+       has gone, the harder Kinetic Release comes back */
+    for (const t of this.towers) {
+      if (!t.def.absorbs) continue;
+      t.stored = Math.min(120, t.stored + dmg * 3);
+      this.floatText(t.x, t.y - 34, `+${dmg * 3}`, '#c9b6ff', .8, 12);
+    }
     /* the road may exit off-canvas, so pin the warning where it's visible */
     const lane = b.path || PATH;
     const exit = lane.at(lane.length - 70);
@@ -6827,10 +7976,12 @@ class Game {
   /* ---------------- support masts ---------------- */
   /** recomputed each step: who is standing inside a Relay Mast's ring */
   updateBuffs() {
-    const masts = this.towers.filter((t) => t.def.kind === 'support');
+    /* anything carrying a `buff` projects a field: the Relay Mast, and Circuit,
+       who is the only hero that does it */
+    const masts = this.towers.filter((t) => t.def.buff);
     for (const t of this.towers) {
       let range = 1, rate = 1;
-      if (t.def.kind !== 'support') {
+      if (!t.def.buff) {
         for (const m of masts) {
           const r = m.def.range * m.mods.range;
           if (distSq(m.x, m.y, t.x, t.y) > r * r) continue;
@@ -6841,6 +7992,15 @@ class Game {
       }
       t.buffRange = range;
       t.buffRate = rate;
+      /* the squad's synergies land on the units themselves */
+      const sy = this.syn || {};
+      /* and everything this hero has earned across every run before this one */
+      const m = t.isHero ? masteryPerk(Save.masteryOf(t.def.id)) : null;
+      t.synDamage = 1 + (t.isHero ? (sy.heroDamage || 0) + m.damage : 0);
+      t.synRange = 1 + (t.isHero ? (sy.heroRange || 0) + m.range : 0);
+      t.synRate = 1 + (t.isHero ? (sy.heroRate || 0) : (sy.towerRate || 0));
+      t.synUlt = sy.ultScale || 0;
+      t.synCharges = (sy.charges || 0) + (m ? m.charges : 0);
     }
   }
 
@@ -6855,7 +8015,8 @@ class Game {
       if (!e.dead && e.special && e.special.suppress) auras.push(e);
     }
     for (const t of this.towers) {
-      if (!t.isHero || !t.def.tags) { t.suppressed = null; continue; }
+      /* Claw carries nothing the legion knows how to switch off */
+      if (!t.isHero || !t.def.tags || t.def.unstoppable) { t.suppressed = null; continue; }
       let hit = null;
       for (const e of auras) {
         const r = e.special.aura;
@@ -6871,6 +8032,20 @@ class Game {
       t.suppressed = hit;
     }
   }
+
+  /* ---------------- squad synergies ---------------- */
+  /** what a base unit costs to build, after the squad's trade discounts */
+  costOf(def) {
+    const k = 1 + ((this.syn && this.syn.towerCost) || 0);
+    return Math.max(50, Math.round((def.cost || 0) * k / 10) * 10);
+  }
+  /** what the next level on this unit costs */
+  upgradeCostOf(t) {
+    const k = 1 + ((this.syn && this.syn.upgradeCost) || 0);
+    return Math.max(50, Math.round(upgradeCost(t.def, t.level) * k / 10) * 10);
+  }
+  /** how far an ordinary hit shoves — Brute Squad doubles it */
+  get pushCap() { return pushCapNow; }
 
   /* ---------------- combat helpers ---------------- */
   firstInRange(x, y, r) {
@@ -6971,7 +8146,8 @@ class Game {
         continue;
       }
       const info = TROOPS[b.tier];
-      this.cash += info.reward;
+      this.cash += Math.round(info.reward * (1 + ((this.syn && this.syn.cash) || 0)));
+      this.impact++;                     // every grade stripped is an impact
       this.killFx(b.x, b.y, info.color, b.tier > 0);
       if (!opts.silent) Sfx.kill(b.tier);
       amount--;
@@ -7127,6 +8303,31 @@ class Game {
         }
         this.shake = Math.max(this.shake, 4);
         Sfx.zap();
+      }
+    }
+    if (this.overclock > 0) this.overclock -= dt;
+    if (this.riptide > 0) {
+      this.riptide -= dt;
+      this.riptideTick -= dt;
+      /* the road is a river: everything on it wades and takes the current */
+      for (const e of this.enemies) if (!e.dead) e.chill(.45, .3);
+      if (this.riptideTick <= 0) {
+        this.riptideTick = .5;
+        for (const e of [...this.enemies]) {
+          if (e.dead) continue;
+          this.damage(e, this.riptideDmg, { x: e.x, y: e.y, silent: true, tags: ['water'] });
+          e.push(6);
+          if (Math.random() < .3) this.spark(e.x, e.y, '#9fe8ff', 3);
+        }
+        Sfx.riptideTick();
+      }
+      /* spray drifting along the route */
+      if (Math.random() < dt * 26) {
+        const p = PATH.at(rand(0, PATH.length));
+        this.particles.push(new Particle(p.x + rand(-10, 10), p.y + rand(-8, 8), {
+          vx: rand(-30, 30), vy: rand(-60, -15), life: rand(.35, .7), size: rand(2, 4.5),
+          color: pick(['#bff2ff', '#7fe6ff', '#4fc8e8']), kind: 'spark', gravity: 120,
+        }));
       }
     }
     if (this.downpour > 0) {
@@ -7455,6 +8656,11 @@ const UI = {
     $('#menu-roster-max').textContent = HEROES.length;
     $('#menu-stars').textContent = Save.totalStars();
     $('#menu-stars-max').textContent = LEVEL_COUNT * 3;
+    const tag = $('#menu-tagline');
+    if (tag) {
+      tag.innerHTML = `${CHAPTERS.length} cities &middot; ${LEVEL_COUNT} missions `
+        + `&middot; ${HEROES.length} heroes &middot; <em>hold the line</em>`;
+    }
 
     /* the play button points at wherever you left off */
     const next = LEVELS.find((l) => Save.isUnlocked(l.n) && Save.starsOn(l.n) === 0) || LEVELS[0];
@@ -7578,10 +8784,8 @@ const UI = {
       `Mission ${lv.mission} of ${CHAPTER_BY_ID[lv.chapter].name} — `
       + `<b>${slots} hero slot${slots > 1 ? 's' : ''}</b> on this map. `
       + (escorts.length
-        ? `Counter escorts on the field: <b>${escorts.join(', ')}</b> — tags they shut down are marked in red. `
-        : 'No counter escorts on this one. ')
-      + CLASS_LIST.map((c) =>
-        `<span class="lo-legend" style="--c:${c.color}" title="${c.blurb}">${c.name}</span>`).join('');
+        ? `Counter escorts on the field: <b>${escorts.join(', ')}</b> — the tags they shut down are marked in red.`
+        : 'No counter escorts on this one.');
 
     this.renderLoadout();
     this.show('loadout');
@@ -7593,26 +8797,34 @@ const UI = {
     const grid = $('#loadout-grid');
     grid.innerHTML = '';
 
-    /* suppressed tags on this map, so the choice can be an informed one */
+    /* tags this map's escorts shut down, so the choice can be an informed one */
     const jammed = new Set();
     for (const sid of lv.specials || []) {
       const sp = SPECIALS[sid];
       for (const t of (sp.suppress || []).concat(sp.immune || [])) jammed.add(t);
     }
 
-    for (const def of HEROES) {
+    this.loFilter = this.loFilter || 'all';
+    const shown = HEROES.filter((def) => {
+      if (this.loFilter === 'owned') return Save.owns(def.id);
+      if (this.loFilter === 'all') return true;
+      return def.clazz === this.loFilter;
+    }).sort((a, b) => {
+      /* owned first, then by rarity, then by mastery earned */
+      const ao = Save.owns(a.id) ? 0 : 1, bo = Save.owns(b.id) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      const ar = RARITY_ORDER.indexOf(a.rarity), br = RARITY_ORDER.indexOf(b.rarity);
+      if (ar !== br) return br - ar;
+      return Save.masteryOf(b.id) - Save.masteryOf(a.id);
+    });
+
+    for (const def of shown) {
       const owned = Save.owns(def.id);
       const picked = this.loadout.includes(def.id);
 
       const card = document.createElement('button');
       card.className = 'lo-card' + (picked ? ' picked' : '') + (owned ? '' : ' locked');
       card.style.setProperty('--r', def.rarityColor);
-
-      const icon = document.createElement('canvas');
-      icon.width = 64; icon.height = 64;
-      const c = icon.getContext('2d');
-      c.translate(32, 42); c.scale(1.05, 1.05);
-      def.art(c, 1, 0);
 
       const rar = document.createElement('i');
       rar.className = 'lo-rar';
@@ -7624,6 +8836,12 @@ const UI = {
         flag.textContent = 'RAREST';
         card.appendChild(flag);
       }
+
+      const icon = document.createElement('canvas');
+      icon.width = 64; icon.height = 64;
+      const c = icon.getContext('2d');
+      c.translate(32, 42); c.scale(1.05, 1.05);
+      def.art(c, owned ? 1 + Save.rankOf(def.id) : 1, 0);
       card.appendChild(icon);
 
       const name = document.createElement('span');
@@ -7645,25 +8863,38 @@ const UI = {
           chip.title = cls.blurb;
           card.appendChild(chip);
         }
-      }
 
-      if (owned && def.ability) {
-        const ult = document.createElement('span');
-        ult.className = 'lo-ult';
-        ult.textContent = def.ability.name || 'Ultimate';
-        card.appendChild(ult);
-      }
+        if (def.ability) {
+          const ult = document.createElement('span');
+          ult.className = 'lo-ult';
+          ult.textContent = def.ability.name;
+          card.appendChild(ult);
+        }
 
-      if (owned) {
         const tags = document.createElement('span');
         tags.className = 'lo-tags';
         for (const t of def.tags || []) {
-          const s = document.createElement('span');
-          s.textContent = t;
-          if (jammed.has(t)) { s.style.background = 'rgba(255,90,90,.22)'; s.style.color = '#ffb0b0'; }
-          tags.appendChild(s);
+          const sp = document.createElement('span');
+          sp.textContent = t;
+          if (jammed.has(t) && !def.unstoppable) {
+            sp.classList.add('jam');
+            sp.title = 'An escort on this map shuts this tag down';
+          }
+          tags.appendChild(sp);
         }
         card.appendChild(tags);
+
+        /* what this hero has earned across every run so far */
+        const mp = masteryProgress(Save.masteryOf(def.id));
+        const mast = document.createElement('span');
+        mast.className = 'lo-mastery' + (mp.rank >= MASTERY_RANKS.length ? ' maxed' : '');
+        mast.title = mp.next
+          ? `${mp.need} more to ${mp.next.name} (${mp.next.note})`
+          : 'Mastery complete';
+        mast.innerHTML = `<i class="mp-pips">${MASTERY_RANKS
+          .map((r, i) => `<b class="${i < mp.rank ? 'on' : ''}"></b>`).join('')}</i>`
+          + `<i class="mp-bar"><b style="width:${Math.round(mp.frac * 100)}%"></b></i>`;
+        card.appendChild(mast);
       }
 
       if (picked) {
@@ -7688,6 +8919,9 @@ const UI = {
       grid.appendChild(card);
     }
 
+    this.renderFilters();
+    this.renderSynergies(slots);
+
     $('#lo-count').textContent = `${this.loadout.length} / ${slots} picked`;
 
     const bar = $('#lo-picked');
@@ -7705,6 +8939,7 @@ const UI = {
       def.art(c, 1, 0);
       slot.appendChild(icon);
       slot.appendChild(document.createTextNode(def.name));
+      slot.style.setProperty('--c', def.rarityColor);
       bar.appendChild(slot);
     }
 
@@ -7714,9 +8949,58 @@ const UI = {
       : 'Pick a hero';
   },
 
+  /** the row of chips above the grid: all / owned / one per class */
+  renderFilters() {
+    const wrap = $('#lo-filters');
+    wrap.innerHTML = '';
+    const owned = Save.data.heroes.length;
+    const opts = [
+      { id: 'all', label: `All ${HEROES.length}`, color: '#93a0c8' },
+      { id: 'owned', label: `Yours ${owned}`, color: '#4ade80' },
+      ...CLASS_LIST.map((c) => ({ id: c.id, label: c.name, color: c.color })),
+    ];
+    for (const o of opts) {
+      const b = document.createElement('button');
+      b.className = 'lo-filter' + (this.loFilter === o.id ? ' on' : '');
+      b.textContent = o.label;
+      b.style.setProperty('--c', o.color);
+      b.onclick = () => { this.loFilter = o.id; Sfx.click(); this.renderLoadout(); };
+      wrap.appendChild(b);
+    }
+  },
+
+  /** every synergy, live: the ones the current squad has earned come up lit */
+  renderSynergies(slots) {
+    const defs = this.loadout.map((id) => HERO_BY_ID[id]).filter(Boolean);
+    const active = new Set(synergiesFor(defs, slots).map((s) => s.id));
+    const list = $('#syn-list');
+    list.innerHTML = '';
+
+    /* earned first, then the ones still within reach */
+    const sorted = [...SYNERGIES].sort((a, b) =>
+      (active.has(b.id) ? 1 : 0) - (active.has(a.id) ? 1 : 0));
+
+    for (const sy of sorted) {
+      const on = active.has(sy.id);
+      const row = document.createElement('div');
+      row.className = 'syn-row' + (on ? ' on' : '');
+      row.style.setProperty('--c', sy.color);
+      row.innerHTML = `<b>${sy.name}</b><span class="syn-rule">${sy.rule}</span>`
+        + `<span class="syn-note">${sy.note}</span>`;
+      list.appendChild(row);
+    }
+    const n = active.size;
+    $('.syn-hint').textContent = n
+      ? `${n} synergy${n > 1 ? ' bonuses' : ''} active for this squad.`
+      : 'Who you bring together changes the run.';
+  },
+
   startRun(levelNo) {
+    /* the game needs the squad before reset so synergies are live from frame 1 */
+    this.game.squad = (this.loadout || []).slice();
     this.game.reset(levelNo || this.game.levelNo || 1);
     this.buildShop();
+    this.renderSynStrip();
     this.syncHud(true);
     this.show('game');
     Sfx.resume();
@@ -7770,7 +9054,8 @@ const UI = {
     txt.innerHTML = owned
       ? `<span class="si-name">${def.name}</span>
          <span class="si-cost${isHero ? ' free' : ''}">${isHero
-            ? (def.tags ? def.tags.join(' · ') : 'HERO') : '$' + def.cost}</span>`
+            ? (def.tags ? def.tags.join(' · ') : 'HERO')
+            : '$' + this.game.costOf(def)}</span>`
       : `<span class="si-name">${def.name}</span><span class="si-lock">🔒 in crates</span>`;
     el.appendChild(txt);
 
@@ -7805,10 +9090,15 @@ const UI = {
       const owned = !it.isHero || Save.owns(it.def.id);
       const placed = it.isHero && g.heroesPlaced.has(it.def.id);
       const noSlot = it.isHero && !placed && g.heroSlotsFree <= 0;
-      const poor = !it.isHero && g.cash < it.def.cost;
+      const poor = !it.isHero && g.cash < g.costOf(it.def);
       const disabled = !owned || placed || poor || noSlot;
       it.el.classList.toggle('disabled', disabled);
       it.el.classList.toggle('selected', !!g.placing && g.placing.def === it.def);
+      if (!it.isHero) {
+        const cost = it.el.querySelector('.si-cost');
+        const want = '$' + g.costOf(it.def);
+        if (cost && cost.textContent !== want) cost.textContent = want;
+      }
       if (it.isHero && owned) {
         const cost = it.el.querySelector('.si-cost');
         const tower = placed && g.towers.find((t) => t.def === it.def);
@@ -7823,6 +9113,16 @@ const UI = {
     }
     const slots = $('#hero-slots');
     if (slots) slots.textContent = `${g.heroSlotsUsed} / ${g.heroSlots} deployed`;
+  },
+
+  /** the squad's live synergies, pinned above the shop so they stay honest */
+  renderSynStrip() {
+    const strip = $('#syn-strip');
+    if (!strip) return;
+    const list = this.game.synergies || [];
+    strip.hidden = !list.length;
+    strip.innerHTML = list.map((sy) =>
+      `<span class="syn-chip" style="--c:${sy.color}" title="${sy.note}">${sy.name}</span>`).join('');
   },
 
   syncInspect() {
@@ -7880,7 +9180,7 @@ const UI = {
     if (t.level >= MAX_LEVEL) {
       up.disabled = true; up.textContent = 'Max level';
     } else {
-      const cost = upgradeCost(t.def, t.level);
+      const cost = this.game.upgradeCostOf(t);
       up.disabled = this.game.cash < cost;
       up.textContent = `Upgrade $${cost}`;
     }
@@ -7978,6 +9278,29 @@ const UI = {
     const note = $('#res-gem-note');
     if (note) { note.textContent = bits.join(' · '); note.hidden = !bits.length; }
 
+    /* what the squad earned for itself, and what it was running on */
+    const mast = $('#res-mastery');
+    const gains = payload.mastery || [];
+    mast.hidden = !gains.length;
+    if (gains.length) {
+      mast.innerHTML = '<h4>Squad mastery</h4>' + gains.map((m) => {
+        const def = HERO_BY_ID[m.id];
+        const mp = masteryProgress(Save.masteryOf(m.id));
+        return `<div class="rm-row${m.rankUp ? ' up' : ''}" style="--c:${def.rarityColor}">
+          <b>${def.name}</b>
+          <i class="rm-bar"><b style="width:${Math.round(mp.frac * 100)}%"></b></i>
+          <span>+${m.gain} XP${m.rankUp ? ` — ${MASTERY_RANKS[m.rank - 1].name}!` : ''}</span>
+        </div>`;
+      }).join('');
+    }
+    const syn = $('#res-syn');
+    const syns = payload.synergies || [];
+    syn.hidden = !syns.length;
+    if (syns.length) {
+      syn.innerHTML = 'Ran with ' + syns.map((sy) =>
+        `<span style="color:${sy.color}">${sy.name}</span>`).join(' · ');
+    }
+
     /* offer the next level straight from the result card */
     const again = $('#btn-res-again');
     const hasNext = win && g.levelNo < LEVEL_COUNT;
@@ -8006,7 +9329,15 @@ const UI = {
     const wrap = $('#hero-cards');
     wrap.innerHTML = '';
 
-    for (const h of HEROES) {
+    /* owned first, then rarest, so the collection reads as a trophy shelf */
+    const order = [...HEROES].sort((a, b) => {
+      const ao = Save.owns(a.id) ? 0 : 1, bo = Save.owns(b.id) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      const ar = RARITY_ORDER.indexOf(a.rarity), br = RARITY_ORDER.indexOf(b.rarity);
+      if (ar !== br) return br - ar;
+      return Save.masteryOf(b.id) - Save.masteryOf(a.id);
+    });
+    for (const h of order) {
       const owned = Save.owns(h.id);
       const card = document.createElement('div');
       card.className = 'hero-card' + (owned ? '' : ' locked');
@@ -8031,6 +9362,18 @@ const UI = {
         <div class="desc">${owned ? h.desc : 'Locked. Open a case for a chance to recruit.'}</div>
         ${owned && h.tags ? `<div class="hero-tags">${h.tags
           .map((t) => `<span>${t}</span>`).join('')}</div>` : ''}
+        ${owned ? (() => {
+          const mp = masteryProgress(Save.masteryOf(h.id));
+          return `<div class="hero-mastery${mp.rank >= MASTERY_RANKS.length ? ' maxed' : ''}">
+            <span class="hm-head">
+              <b>${mp.rank ? MASTERY_RANKS[mp.rank - 1].name : 'Unblooded'}</b>
+              <i>${mp.next ? `${mp.need} to ${mp.next.name}` : 'mastered'}</i>
+            </span>
+            <span class="hm-bar"><b style="width:${Math.round(mp.frac * 100)}%"></b></span>
+            <span class="hm-perks">${MASTERY_RANKS.map((r, i) =>
+              `<em class="${i < mp.rank ? 'on' : ''}">${r.note}</em>`).join('')}</span>
+          </div>`;
+        })() : ''}
         <span class="state ${owned ? 'owned' : 'locked'}">${owned ? '✔ UNLOCKED' : '🔒 LOCKED'}</span>
         ${h.starter ? '<span class="starter">STARTER</span>' : ''}
         ${h.apex ? '<span class="apex">RAREST IN THE GAME</span>' : ''}`);

@@ -30,7 +30,7 @@
       <span class="logo-top">VOID</span>
       <span class="logo-bot">BASTION</span>
     </h1>
-    <p class="tagline">Six cities &middot; 30 missions &middot; 15 heroes &middot; <em>hold the line</em></p>
+    <p class="tagline" id="menu-tagline">Six cities &middot; 30 missions &middot; 28 heroes &middot; <em>hold the line</em></p>
 
     <div class="menu-buttons">
       <button class="btn btn-primary big" id="btn-play">
@@ -53,7 +53,7 @@
     <div class="menu-foot">
       <span class="stat-chip"><i class="gem"></i><b id="menu-gems">0</b><span>gems</span></span>
       <span class="stat-chip"><i class="ico-star"></i><b id="menu-stars">0</b><span>/ <span id="menu-stars-max">90</span> stars</span></span>
-      <span class="stat-chip"><i class="ico-cape"></i><b id="menu-roster">1</b><span>/ <span id="menu-roster-max">15</span> heroes</span></span>
+      <span class="stat-chip"><i class="ico-cape"></i><b id="menu-roster">1</b><span>/ <span id="menu-roster-max">28</span> heroes</span></span>
     </div>
   </div>
 </section>
@@ -109,7 +109,15 @@
     <span class="progress-chip" id="lo-count">0 / 1 picked</span>
   </header>
   <p class="chapter-blurb" id="lo-sub"></p>
-  <div class="loadout-grid" id="loadout-grid"><!-- built by JS --></div>
+  <div class="lo-filters" id="lo-filters"><!-- built by JS --></div>
+  <div class="loadout-body">
+    <div class="loadout-grid" id="loadout-grid"><!-- built by JS --></div>
+    <aside class="synergy-panel">
+      <h4>Squad synergies</h4>
+      <p class="muted syn-hint">Who you bring together changes the run.</p>
+      <div class="syn-list" id="syn-list"><!-- built by JS --></div>
+    </aside>
+  </div>
   <div class="loadout-bar">
     <div class="loadout-picked" id="lo-picked"></div>
     <button class="btn btn-primary big" id="btn-deploy">Deploy</button>
@@ -143,8 +151,9 @@
         <span>Turn sideways for a bigger battlefield</span>
         <button class="rot-x" id="rotate-hint-x" aria-label="Dismiss">&times;</button>
       </div>
+      <div class="syn-strip" id="syn-strip" hidden><!-- built by JS --></div>
       <div class="shop-section">
-        <h4>Towers</h4>
+        <h4>Base units</h4>
         <div class="shop-grid" id="shop-towers"></div>
       </div>
       <div class="shop-section">
@@ -189,6 +198,8 @@
     <p id="res-sub">You defended the bastion.</p>
     <div class="reward-row"><i class="gem"></i><span id="res-gems">+0</span> gems earned</div>
     <div class="res-gem-note" id="res-gem-note" hidden></div>
+    <div class="res-mastery" id="res-mastery" hidden><!-- built by JS --></div>
+    <div class="res-syn" id="res-syn" hidden><!-- built by JS --></div>
     <div class="result-actions">
       <button class="btn btn-primary" id="btn-res-again">Play again</button>
       <button class="btn" id="btn-res-menu">Menu</button>
@@ -249,6 +260,13 @@
           hits, faster cycle, a lighter ultimate. A <b>Specialist</b> is quiet on the field and
           devastating on the button. Every Legendary is an <b>Icon</b> and is good at both. Pair
           them deliberately.</li>
+      <li>Who you bring <i>together</i> matters: the squad screen lists <b>synergies</b> and lights
+          up the ones your picks have earned — cheaper units, extra ultimate charges, more cash,
+          harder ultimates. Two kinetic heroes shove twice as far; one hero on a map that offered
+          you three is its own reward.</li>
+      <li>Heroes earn <b>mastery</b> for every mission they clear, and keep it between runs. Three
+          ranks: <b>+8% damage</b>, then <b>+10% reach</b>, then <b>an extra ultimate charge</b>.
+          The heroes you actually play become the heroes you rely on.</li>
       <li>From the third city on, troopers arrive in <b>plating</b> — welded rings you can see
           around them. Plating has to be stripped before their armour grades start coming off, so
           late missions need sustained fire, not one big hit.</li>

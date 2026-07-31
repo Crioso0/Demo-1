@@ -4,7 +4,8 @@
 const SAVE_KEY = 'balloon-bastion-demo-v1';
 
 const Save = {
-  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0, stars: {} },
+  data: { gems: 0, heroes: ['ember'], bestRound: 0, seenHelp: false, levels: 0, stars: {},
+          mastery: {} },
 
   load() {
     try {
@@ -19,6 +20,8 @@ const Save = {
     }
     // the starter hero can never be missing
     if (!this.data.heroes.includes('ember')) this.data.heroes.unshift('ember');
+    // profiles written before mastery existed simply start at zero
+    if (!this.data.mastery) this.data.mastery = {};
     return this.data;
   },
 
@@ -41,6 +44,25 @@ const Save = {
   unlock(id) {
     if (this.owns(id)) return false;
     this.data.heroes.push(id); this.flush(); return true;
+  },
+
+  /* ---- hero mastery ---- */
+  masteryOf(id) { return (this.data.mastery && this.data.mastery[id]) || 0; },
+  rankOf(id) { return masteryRank(this.masteryOf(id)); },
+  /** pay a squad for a cleared mission; returns what each hero gained */
+  awardMastery(ids, missionNo, stars) {
+    const gain = masteryGain(missionNo, stars);
+    const out = [];
+    for (const id of ids || []) {
+      if (!HERO_BY_ID[id]) continue;
+      const before = this.masteryOf(id);
+      const after = Math.min(MASTERY_MAX, before + gain);
+      this.data.mastery[id] = after;
+      out.push({ id, gain: after - before, rankUp: masteryRank(after) > masteryRank(before),
+                 rank: masteryRank(after) });
+    }
+    if (out.length) this.flush();
+    return out;
   },
 
   recordRound(r) {

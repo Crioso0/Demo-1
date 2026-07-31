@@ -1,8 +1,9 @@
 # Void Bastion — hero collector demo
 
 A round-based tower-defense campaign that runs in the browser. **Six cities, 30
-missions, 30 maps, 20 collectible heroes, 8 base units**, counter escorts built
-to shut your roster down, and a warlord waiting at the end of every city.
+missions, 30 maps, 28 collectible heroes, 8 base units**, squad synergies, hero
+mastery that carries between runs, counter escorts built to shut your roster
+down, and a warlord waiting at the end of every city.
 
 **Play it:** open `index.html` in any modern browser. No build step, no server,
 no dependencies, no asset files — every sprite is drawn procedurally on canvas
@@ -12,10 +13,10 @@ and all sound is synthesised with WebAudio.
 
 1. Pick a mission from the campaign screen. Missions unlock in order.
 2. **Choose your squad.** Every mission opens on a loadout screen: the whole
-   roster is laid out with roles, tags and ultimate names, and you pick as many
-   heroes as the mission has slots. Tags that the mission's counter escorts shut
-   down are flagged red on the card, so the pick is informed. Only the heroes you
-   bring appear in the in-game shop.
+   roster laid out with class, tags, ultimate and mastery, filterable by class or
+   by what you own. Tags the mission's counter escorts shut down are flagged red,
+   and the panel beside the grid lights up every **synergy** your picks have
+   earned. Only the heroes you bring appear in the in-game shop.
 3. Place units and your chosen heroes on open ground (not on the route).
 4. Start a round; troopers march the route and cost you lives if they reach the
    bastion. Kills pay cash, and **finishing a round pays a bonus that ramps** —
@@ -103,6 +104,45 @@ There are two ways for a hero to be worth a slot, and one kind that is both.
 chase is for. Everything below Legendary is one or the other, so a good squad
 usually pairs someone who holds the line with someone who breaks it.
 
+## Squad synergies
+
+Who you bring *together* is its own layer. Ten rules, checked live as you pick,
+stacking freely — the panel next to the grid lights up the ones you have earned
+and greys the ones still within reach.
+
+| Synergy | Needs | Gives |
+|---|---|---|
+| **Storm Front** | two `storm`/`electric` heroes | +25% hero damage, 10% faster |
+| **Old Guard** | a Vanguard and a Specialist | +10% damage, **+1 ultimate charge each** |
+| **Trinity** | three Icons | +18% damage, +10% reach, ultimates +20% |
+| **Street Level** | two `kinetic`/`agility`/`tech` heroes | units 15% cheaper, upgrades 12% cheaper |
+| **Mystic Circle** | two `mystic` heroes | ultimates land and last **35%** harder |
+| **Science Division** | two `tech` heroes | every base unit fires 18% faster, upgrades −15% |
+| **Brute Squad** | two `kinetic` heroes | +20% damage, and knockback shoves **twice as far** |
+| **Shadow Ops** | two `mind` heroes | +20% cash from kills, ultimates +15% |
+| **Solo Act** | one hero on a map that offered more | +45% damage, +12% reach, +1 charge, 250 to start |
+| **Full House** | one of every class | +25% cash from kills, heroes 8% faster |
+
+The chips stay pinned above the shop for the whole mission, so you always know
+what you are running on.
+
+## Hero mastery
+
+A hero you keep bringing gets better at the job, permanently. Clearing a mission
+pays every hero that took the field experience worth the mission number, scaled
+by the stars you took. Three ranks:
+
+| Rank | At | Perk |
+|---|---|---|
+| **Veteran** | 40 | +8% damage |
+| **Elite** | 140 | +10% reach |
+| **Legend** | 340 | **+1 ultimate charge** |
+
+Mastery shows as pips and a bar on every hero card, on the squad screen and in
+the collection, and the result card shows what the run earned. It is the only
+progression that survives a run other than the roster itself — the heroes you
+actually play become the heroes you rely on.
+
 ## Heroes
 
 The squad is chosen **before** the mission on the loadout screen, up to the
@@ -132,6 +172,14 @@ carries the hero's class, tags and ultimate.
 | **Sable** | Vanguard | Infiltrator | kinetic, tech | Fast close-range baton work + **Expose** |
 | **Adamant** | Icon | Storm Tyrant | electric, storm | Chained lightning + **Judgement** |
 | **Breaker** | Icon | Engine of Ruin | kinetic | Bone-crushing smash + **Rampage** |
+| **Tide** | Vanguard | Deep King | water, kinetic | A sheet of water that shoves + **Riptide** |
+| **Wraith** | Specialist | The Watcher | mind | Psychic chain + **Mindwipe** |
+| **Claw** | Vanguard | The Feral | kinetic | Short, fast, **never suppressed** + **Frenzy** |
+| **Blink** | Vanguard | The Displaced | agility, mystic | Quick shots + **Fold Space** |
+| **Nova** | Specialist | Cosmic Ace | solar, cosmic | Piercing photon bolts + **Binary** |
+| **Circuit** | Icon | Machine Mind | tech | Tech beam **and a buff field** + **Overclock** |
+| **Panther** | Icon | Kinetic Stalker | kinetic, tech | Fast claw strikes + **Kinetic Release** |
+| **Hex** | Icon | Reality Witch | mystic, chaos | Hex bolts + **Unmake** |
 
 Ember is the starter; every other hero comes out of cases.
 
@@ -177,6 +225,24 @@ press `Q`, or use the green button in the inspect panel.
   lightning field burns everything on the route for the duration.
 - **Rampage** (Breaker) — he goes berserk: double reach, and every kill makes the
   next swing faster.
+- **Riptide** (Tide) — the whole route becomes a river: everything on it wades,
+  and takes the current for the duration.
+- **Mindwipe** (Wraith) — the legion's orders are erased: they turn around and
+  march back the way they came, taking double from everything on the way.
+- **Frenzy** (Claw) — damage stacks with every kill and holds for the window.
+  He is also the only hero **no escort can suppress**, ever.
+- **Fold Space** (Blink) — folds the leading half of the road back down the
+  route. Cheap, repeatable, and it buys the line real time.
+- **Binary** (Nova) — she lights up and burns a standing beam down the road for
+  the duration.
+- **Overclock** (Circuit) — the whole field into the red: **every unit you own
+  fires at triple rate** until it burns out.
+- **Kinetic Release** (Panther) — the suit drinks every impact the round throws
+  at it and gives the lot back in one shockwave. The worse the fight, the bigger
+  the answer.
+- **Unmake** (Hex) — the plating simply stops having happened, across the whole
+  field, and the survivors drop a grade. The clean answer to a late-campaign
+  wave.
 - **Full Quiver** (Quiver) — empties the quiver in one volley down the route.
 - **Downpour** (Tempest) — drowns the whole field: everything slows to a crawl.
 - **Expose** (Sable) — finds the seams in every suit of armour on the map.
@@ -304,10 +370,11 @@ Console handle for tinkering: `BB.game`, `BB.Save`, `BB.UI`.
 
 ## Demo scope
 
-30 missions across 6 cities on 30 generated maps, 20 heroes, 8 base units,
-5 troop grades, 4 counter escorts, 6 city warlords and Dreadnought walkers that
-get tougher as the campaign runs. No meta progression beyond case unlocks, stars
-and city unlocks; hero levels reset each run.
+30 missions across 6 cities on 30 generated maps, 28 heroes in three classes,
+10 squad synergies, 3 mastery ranks per hero, 8 base units, 5 troop grades,
+plating that thickens with the campaign, 4 counter escorts, 6 city warlords and
+Dreadnought walkers that get tougher as the campaign runs. Hero *levels* still
+reset each run — mastery is what carries.
 
 Every hero, warlord and city here is an original built for this demo — not a
 licensed one. The Void Legion, its counter escorts and the six cities are

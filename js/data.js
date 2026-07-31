@@ -371,6 +371,152 @@ const CLASS_LIST = Object.values(CLASSES);
 /** a hero's class card, or null for a base unit (units are never classed) */
 function classOf(def) { return (def && CLASSES[def.clazz]) || null; }
 
+/* ---------------- hero mastery ----------------
+   A hero you keep bringing gets better at the job. Missions cleared with a hero
+   deployed pay it experience worth the mission number, and every rank is a small
+   permanent edge that hero keeps between runs. Three ranks, and the last one is
+   the only way outside a synergy to get a second use of an ultimate. */
+const MASTERY_RANKS = [
+  { at: 40,  name: 'Veteran',  perk: { damage: .08 }, note: '+8% damage' },
+  { at: 140, name: 'Elite',    perk: { range: .1 },   note: '+10% reach' },
+  { at: 340, name: 'Legend',   perk: { charges: 1 },  note: '+1 ultimate charge' },
+];
+const MASTERY_MAX = MASTERY_RANKS[MASTERY_RANKS.length - 1].at;
+
+/** how many ranks `xp` is worth */
+function masteryRank(xp) {
+  let r = 0;
+  for (const m of MASTERY_RANKS) if ((xp || 0) >= m.at) r++;
+  return r;
+}
+/** the combined perk of every rank reached */
+function masteryPerk(xp) {
+  const out = { damage: 0, range: 0, charges: 0 };
+  for (let i = 0; i < masteryRank(xp); i++) {
+    for (const [k, v] of Object.entries(MASTERY_RANKS[i].perk)) out[k] += v;
+  }
+  return out;
+}
+/** progress toward the next rank, for the bar under a hero card */
+function masteryProgress(xp) {
+  const r = masteryRank(xp);
+  if (r >= MASTERY_RANKS.length) return { rank: r, frac: 1, need: 0, next: null };
+  const from = r === 0 ? 0 : MASTERY_RANKS[r - 1].at;
+  const to = MASTERY_RANKS[r].at;
+  return { rank: r, frac: clamp(((xp || 0) - from) / (to - from), 0, 1),
+           need: to - (xp || 0), next: MASTERY_RANKS[r] };
+}
+/** what clearing a mission with this hero deployed is worth */
+function masteryGain(missionNo, stars) {
+  return Math.round((6 + missionNo * 1.4) * (1 + (stars - 1) * .25));
+}
+
+/* ---------------- squad synergies ----------------
+   The loadout screen is where the game is really played, so the squad itself
+   has to be a decision rather than a power ranking. Every synergy is a rule
+   about the heroes you brought together; matching one changes the run.
+
+   Each carries a `test(defs)` over the chosen hero definitions and an `effect`
+   of flat modifiers the game reads while the mission runs. They stack. */
+const SYNERGY_KEYS = ['heroDamage', 'heroRate', 'heroRange', 'towerRate', 'towerCost',
+                      'upgradeCost', 'cash', 'charges', 'pushCap', 'ultScale', 'startCash'];
+
+const countTag = (defs, tag) => defs.filter((d) => (d.tags || []).includes(tag)).length;
+const countTags = (defs, tags) =>
+  defs.filter((d) => (d.tags || []).some((t) => tags.includes(t))).length;
+const countClass = (defs, c) => defs.filter((d) => d.clazz === c).length;
+
+const SYNERGIES = [
+  {
+    id: 'stormfront', name: 'Storm Front', color: '#ffd23f',
+    rule: 'Two heroes carrying storm or electric',
+    effect: { heroDamage: .25, heroRate: -.1 },
+    note: '+25% hero damage, 10% faster',
+    test: (d) => countTags(d, ['storm', 'electric']) >= 2,
+  },
+  {
+    id: 'oldguard', name: 'Old Guard', color: '#8fd0ff',
+    rule: 'A Vanguard and a Specialist together',
+    effect: { heroDamage: .1, charges: 1 },
+    note: '+10% hero damage and one extra ultimate charge each',
+    test: (d) => countClass(d, 'vanguard') >= 1 && countClass(d, 'specialist') >= 1,
+  },
+  {
+    id: 'trinity', name: 'Trinity', color: '#ffb03f',
+    rule: 'Three Icons on the field',
+    effect: { heroDamage: .18, heroRange: .1, ultScale: .2 },
+    note: '+18% damage, +10% reach, ultimates land 20% harder',
+    test: (d) => countClass(d, 'icon') >= 3,
+  },
+  {
+    id: 'streetlevel', name: 'Street Level', color: '#c9a06a',
+    rule: 'Two heroes who are just very good at their job — kinetic, agility or tech',
+    effect: { towerCost: -.15, upgradeCost: -.12 },
+    note: 'Base units cost 15% less, upgrades 12% less',
+    test: (d) => countTags(d, ['kinetic', 'agility', 'tech']) >= 2,
+  },
+  {
+    id: 'mysticcircle', name: 'Mystic Circle', color: '#b06cf0',
+    rule: 'Two heroes carrying mystic',
+    effect: { ultScale: .35 },
+    note: 'Ultimates land 35% harder and last 35% longer',
+    test: (d) => countTag(d, 'mystic') >= 2,
+  },
+  {
+    id: 'sciencediv', name: 'Science Division', color: '#5bc8ff',
+    rule: 'Two heroes carrying tech',
+    effect: { towerRate: -.18, upgradeCost: -.15 },
+    note: 'Every base unit fires 18% faster, upgrades cost 15% less',
+    test: (d) => countTag(d, 'tech') >= 2,
+  },
+  {
+    id: 'brutesquad', name: 'Brute Squad', color: '#6ccf52',
+    rule: 'Two heroes carrying kinetic',
+    effect: { heroDamage: .2, pushCap: 1 },
+    note: '+20% hero damage, and knockback shoves twice as far',
+    test: (d) => countTag(d, 'kinetic') >= 2,
+  },
+  {
+    id: 'shadowops', name: 'Shadow Ops', color: '#8fa8d8',
+    rule: 'Two heroes carrying mind',
+    effect: { cash: .2, ultScale: .15 },
+    note: '+20% cash from kills, ultimates 15% harder',
+    test: (d) => countTag(d, 'mind') >= 2,
+  },
+  {
+    id: 'soloact', name: 'Solo Act', color: '#ff5a6e',
+    rule: 'One hero, on a map that offered you more',
+    effect: { heroDamage: .45, heroRange: .12, charges: 1, startCash: 250 },
+    note: '+45% damage, +12% reach, an extra charge and 250 to start',
+    test: (d, slots) => d.length === 1 && slots > 1,
+  },
+  {
+    id: 'fullhouse', name: 'Full House', color: '#4ade80',
+    rule: 'One of every class at once',
+    effect: { cash: .25, heroRate: -.08 },
+    note: '+25% cash from kills, heroes 8% faster',
+    test: (d) => countClass(d, 'vanguard') >= 1 && countClass(d, 'specialist') >= 1
+              && countClass(d, 'icon') >= 1,
+  },
+];
+
+/** which synergies a chosen squad triggers on a map with `slots` hero slots */
+function synergiesFor(defs, slots) {
+  return SYNERGIES.filter((sy) => {
+    try { return !!sy.test(defs, slots); } catch (e) { return false; }
+  });
+}
+
+/** collapse a list of synergies into one set of modifiers the game can read */
+function synergyEffect(list) {
+  const out = {};
+  for (const key of SYNERGY_KEYS) out[key] = key === 'charges' || key === 'startCash' ? 0 : 0;
+  for (const sy of list) {
+    for (const [k, v] of Object.entries(sy.effect)) out[k] = (out[k] || 0) + v;
+  }
+  return out;
+}
+
 /* ---------------- crates ----------------
    Two tiers so gems have somewhere to go. The premium case costs most of a
    city's earnings and is the only realistic route to a Legendary. */
@@ -1820,6 +1966,451 @@ const Art = {
     }
     ctx.restore();
   },
+  /* ---- the eight recruits ---- */
+  tide(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.9) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    /* scale-mail legs */
+    ctx.fillStyle = '#1f6f52';
+    roundRect(ctx, -7.5, 1, 6.5, 13, 3); ctx.fill();
+    roundRect(ctx, 1, 1, 6.5, 13, 3); ctx.fill();
+
+    /* gold scale torso */
+    const g = ctx.createLinearGradient(0, -12, 0, 5);
+    g.addColorStop(0, '#f2c65a'); g.addColorStop(1, '#b8862c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90,60,10,.35)'; ctx.lineWidth = .8;
+    for (let r = -9; r < 4; r += 3.4) {
+      ctx.beginPath(); ctx.moveTo(-7.5, r); ctx.lineTo(7.5, r); ctx.stroke();
+    }
+
+    /* head, long hair, beard */
+    ctx.fillStyle = '#c8913f';
+    ctx.beginPath(); ctx.arc(-1, -16, 7.6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(.6, -16, 5.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#b9832f';
+    ctx.beginPath(); ctx.ellipse(.6, -11.6, 4, 3, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-.8, -17, 1.1, 0, TAU); ctx.arc(3.2, -17, 1.1, 0, TAU); ctx.fill();
+
+    /* trident */
+    ctx.save(); ctx.translate(12, -2); ctx.rotate(Math.sin(t * 2) * .08);
+    ctx.strokeStyle = '#3f8f7a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, -12); ctx.stroke();
+    ctx.strokeStyle = '#8fe6d0'; ctx.lineWidth = 1.8;
+    for (const dx of [-3.4, 0, 3.4]) {
+      ctx.beginPath(); ctx.moveTo(dx, -10); ctx.lineTo(dx, -18); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(-3.4, -10); ctx.lineTo(3.4, -10); ctx.stroke();
+    ctx.restore();
+
+    /* water curling round the feet */
+    for (let i = 0; i < 3 + lvl; i++) {
+      const a = t * 1.6 + i * 1.5;
+      ctx.fillStyle = `rgba(120,220,255,${.18 + Math.sin(a) * .14})`;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * 13, 12 + Math.sin(a * 1.4) * 2, 4.5, 1.6, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  },
+
+  circuit(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.7) * 1.1;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 14, 5, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#2a3040';
+    roundRect(ctx, -8, 1, 7, 13, 3); ctx.fill();
+    roundRect(ctx, 1, 1, 7, 13, 3); ctx.fill();
+
+    /* half flesh, half plate */
+    const g = ctx.createLinearGradient(-9, 0, 9, 0);
+    g.addColorStop(0, '#6b4a34'); g.addColorStop(.48, '#6b4a34');
+    g.addColorStop(.52, '#9aa6bb'); g.addColorStop(1, '#5f6b80');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -11); ctx.lineTo(9, -11);
+    ctx.quadraticCurveTo(11.5, -2, 8.5, 5); ctx.lineTo(-8.5, 5);
+    ctx.quadraticCurveTo(-11.5, -2, -9, -11);
+    ctx.fill();
+
+    /* chest reactor */
+    const pulse = .6 + Math.sin(t * 4) * .4;
+    ctx.fillStyle = `rgba(90,200,255,${pulse})`;
+    ctx.beginPath(); ctx.arc(2, -4, 3.4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,240,255,.8)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(2, -4, 5, 0, TAU); ctx.stroke();
+
+    /* circuit traces on the plated side */
+    ctx.strokeStyle = `rgba(120,220,255,${.35 + pulse * .3})`; ctx.lineWidth = .9;
+    ctx.beginPath();
+    ctx.moveTo(5, -9); ctx.lineTo(8, -9); ctx.lineTo(8, -5);
+    ctx.moveTo(5, 1); ctx.lineTo(8.5, 1);
+    ctx.stroke();
+
+    /* head: one eye human, one a red optic */
+    ctx.fillStyle = '#6b4a34';
+    ctx.beginPath(); ctx.arc(-2, -16, 6.4, Math.PI * .5, Math.PI * 1.5); ctx.fill();
+    ctx.fillStyle = '#9aa6bb';
+    ctx.beginPath(); ctx.arc(-2, -16, 6.4, Math.PI * 1.5, Math.PI * .5); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-4.4, -16.5, 1.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,80,70,${.7 + pulse * .3})`;
+    roundRect(ctx, -.4, -17.4, 4.4, 1.9, .9); ctx.fill();
+
+    /* the support pylon it plants: a soft field ring */
+    ctx.strokeStyle = `rgba(90,200,255,${.2 + Math.sin(t * 2.4) * .12})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(0, 12, 19 + lvl * 2, 6, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
+  },
+
+  wraith(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.5) * 2.4;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.globalAlpha = .9;
+    const pool = ctx.createRadialGradient(0, 14, 1, 0, 14, 16);
+    pool.addColorStop(0, 'rgba(120,255,190,.3)');
+    pool.addColorStop(1, 'rgba(120,255,190,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath(); ctx.ellipse(0, 14, 16, 5.5, 0, 0, TAU); ctx.fill();
+
+    /* cape that fades out rather than ending */
+    const cape = ctx.createLinearGradient(0, -12, 0, 16);
+    cape.addColorStop(0, 'rgba(160,40,60,.95)');
+    cape.addColorStop(1, 'rgba(160,40,60,0)');
+    ctx.fillStyle = cape;
+    ctx.beginPath();
+    ctx.moveTo(-8, -10);
+    ctx.quadraticCurveTo(-16 - Math.sin(t * 1.8) * 3, 4, -9, 16);
+    ctx.lineTo(9, 16);
+    ctx.quadraticCurveTo(16 + Math.sin(t * 1.8) * 3, 4, 8, -10);
+    ctx.closePath(); ctx.fill();
+
+    /* green torso with the crossed straps */
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3fbf74'); g.addColorStop(1, '#1c6b42');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 6); ctx.lineTo(-7.5, 6);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+    ctx.strokeStyle = '#a8202c'; ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-7, -10); ctx.lineTo(6, 4);
+    ctx.moveTo(7, -10); ctx.lineTo(-6, 4);
+    ctx.stroke();
+
+    /* long green head, deep-set eyes */
+    ctx.fillStyle = '#4cd085';
+    ctx.beginPath(); ctx.ellipse(0, -17, 6, 7.6, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#0d2b1b';
+    ctx.beginPath();
+    ctx.ellipse(-2.5, -18, 2, 1.4, -.25, 0, TAU);
+    ctx.ellipse(2.5, -18, 2, 1.4, .25, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = `rgba(190,255,220,${.5 + Math.sin(t * 3) * .4})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.5, -18, 1, .7, -.25, 0, TAU);
+    ctx.ellipse(2.5, -18, 1, .7, .25, 0, TAU);
+    ctx.fill();
+
+    if (lvl > 1) {
+      ctx.strokeStyle = `rgba(120,255,190,${.25 + Math.sin(t * 3.4) * .2})`;
+      ctx.lineWidth = 1.3;
+      for (let i = 0; i < lvl; i++) {
+        ctx.beginPath(); ctx.arc(0, -17, 11 + i * 4 + Math.sin(t * 2 + i) * 1.5, 0, TAU); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  },
+
+  panther(ctx, lvl, t) {
+    const crouch = Math.abs(Math.sin(t * 2.6)) * 1.4;
+    ctx.save(); ctx.translate(0, crouch);
+    ctx.fillStyle = 'rgba(0,0,0,.36)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 13, 4.6, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#14161d';
+    roundRect(ctx, -7.5, 1, 6.5, 13, 3); ctx.fill();
+    roundRect(ctx, 1, 1, 6.5, 13, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#22242e'); g.addColorStop(1, '#0d0e13');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+
+    /* stored kinetic charge glowing through the weave */
+    const charge = .35 + Math.sin(t * 3.2) * .3;
+    ctx.strokeStyle = `rgba(150,110,255,${charge})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -8); ctx.lineTo(-2, -2); ctx.lineTo(-6, 3);
+    ctx.moveTo(6, -8); ctx.lineTo(2, -2); ctx.lineTo(6, 3);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(170,140,255,${charge})`;
+    ctx.beginPath();
+    ctx.moveTo(0, -9); ctx.lineTo(3, -4); ctx.lineTo(0, 1); ctx.lineTo(-3, -4);
+    ctx.closePath(); ctx.fill();
+
+    /* masked head with the ears */
+    ctx.fillStyle = '#14161d';
+    ctx.beginPath(); ctx.arc(0, -16, 6.4, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-5, -20); ctx.lineTo(-3.4, -25); ctx.lineTo(-1.4, -20.5); ctx.closePath();
+    ctx.moveTo(5, -20); ctx.lineTo(3.4, -25); ctx.lineTo(1.4, -20.5); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(200,180,255,${.65 + Math.sin(t * 4) * .3})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.4, -16.6, 1.8, 1, -.2, 0, TAU);
+    ctx.ellipse(2.4, -16.6, 1.8, 1, .2, 0, TAU);
+    ctx.fill();
+
+    /* claws out */
+    ctx.strokeStyle = '#c9b6ff'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(9, -2 + i * 2.6); ctx.lineTo(14 + lvl, -3.5 + i * 3.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+
+  claw(ctx, lvl, t) {
+    const bob = Math.abs(Math.sin(t * 3)) * 1.6;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 13.5, 4.8, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#2b4a9a';
+    roundRect(ctx, -7.5, 2, 6.5, 12, 3); ctx.fill();
+    roundRect(ctx, 1, 2, 6.5, 12, 3); ctx.fill();
+
+    /* stocky yellow-and-blue torso */
+    const g = ctx.createLinearGradient(0, -11, 0, 6);
+    g.addColorStop(0, '#ffd23f'); g.addColorStop(1, '#c98a1a');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-9, -10); ctx.lineTo(9, -10);
+    ctx.quadraticCurveTo(11.5, -1, 8.5, 6); ctx.lineTo(-8.5, 6);
+    ctx.quadraticCurveTo(-11.5, -1, -9, -10);
+    ctx.fill();
+    ctx.fillStyle = '#2b4a9a';
+    ctx.beginPath();
+    ctx.moveTo(-9, -10); ctx.lineTo(-3, -10); ctx.lineTo(-6, 6); ctx.lineTo(-8.5, 6);
+    ctx.closePath();
+    ctx.moveTo(9, -10); ctx.lineTo(3, -10); ctx.lineTo(6, 6); ctx.lineTo(8.5, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    /* cowl with the swept points */
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath(); ctx.arc(0, -15.5, 6.2, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-6, -18); ctx.lineTo(-10, -25); ctx.lineTo(-2.5, -20); ctx.closePath();
+    ctx.moveTo(6, -18); ctx.lineTo(10, -25); ctx.lineTo(2.5, -20); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.ellipse(.5, -14, 4, 4.4, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-1, -14.5, 1, 0, TAU); ctx.arc(2.4, -14.5, 1, 0, TAU); ctx.fill();
+    /* a snarl */
+    ctx.strokeStyle = '#16121c'; ctx.lineWidth = .9;
+    ctx.beginPath(); ctx.moveTo(-1.4, -11.4); ctx.lineTo(2.6, -11.4); ctx.stroke();
+
+    /* three blades out of each fist */
+    ctx.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.translate(s * 10, 0); ctx.rotate(s * .25 + Math.sin(t * 4) * .06);
+      ctx.strokeStyle = '#e6ecf7'; ctx.lineWidth = 1.6;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 2.4, 0); ctx.lineTo(i * 2.8, -11 - lvl * 1.6);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+
+  nova(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.8) * 2;
+    ctx.save(); ctx.translate(0, bob);
+    const pool = ctx.createRadialGradient(0, 14, 1, 0, 14, 20);
+    pool.addColorStop(0, 'rgba(255,200,90,.35)');
+    pool.addColorStop(1, 'rgba(255,200,90,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath(); ctx.ellipse(0, 14, 20, 7, 0, 0, TAU); ctx.fill();
+
+    /* sash */
+    ctx.fillStyle = '#d8323f';
+    ctx.beginPath();
+    ctx.moveTo(-6, -11); ctx.quadraticCurveTo(-14 - Math.sin(t * 2) * 2, 2, -8, 15);
+    ctx.lineTo(-2, 13); ctx.lineTo(-3, -10); ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#0f2b6b';
+    roundRect(ctx, -7.5, 2, 6.5, 12, 3); ctx.fill();
+    roundRect(ctx, 1, 2, 6.5, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#2f5fd8'); g.addColorStop(1, '#12266e');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8.5, -11); ctx.lineTo(8.5, -11);
+    ctx.quadraticCurveTo(11, -2, 8, 5); ctx.lineTo(-8, 5);
+    ctx.quadraticCurveTo(-11, -2, -8.5, -11);
+    ctx.fill();
+
+    /* eight-point star on the chest */
+    const flare = .65 + Math.sin(t * 3.4) * .35;
+    ctx.fillStyle = `rgba(255,214,120,${flare})`;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU - Math.PI / 2;
+      const r = i % 2 ? 2.6 : 6.4;
+      ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, -4 + Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill();
+
+    /* head with the mohawk of light */
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -16, 6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c98a3a';
+    ctx.beginPath(); ctx.arc(0, -18.5, 6.2, Math.PI, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,220,140,${flare})`;
+    ctx.beginPath();
+    ctx.moveTo(-1.5, -21); ctx.lineTo(0, -28 - lvl * 2); ctx.lineTo(1.5, -21);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-2, -16, 1, 0, TAU); ctx.arc(2, -16, 1, 0, TAU); ctx.fill();
+
+    /* fists burning */
+    for (const s of [-1, 1]) {
+      const gg = ctx.createRadialGradient(s * 10, 0, .5, s * 10, 0, 6 + lvl);
+      gg.addColorStop(0, `rgba(255,240,190,${flare})`);
+      gg.addColorStop(1, 'rgba(255,180,60,0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.arc(s * 10, 0, 6 + lvl, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  },
+
+  hex(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.6) * 2.2;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath(); ctx.ellipse(0, 15, 13, 4.5, 0, 0, TAU); ctx.fill();
+
+    /* long coat flaring */
+    const g = ctx.createLinearGradient(0, -12, 0, 16);
+    g.addColorStop(0, '#d8323f'); g.addColorStop(1, '#6b0f22');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(13 + Math.sin(t * 2) * 2, 4, 10, 15);
+    ctx.lineTo(-10, 15);
+    ctx.quadraticCurveTo(-13 - Math.sin(t * 2) * 2, 4, -8, -11);
+    ctx.fill();
+
+    /* head + headpiece */
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -16, 5.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#8a1020';
+    ctx.beginPath(); ctx.arc(0, -18, 6.2, Math.PI, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-2.6, -22.5); ctx.lineTo(0, -29); ctx.lineTo(2.6, -22.5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-2, -16, 1, 0, TAU); ctx.arc(2, -16, 1, 0, TAU); ctx.fill();
+
+    /* reality coming apart in her hands */
+    for (const s of [-1, 1]) {
+      const spin = t * (2.2 + lvl * .3) * s;
+      ctx.save(); ctx.translate(s * 11, 1); ctx.rotate(spin);
+      ctx.strokeStyle = `rgba(255,90,110,${.4 + Math.sin(t * 5 + s) * .3})`;
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, 3 + i * 2.2, i * .8, i * .8 + 2.2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (lvl > 2) {
+      ctx.strokeStyle = `rgba(255,120,140,${.2 + Math.sin(t * 3) * .15})`;
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath(); ctx.arc(0, -4, 24, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  },
+
+  blink(ctx, lvl, t) {
+    /* she is never quite in one place: an after-image trails the real one */
+    const phase = (t * 1.4) % 1;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 12, 4.4, 0, 0, TAU); ctx.fill();
+
+    const body = (alpha, dx) => {
+      ctx.save(); ctx.globalAlpha = alpha; ctx.translate(dx, 0);
+      ctx.fillStyle = '#1b1230';
+      roundRect(ctx, -7, 1, 6, 13, 3); ctx.fill();
+      roundRect(ctx, 1, 1, 6, 13, 3); ctx.fill();
+      const g = ctx.createLinearGradient(0, -12, 0, 5);
+      g.addColorStop(0, '#3a2160'); g.addColorStop(1, '#160c28');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+      ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+      ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+      ctx.fill();
+      ctx.fillStyle = '#8fe6ff';
+      ctx.beginPath(); ctx.arc(0, -5, 2.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#4f7fd8';
+      ctx.beginPath(); ctx.arc(0, -16, 6.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath(); ctx.arc(-2.2, -16.4, 1.2, 0, TAU); ctx.arc(2.2, -16.4, 1.2, 0, TAU); ctx.fill();
+      /* pointed tail */
+      ctx.strokeStyle = '#4f7fd8'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-6, 4);
+      ctx.quadraticCurveTo(-15, 2 + Math.sin(t * 3) * 4, -11, -8);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    body(.28, -9 - phase * 5);
+    body(1, 0);
+
+    /* the fold she steps through */
+    ctx.strokeStyle = `rgba(190,120,255,${.35 + Math.sin(t * 4) * .25})`;
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 1 + lvl; i++) {
+      ctx.beginPath();
+      ctx.ellipse(-12, -3, 3 + i * 2.4, 7 + i * 3.2, .3, 0, TAU);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
@@ -2195,6 +2786,153 @@ const HEROES = [
     },
     desc: 'Hits harder than anything else in the roster and cannot reach past its own arms. '
         + 'Rampage doubles its reach and swings, and every kill feeds the next.',
+  },
+  {
+    id: 'tide', name: 'Tide', role: 'Deep King', art: Art.tide,
+    rarity: 'Epic', rarityColor: '#3fd0b0', glow: 'rgba(60,210,180,.45)',
+    clazz: 'vanguard',
+    range: 148, cooldown: .9, damage: 3, kind: 'wave', knock: 8,
+    color: '#3fd0b0', tags: ['water', 'kinetic'],
+    ability: {
+      kind: 'riptide',
+      name: 'Riptide',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      duration: [4, 5.5, 7],
+      hint: 'Click Tide to turn the road into a river',
+    },
+    desc: 'Sweeps the road with a wall of water that hits everything in front of him and shoves it '
+        + 'back. Riptide floods the whole route: the legion wades instead of marching, and takes '
+        + 'the current the entire time.',
+  },
+  {
+    id: 'wraith', name: 'Wraith', role: 'The Watcher', art: Art.wraith,
+    rarity: 'Epic', rarityColor: '#4cd085', glow: 'rgba(76,208,133,.45)',
+    clazz: 'specialist',
+    range: 178, cooldown: 1.15, damage: 2, kind: 'chain', chains: 3,
+    color: '#4cd085', tags: ['mind'],
+    ability: {
+      kind: 'mindwipe',
+      name: 'Mindwipe',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [5, 6.5, 8],
+      hint: 'Click Wraith to take the whole legion apart',
+    },
+    desc: 'Reaches into several minds at once and burns the thought out. Mindwipe erases the '
+        + 'legion’s orders outright — they turn round and march back the way they came, and take '
+        + 'double from everything while they do.',
+  },
+  {
+    id: 'claw', name: 'Claw', role: 'The Feral', art: Art.claw,
+    rarity: 'Rare', rarityColor: '#ffd23f', glow: 'rgba(255,210,63,.42)',
+    clazz: 'vanguard',
+    range: 108, cooldown: .38, damage: 3, kind: 'smash', knock: 3,
+    color: '#ffd23f', tags: ['kinetic'],
+    unstoppable: true,
+    ability: {
+      kind: 'frenzy',
+      name: 'Frenzy',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      duration: [6, 8, 10],
+      hint: 'Click Claw to let it go',
+    },
+    desc: 'Short reach, no patience, and nothing the legion carries can switch him off — no escort '
+        + 'suppresses him, ever. Frenzy stacks his damage with every kill and keeps it for the '
+        + 'duration.',
+  },
+  {
+    id: 'blink', name: 'Blink', role: 'The Displaced', art: Art.blink,
+    rarity: 'Rare', rarityColor: '#b06cf0', glow: 'rgba(176,108,240,.42)',
+    clazz: 'vanguard',
+    range: 162, cooldown: .5, damage: 2, pierce: 2, projSpeed: 900, kind: 'dart',
+    color: '#b06cf0', tags: ['agility', 'mystic'],
+    ability: {
+      kind: 'fold',
+      name: 'Fold Space',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      send: [.18, .26, .34],
+      hint: 'Click Blink to fold the road',
+    },
+    desc: 'Never quite where the legion aims. Fold Space grabs everything on the leading half of '
+        + 'the road and drops it back down the route — cheap, repeatable, and it buys the whole '
+        + 'line time.',
+  },
+  {
+    id: 'nova', name: 'Nova', role: 'Cosmic Ace', art: Art.nova,
+    rarity: 'Epic', rarityColor: '#ffb03f', glow: 'rgba(255,176,63,.5)',
+    clazz: 'specialist',
+    range: 195, cooldown: 1.4, damage: 3, pierce: 4, projSpeed: 860, kind: 'dart',
+    color: '#ffb03f', tags: ['solar', 'cosmic'],
+    ability: {
+      kind: 'binary',
+      name: 'Binary',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [4, 5.5, 7],
+      hint: 'Click Nova to go binary',
+    },
+    desc: 'Photon bolts that punch through a whole file. Binary lights her up: for the duration '
+        + 'she burns a permanent beam down the road and everything caught in it cooks.',
+  },
+  {
+    id: 'circuit', name: 'Circuit', role: 'Machine Mind', art: Art.circuit,
+    rarity: 'Legendary', rarityColor: '#5bc8ff', glow: 'rgba(91,200,255,.45)',
+    clazz: 'icon',
+    range: 168, cooldown: .55, damage: 2, kind: 'ray', rayColor: '#5bc8ff',
+    color: '#5bc8ff', tags: ['tech'],
+    /* the only hero that buffs, so he stacks with a Relay Mast */
+    buff: { range: .16, rate: .86 },
+    ability: {
+      kind: 'overclock',
+      name: 'Overclock',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [5, 6.5, 8],
+      hint: 'Click Circuit to overclock the field',
+    },
+    desc: 'Half of him is the network. A steady tech beam of his own, and everything you own '
+        + 'standing in his field shoots further and faster. Overclock pushes the whole field into '
+        + 'the red: every unit fires at triple rate until it burns out.',
+  },
+  {
+    id: 'panther', name: 'Panther', role: 'Kinetic Stalker', art: Art.panther,
+    rarity: 'Legendary', rarityColor: '#9a7bff', glow: 'rgba(154,123,255,.45)',
+    clazz: 'icon',
+    range: 158, cooldown: .34, damage: 2, pierce: 1, projSpeed: 940, kind: 'dart',
+    color: '#9a7bff', tags: ['kinetic', 'tech'],
+    /* every hit taken by the bastion feeds the suit */
+    absorbs: true,
+    ability: {
+      kind: 'release',
+      name: 'Kinetic Release',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      hint: 'Click Panther to give it all back',
+    },
+    desc: 'The suit drinks every impact on the field and stores it. Kinetic Release gives the whole '
+        + 'lot back at once, in a shockwave that scales with how hard the round has been going — '
+        + 'the worse the fight, the bigger the answer.',
+  },
+  {
+    id: 'hex', name: 'Hex', role: 'Reality Witch', art: Art.hex,
+    rarity: 'Legendary', rarityColor: '#ff5a6e', glow: 'rgba(255,90,110,.45)',
+    clazz: 'icon',
+    range: 186, cooldown: 1.1, damage: 3, pierce: 2, projSpeed: 760, kind: 'dart',
+    color: '#ff5a6e', tags: ['mystic', 'chaos'],
+    ability: {
+      kind: 'unmake',
+      name: 'Unmake',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      strip: [3, 5, 8],
+      hint: 'Click Hex to un-happen their armour',
+    },
+    desc: 'Decides that things are simply otherwise. Unmake tears the plating off every trooper on '
+        + 'the field and knocks the survivors down a grade — the one clean answer to a heavily '
+        + 'plated late-campaign wave.',
   },
 ];
 

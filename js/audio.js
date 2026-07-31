@@ -543,6 +543,73 @@ const Sfx = {
     this.tone({ freq: 220, to: 120, dur: .9, type: 'sawtooth', gain: .06, delay: .1, attack: .02 });
   },
 
+  /* ---- the eight recruits ---- */
+  /** a sheet of water thrown forward: a wash of noise sliding down in pitch */
+  wave() {
+    this.noise({ dur: .34, gain: .2, type: 'lowpass', freq: 2600, freqTo: 420,
+                 attack: .008, hold: .06 });
+    this.tone({ freq: 240, to: 90, dur: .3, type: 'sine', gain: .05, attack: .01 });
+  },
+  /** the road turning into a river — a long swell that keeps running */
+  riptide() {
+    this.noise({ dur: 1.8, gain: .16, type: 'lowpass', freq: 500, freqTo: 2200,
+                 attack: .3, hold: .7 });
+    this.tone({ freq: 70, to: 130, dur: 1.4, type: 'sine', gain: .1, attack: .1, hold: .5 });
+  },
+  /** the current, ticking over while the flood holds */
+  riptideTick() {
+    this.noise({ dur: .16, gain: .07, type: 'bandpass', freq: 700, freqTo: 1800, q: 1.2,
+                 attack: .01 });
+  },
+  /** a mind coming apart: a descending pair with the floor dropping out */
+  mindwipe() {
+    this.tone({ freq: 900, to: 130, dur: .9, type: 'sine', gain: .09, attack: .01, hold: .12 });
+    this.tone({ freq: 906, to: 128, dur: .9, type: 'sine', gain: .07, attack: .01, hold: .12 });
+    this.noise({ dur: .7, gain: .1, type: 'bandpass', freq: 2400, freqTo: 300, q: .8, attack: .05 });
+  },
+  /** claws out — three metal rips over a snarl */
+  frenzy() {
+    this.tone({ freq: 140, to: 80, dur: .5, type: 'sawtooth', gain: .1, attack: .01, hold: .1 });
+    for (let i = 0; i < 3; i++) {
+      this.noise({ dur: .13, gain: .2, type: 'bandpass', freq: 3400, freqTo: 1600, q: 3,
+                   delay: i * .07, attack: .001 });
+    }
+  },
+  /** the road folding: a short suck inward, then the drop */
+  fold() {
+    this.tone({ freq: 300, to: 1200, dur: .16, type: 'triangle', gain: .06, attack: .004 });
+    this.tone({ freq: 1200, to: 200, dur: .3, type: 'triangle', gain: .07, delay: .14, attack: .004 });
+    this.noise({ dur: .3, gain: .1, type: 'bandpass', freq: 1800, freqTo: 500, q: 1.4, delay: .12 });
+  },
+  /** going binary: a rising pair that locks into a hard bright hold */
+  binary() {
+    this.tone({ freq: 300, to: 1500, dur: .45, type: 'sawtooth', gain: .09, attack: .01, hold: .1 });
+    this.tone({ freq: 302, to: 1490, dur: .45, type: 'square', gain: .05, attack: .01, hold: .1 });
+    this.noise({ dur: .6, gain: .16, type: 'highpass', freq: 1800, freqTo: 5000, attack: .05, hold: .2 });
+  },
+  /** the whole field into the red: a machine spinning far past its rating */
+  overclock() {
+    this.tone({ freq: 180, to: 760, dur: .7, type: 'square', gain: .07, attack: .02, hold: .18 });
+    this.tone({ freq: 90, to: 380, dur: .7, type: 'sawtooth', gain: .06, attack: .02, hold: .18 });
+    for (let i = 0; i < 4; i++) {
+      this.tone({ freq: 900 + i * 260, to: 1400 + i * 260, dur: .12, type: 'square',
+                  gain: .035, delay: .1 + i * .07, attack: .002 });
+    }
+  },
+  /** everything the suit drank, handed back at once */
+  release() {
+    this.tone({ freq: 55, to: 30, dur: 1.1, type: 'sine', gain: .26, attack: .002, hold: .3 });
+    this.noise({ dur: .5, gain: .3, type: 'lowpass', freq: 3000, freqTo: 260, attack: .001, hold: .1 });
+    this.tone({ freq: 420, to: 90, dur: .6, type: 'sawtooth', gain: .08, attack: .004, hold: .08 });
+  },
+  /** armour that stops having happened: a reversed, unresolved swell */
+  unmake() {
+    this.tone({ freq: 520, to: 130, dur: .8, type: 'triangle', gain: .1, attack: .12, hold: .1 });
+    this.tone({ freq: 780, to: 190, dur: .8, type: 'sine', gain: .06, attack: .18, hold: .1 });
+    this.noise({ dur: .55, gain: .14, type: 'bandpass', freq: 400, freqTo: 3000, q: 1.1,
+                 attack: .18 });
+  },
+
   /** can't afford it / can't do that */
   deny() {
     this.tone({ freq: 225, to: 155, dur: .12, type: 'square', gain: .05, attack: .002 });
