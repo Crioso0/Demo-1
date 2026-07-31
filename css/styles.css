@@ -657,6 +657,37 @@ canvas#game.placing{cursor:none}
   .shop-grid{grid-template-columns:1fr}
 }
 
+/* fullscreen toggle + install prompt */
+.ico-expand{
+  width:14px; height:14px; display:block;
+  border:2px solid currentColor; border-radius:2px;
+  clip-path:polygon(0 0,42% 0,42% 18%,18% 18%,18% 42%,0 42%,
+                    58% 0,100% 0,100% 42%,82% 42%,82% 18%,58% 18%,
+                    0 58%,18% 58%,18% 82%,42% 82%,42% 100%,0 100%,
+                    82% 58%,100% 58%,100% 100%,58% 100%,58% 82%,82% 82%);
+}
+.hud-full{margin-left:auto}
+.hud-full + .hud-quit{margin-left:8px}
+
+.install-card{
+  position:relative; max-width:min(420px,88vw); margin:0 auto 18px;
+  padding:14px 38px 14px 16px; border-radius:14px; text-align:left;
+  background:rgba(12,20,42,.82); border:1px solid rgba(120,160,230,.32);
+  backdrop-filter:blur(6px); box-shadow:var(--shadow);
+}
+.install-card b{display:block; font-size:14px; margin-bottom:3px}
+.install-card p{margin:0; font-size:12.5px; color:var(--muted); line-height:1.5}
+.install-card .btn{margin-top:10px}
+.install-card kbd{
+  display:inline-block; padding:1px 6px; border-radius:6px; font:inherit; font-size:11.5px;
+  background:rgba(255,255,255,.12); color:#e8edff; border:1px solid rgba(255,255,255,.18);
+}
+.install-x{
+  position:absolute; top:6px; right:6px; width:34px; height:34px;
+  appearance:none; background:none; border:0; color:var(--muted);
+  font-size:19px; line-height:1; cursor:pointer;
+}
+
 /* ============================================================
    TOUCH + PHONE LAYOUT
    The desktop build is a canvas beside a 322px sidebar, which

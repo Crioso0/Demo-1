@@ -674,6 +674,37 @@ canvas#game.placing{cursor:none}
   .shop-grid{grid-template-columns:1fr}
 }
 
+/* fullscreen toggle + install prompt */
+.ico-expand{
+  width:14px; height:14px; display:block;
+  border:2px solid currentColor; border-radius:2px;
+  clip-path:polygon(0 0,42% 0,42% 18%,18% 18%,18% 42%,0 42%,
+                    58% 0,100% 0,100% 42%,82% 42%,82% 18%,58% 18%,
+                    0 58%,18% 58%,18% 82%,42% 82%,42% 100%,0 100%,
+                    82% 58%,100% 58%,100% 100%,58% 100%,58% 82%,82% 82%);
+}
+.hud-full{margin-left:auto}
+.hud-full + .hud-quit{margin-left:8px}
+
+.install-card{
+  position:relative; max-width:min(420px,88vw); margin:0 auto 18px;
+  padding:14px 38px 14px 16px; border-radius:14px; text-align:left;
+  background:rgba(12,20,42,.82); border:1px solid rgba(120,160,230,.32);
+  backdrop-filter:blur(6px); box-shadow:var(--shadow);
+}
+.install-card b{display:block; font-size:14px; margin-bottom:3px}
+.install-card p{margin:0; font-size:12.5px; color:var(--muted); line-height:1.5}
+.install-card .btn{margin-top:10px}
+.install-card kbd{
+  display:inline-block; padding:1px 6px; border-radius:6px; font:inherit; font-size:11.5px;
+  background:rgba(255,255,255,.12); color:#e8edff; border:1px solid rgba(255,255,255,.18);
+}
+.install-x{
+  position:absolute; top:6px; right:6px; width:34px; height:34px;
+  appearance:none; background:none; border:0; color:var(--muted);
+  font-size:19px; line-height:1; cursor:pointer;
+}
+
 /* ============================================================
    TOUCH + PHONE LAYOUT
    The desktop build is a canvas beside a 322px sidebar, which
@@ -913,6 +944,13 @@ body{ user-select:none; -webkit-user-select:none; }
       </div>
     </div>
 
+    <div class="install-card" id="install-card" hidden>
+      <button class="install-x" id="install-x" aria-label="Dismiss">&times;</button>
+      <b id="install-title">Play it full screen</b>
+      <p id="install-body">Install it to your home screen and it opens like an app — no browser bars, and it works offline.</p>
+      <button class="btn btn-primary small" id="install-go" hidden>Install</button>
+    </div>
+
     <div class="menu-foot">
       <span class="stat-chip"><i class="gem"></i><b id="menu-gems">0</b><span>gems</span></span>
       <span class="stat-chip"><i class="ico-star"></i><b id="menu-stars">0</b><span>/ <span id="menu-stars-max">90</span> stars</span></span>
@@ -979,6 +1017,9 @@ body{ user-select:none; -webkit-user-select:none; }
         <div class="hud-item cash"><i class="ico-coin"></i><span id="hud-cash">650</span></div>
         <div class="hud-item round"><span class="lbl">ROUND</span><span id="hud-round">0/6</span></div>
         <div class="hud-item mission"><span class="lbl" id="hud-level">LEVEL 1</span><span id="hud-map">Sentry Ridge</span></div>
+        <button class="btn small ghost hud-full" id="btn-fullscreen" hidden aria-label="Full screen">
+          <i class="ico-expand"></i>
+        </button>
         <button class="btn small ghost hud-quit" id="btn-quit">Quit</button>
       </div>
 
@@ -6023,6 +6064,8 @@ const UI = {
     this.bindCanvas(game.canvas);
     this.bindKeys();
     this.bindMobile();
+    this.bindFullscreen();
+    this.bindInstall();
     this.refreshMenu();
   },
 
@@ -6481,6 +6524,96 @@ const UI = {
     this.crateBusy = false;
     this.renderCollection();
     this.refreshMenu();
+  },
+
+  /* =================== full screen + install =================== */
+  /**
+   * Two ways out of browser chrome:
+   *   1. the Fullscreen API, where the platform supports it (one tap, nothing to install)
+   *   2. adding the app to the home screen, which is the only route on iPhone Safari
+   * We can't trigger #2 from script on iOS, so we detect the situation and say
+   * exactly what to look for instead of guessing at a menu that keeps moving.
+   */
+  bindFullscreen() {
+    const root = document.documentElement;
+    const btn = $('#btn-fullscreen');
+    const can = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+    btn.hidden = !can;
+    if (!can) return;
+
+    const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const paint = () => btn.classList.toggle('on', isFull());
+
+    btn.onclick = async () => {
+      try {
+        if (isFull()) {
+          await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
+        } else if (root.requestFullscreen) {
+          await root.requestFullscreen({ navigationUI: 'hide' });
+        } else {
+          root.webkitRequestFullscreen();
+        }
+      } catch (e) { /* the browser said no; the button just does nothing */ }
+      paint();
+    };
+    document.addEventListener('fullscreenchange', paint);
+    document.addEventListener('webkitfullscreenchange', paint);
+  },
+
+  bindInstall() {
+    const card = $('#install-card');
+    const title = $('#install-title');
+    const body = $('#install-body');
+    const go = $('#install-go');
+    $('#install-x').onclick = () => { card.hidden = true; this.installDismissed = true; };
+
+    const nav = navigator.userAgent || '';
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: fullscreen)').matches
+      || window.navigator.standalone === true;
+    const iOS = /iPad|iPhone|iPod/.test(nav)
+      || (nav.includes('Macintosh') && 'ontouchend' in document);
+    /* an in-app webview can't install anything — the user has to get to Safari first */
+    const inApp = /FBAN|FBAV|Instagram|Line|Twitter|LinkedIn|Snapchat|Pinterest/i.test(nav)
+      || (iOS && !/Safari/.test(nav) && /AppleWebKit/.test(nav))
+      || window.self !== window.top;
+
+    if (standalone) return;                 // already installed, nothing to say
+
+    if (inApp) {
+      title.textContent = 'Open this in your browser';
+      body.innerHTML = 'You are in an app’s built-in browser, which can’t install anything. '
+        + 'Use its menu to <b>Open in Safari</b> (or copy the link and paste it there) — '
+        + 'then you can add it to your home screen.';
+      card.hidden = this.installDismissed;
+      return;
+    }
+
+    if (iOS) {
+      title.textContent = 'Add it to your home screen';
+      body.innerHTML = 'In Safari, open the <b>share menu</b> — the <kbd>↑</kbd> box icon, '
+        + 'or the <kbd>⋯</kbd> / <kbd>≡</kbd> button if your Safari keeps its controls there — '
+        + 'then choose <b>Add to Home Screen</b>. It launches full screen and works offline.';
+      card.hidden = this.installDismissed;
+      return;
+    }
+
+    /* everywhere that supports a real install prompt, offer one button */
+    window.addEventListener('beforeinstallprompt', (ev) => {
+      ev.preventDefault();
+      this.deferredInstall = ev;
+      title.textContent = 'Install Void Bastion';
+      body.textContent = 'Runs full screen in its own window, and works offline.';
+      go.hidden = false;
+      card.hidden = this.installDismissed;
+    });
+    go.onclick = async () => {
+      const ev = this.deferredInstall;
+      if (!ev) return;
+      this.deferredInstall = null;
+      card.hidden = true;
+      try { await ev.prompt(); } catch (e) { /* dismissed */ }
+    };
   },
 
   /* =================== phones =================== */

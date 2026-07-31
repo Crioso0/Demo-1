@@ -43,6 +43,13 @@
       </div>
     </div>
 
+    <div class="install-card" id="install-card" hidden>
+      <button class="install-x" id="install-x" aria-label="Dismiss">&times;</button>
+      <b id="install-title">Play it full screen</b>
+      <p id="install-body">Install it to your home screen and it opens like an app — no browser bars, and it works offline.</p>
+      <button class="btn btn-primary small" id="install-go" hidden>Install</button>
+    </div>
+
     <div class="menu-foot">
       <span class="stat-chip"><i class="gem"></i><b id="menu-gems">0</b><span>gems</span></span>
       <span class="stat-chip"><i class="ico-star"></i><b id="menu-stars">0</b><span>/ <span id="menu-stars-max">90</span> stars</span></span>
@@ -109,6 +116,9 @@
         <div class="hud-item cash"><i class="ico-coin"></i><span id="hud-cash">650</span></div>
         <div class="hud-item round"><span class="lbl">ROUND</span><span id="hud-round">0/6</span></div>
         <div class="hud-item mission"><span class="lbl" id="hud-level">LEVEL 1</span><span id="hud-map">Sentry Ridge</span></div>
+        <button class="btn small ghost hud-full" id="btn-fullscreen" hidden aria-label="Full screen">
+          <i class="ico-expand"></i>
+        </button>
         <button class="btn small ghost hud-quit" id="btn-quit">Quit</button>
       </div>
 

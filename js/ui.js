@@ -41,6 +41,8 @@ const UI = {
     this.bindCanvas(game.canvas);
     this.bindKeys();
     this.bindMobile();
+    this.bindFullscreen();
+    this.bindInstall();
     this.refreshMenu();
   },
 
@@ -499,6 +501,96 @@ const UI = {
     this.crateBusy = false;
     this.renderCollection();
     this.refreshMenu();
+  },
+
+  /* =================== full screen + install =================== */
+  /**
+   * Two ways out of browser chrome:
+   *   1. the Fullscreen API, where the platform supports it (one tap, nothing to install)
+   *   2. adding the app to the home screen, which is the only route on iPhone Safari
+   * We can't trigger #2 from script on iOS, so we detect the situation and say
+   * exactly what to look for instead of guessing at a menu that keeps moving.
+   */
+  bindFullscreen() {
+    const root = document.documentElement;
+    const btn = $('#btn-fullscreen');
+    const can = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+    btn.hidden = !can;
+    if (!can) return;
+
+    const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const paint = () => btn.classList.toggle('on', isFull());
+
+    btn.onclick = async () => {
+      try {
+        if (isFull()) {
+          await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
+        } else if (root.requestFullscreen) {
+          await root.requestFullscreen({ navigationUI: 'hide' });
+        } else {
+          root.webkitRequestFullscreen();
+        }
+      } catch (e) { /* the browser said no; the button just does nothing */ }
+      paint();
+    };
+    document.addEventListener('fullscreenchange', paint);
+    document.addEventListener('webkitfullscreenchange', paint);
+  },
+
+  bindInstall() {
+    const card = $('#install-card');
+    const title = $('#install-title');
+    const body = $('#install-body');
+    const go = $('#install-go');
+    $('#install-x').onclick = () => { card.hidden = true; this.installDismissed = true; };
+
+    const nav = navigator.userAgent || '';
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: fullscreen)').matches
+      || window.navigator.standalone === true;
+    const iOS = /iPad|iPhone|iPod/.test(nav)
+      || (nav.includes('Macintosh') && 'ontouchend' in document);
+    /* an in-app webview can't install anything — the user has to get to Safari first */
+    const inApp = /FBAN|FBAV|Instagram|Line|Twitter|LinkedIn|Snapchat|Pinterest/i.test(nav)
+      || (iOS && !/Safari/.test(nav) && /AppleWebKit/.test(nav))
+      || window.self !== window.top;
+
+    if (standalone) return;                 // already installed, nothing to say
+
+    if (inApp) {
+      title.textContent = 'Open this in your browser';
+      body.innerHTML = 'You are in an app’s built-in browser, which can’t install anything. '
+        + 'Use its menu to <b>Open in Safari</b> (or copy the link and paste it there) — '
+        + 'then you can add it to your home screen.';
+      card.hidden = this.installDismissed;
+      return;
+    }
+
+    if (iOS) {
+      title.textContent = 'Add it to your home screen';
+      body.innerHTML = 'In Safari, open the <b>share menu</b> — the <kbd>↑</kbd> box icon, '
+        + 'or the <kbd>⋯</kbd> / <kbd>≡</kbd> button if your Safari keeps its controls there — '
+        + 'then choose <b>Add to Home Screen</b>. It launches full screen and works offline.';
+      card.hidden = this.installDismissed;
+      return;
+    }
+
+    /* everywhere that supports a real install prompt, offer one button */
+    window.addEventListener('beforeinstallprompt', (ev) => {
+      ev.preventDefault();
+      this.deferredInstall = ev;
+      title.textContent = 'Install Void Bastion';
+      body.textContent = 'Runs full screen in its own window, and works offline.';
+      go.hidden = false;
+      card.hidden = this.installDismissed;
+    });
+    go.onclick = async () => {
+      const ev = this.deferredInstall;
+      if (!ev) return;
+      this.deferredInstall = null;
+      card.hidden = true;
+      try { await ev.prompt(); } catch (e) { /* dismissed */ }
+    };
   },
 
   /* =================== phones =================== */
