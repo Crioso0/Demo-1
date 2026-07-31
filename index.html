@@ -70,16 +70,10 @@
     <div class="hero-cards" id="hero-cards"><!-- built by JS --></div>
 
     <div class="crate-panel">
-      <div class="crate-visual" id="crate-visual">
-        <div class="crate">
-          <div class="crate-lid"></div>
-          <div class="crate-body"><span class="crate-star">★</span></div>
-        </div>
-      </div>
-      <h3>Hero Crate</h3>
-      <p class="muted">Contains one hero. Duplicates convert to <b>75</b> gems.</p>
-      <button class="btn btn-primary" id="btn-open-crate">Open Crate &mdash; 150 <i class="gem sm"></i></button>
-      <p class="crate-note" id="crate-note">Earn gems by clearing rounds.</p>
+      <h3>Cases</h3>
+      <p class="muted">Stars are what pay for these. Duplicates convert to gems.</p>
+      <div class="crate-list" id="crate-list"><!-- built by JS --></div>
+      <p class="crate-note" id="crate-note">Earn gems by taking stars.</p>
     </div>
   </div>
 </section>
@@ -178,6 +172,7 @@
     <div class="res-stars" id="res-stars" hidden><span></span><span></span><span></span></div>
     <p id="res-sub">You defended the bastion.</p>
     <div class="reward-row"><i class="gem"></i><span id="res-gems">+0</span> gems earned</div>
+    <div class="res-gem-note" id="res-gem-note" hidden></div>
     <div class="result-actions">
       <button class="btn btn-primary" id="btn-res-again">Play again</button>
       <button class="btn" id="btn-res-menu">Menu</button>
@@ -186,20 +181,28 @@
 </div>
 
 <div class="overlay" id="overlay-crate" hidden>
-  <div class="crate-stage" id="crate-stage">
-    <div class="rays"></div>
-    <div class="crate big" id="crate-anim">
-      <div class="crate-lid"></div>
-      <div class="crate-body"><span class="crate-star">★</span></div>
+  <div class="case-stage" id="case-stage">
+    <div class="case-head">
+      <b id="case-name">Field Case</b>
+      <span id="case-odds"></span>
     </div>
-    <div class="reveal-card" id="reveal-card">
-      <div class="reveal-inner">
-        <div class="reveal-art" id="reveal-art"></div>
-        <div class="reveal-name" id="reveal-name">Hero</div>
-        <div class="reveal-role" id="reveal-role">role</div>
-        <div class="reveal-tag" id="reveal-tag">NEW HERO</div>
+
+    <div class="reel-frame">
+      <div class="reel-marker"></div>
+      <div class="reel-fade left"></div>
+      <div class="reel-fade right"></div>
+      <div class="reel" id="reel"><!-- built by JS --></div>
+    </div>
+
+    <div class="case-result" id="case-result" hidden>
+      <div class="case-hero" id="case-hero"></div>
+      <div class="case-info">
+        <span class="case-rarity" id="case-rarity">Rare</span>
+        <b id="case-hero-name">Hero</b>
+        <span class="case-tag" id="case-tag">NEW HERO</span>
       </div>
     </div>
+
     <button class="btn btn-primary crate-continue" id="btn-crate-continue" hidden>Continue</button>
   </div>
 </div>
@@ -211,7 +214,11 @@
       <li>Pick a tower or hero from the right panel, then click the grass to place it. You can't build on the track.</li>
       <li>Press <b>Start Round</b> to send in the legion. Clear every round to finish the level.</li>
       <li>Every trooper that reaches the bastion costs you lives. Kills earn cash for more towers.</li>
-      <li>You may deploy only <b>2 heroes per mission</b> — choose them to suit the map.</li>
+      <li>Hero slots grow with the campaign: <b>one</b> in the first city, <b>two</b> in the second,
+          <b>three</b> from the third on. Towers are the backbone; heroes are support.</li>
+      <li>A hero's ultimate only unlocks once it is <b>fully upgraded</b>, and most get a single use
+          per round. Lighter kits like Streak and Nocturne unlock earlier and get two.</li>
+      <li>Later missions open a <b>second road</b> — the legion arrives from two directions at once.</li>
       <li>Click a placed unit to <b>upgrade</b> or <b>sell</b> it.</li>
       <li>Clearing rounds earns <b>gems</b>. Spend 150 gems on a crate to unlock the other heroes.</li>
       <li><b>Verdant</b>, <b>Streak</b> and <b>Paragon</b> have clickable ultimates — click them on the

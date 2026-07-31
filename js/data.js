@@ -9,8 +9,12 @@ const CANVAS_W = 1120;
 const CANVAS_H = 640;
 const TRACK_WIDTH = 46;
 
-/* how many heroes may be deployed in a single run */
-const HERO_SLOTS = 2;
+/* Heroes you may field, by city: one at first, then two, then three.
+   The early cities are meant to be solved with towers. */
+const HERO_SLOTS_BY_CHAPTER = [1, 2, 3, 3, 3, 3];
+function heroSlotsFor(chapterIndex) {
+  return HERO_SLOTS_BY_CHAPTER[clamp(chapterIndex, 0, HERO_SLOTS_BY_CHAPTER.length - 1)];
+}
 
 /* ---------------- chapters ----------------
    Six cities, five missions each. Every mission gets its own procedurally
@@ -217,6 +221,11 @@ const MAPS = [];
 CHAPTERS.forEach((ch, ci) => {
   for (let i = 0; i < MISSIONS_PER_CHAPTER; i++) {
     const seed = 9000 + ci * 137 + i * 29;
+    /* from the second city on, the later missions open a second road, so the
+       legion arrives from two directions and one strongpoint is not enough */
+    const twoLanes = ci >= 1 && i >= 2;
+    const routes = [generateRoute(seed)];
+    if (twoLanes) routes.push(generateRoute(seed + 5171));
     MAPS.push({
       id: `${ch.id}-${i + 1}`,
       name: `${ch.name} ${['I', 'II', 'III', 'IV', 'V'][i]}`,
@@ -224,14 +233,16 @@ CHAPTERS.forEach((ch, ci) => {
       seed,
       decor: ch.decor,
       theme: ch.theme,
-      points: generateRoute(seed),
+      routes,
+      points: routes[0],
+      lanes: routes.length,
     });
   }
 });
 const MAP_BY_ID = Object.fromEntries(MAPS.map((m) => [m.id, m]));
 
 /* scattered scenery — kept clear of the route */
-function generateScenery(path, map, count = 30) {
+function generateScenery(paths, map, count = 30) {
   const rng = mulberry32(map.seed ^ 0x2f1d);
   const kinds = {
     forest: ['tree', 'tree', 'tree', 'rock', 'bush', 'bush'],
@@ -243,45 +254,58 @@ function generateScenery(path, map, count = 30) {
     coast: ['water', 'rock', 'palm', 'water', 'palm'],
   }[map.decor];
 
+  const list = Array.isArray(paths) ? paths : [paths];
   const out = [];
   let guard = 0;
-  while (out.length < count && guard++ < 4000) {
+  while (out.length < count && guard++ < 6000) {
     const x = 40 + rng() * (CANVAS_W - 80);
     const y = 40 + rng() * (CANVAS_H - 80);
-    if (path.distanceTo(x, y) < 62) continue;
-    const a = path.at(0), b = path.at(path.length);
-    if (distSq(x, y, a.x, a.y) < 110 * 110) continue;
-    if (distSq(x, y, b.x, b.y) < 130 * 130) continue;
+    if (list.some((p) => p.distanceTo(x, y) < 62)) continue;
+    if (list.some((p) => distSq(x, y, p.at(0).x, p.at(0).y) < 110 * 110)) continue;
+    if (list.some((p) => distSq(x, y, p.at(p.length).x, p.at(p.length).y) < 130 * 130)) continue;
     if (out.some((s) => distSq(s.x, s.y, x, y) < 68 * 68)) continue;
     out.push({ t: kinds[(rng() * kinds.length) | 0], x, y, s: .78 + rng() * .5 });
   }
   return out;
 }
 
-/* the live map — rebound by setMap() */
+/* the live map — rebound by setMap(). PATHS holds every road on the map;
+   PATH stays pointed at the first one for everything that only needs one. */
 let CURRENT_MAP = MAPS[0];
-let PATH = buildPath(CURRENT_MAP.points);
-let SCENERY = generateScenery(PATH, CURRENT_MAP);
+let PATHS = CURRENT_MAP.routes.map(buildPath);
+let PATH = PATHS[0];
+let SCENERY = generateScenery(PATHS, CURRENT_MAP);
 
 function setMap(id) {
   CURRENT_MAP = MAP_BY_ID[id] || MAPS[0];
-  PATH = buildPath(CURRENT_MAP.points);
-  SCENERY = generateScenery(PATH, CURRENT_MAP);
+  PATHS = CURRENT_MAP.routes.map(buildPath);
+  PATH = PATHS[0];
+  SCENERY = generateScenery(PATHS, CURRENT_MAP);
   return CURRENT_MAP;
+}
+
+/** shortest distance from a point to any road on the map */
+function distanceToAnyPath(x, y) {
+  let best = Infinity;
+  for (const p of PATHS) best = Math.min(best, p.distanceTo(x, y));
+  return best;
 }
 
 /* ---------------- the Void Legion ---------------- */
 /* Each tier is a heavier grade of armour. Damage strips a grade at a time,
    so an Elite sheds plating down through the ranks before it drops. */
+/* Each grade is a heavier plate. Speeds deliberately spread wide so a wave
+   arrives strung out instead of as one convenient clump: Skirmishers outrun
+   your slow towers, Bulwarks crawl in and soak. */
 const TROOPS = [
-  { name: 'Grunt',  color: '#8d94a8', trim: '#5a6076', speed: 62,  r: 12, reward: 1 },
-  { name: 'Scout',  color: '#4f86d6', trim: '#2c4f86', speed: 80,  r: 13, reward: 1 },
-  { name: 'Ranger', color: '#3fb173', trim: '#227048', speed: 98,  r: 14, reward: 1 },
-  { name: 'Shocker',color: '#e0be3f', trim: '#8f7716', speed: 142, r: 15, reward: 2 },
-  { name: 'Elite',  color: '#d4568f', trim: '#7d2b53', speed: 178, r: 16, reward: 2 },
+  { name: 'Grunt',      color: '#8d94a8', trim: '#5a6076', speed: 74,  r: 12, reward: 1 },
+  { name: 'Skirmisher', color: '#4f86d6', trim: '#2c4f86', speed: 168, r: 13, reward: 1 },
+  { name: 'Ranger',     color: '#3fb173', trim: '#227048', speed: 104, r: 14, reward: 2 },
+  { name: 'Shocker',    color: '#e0be3f', trim: '#8f7716', speed: 152, r: 15, reward: 2 },
+  { name: 'Bulwark',    color: '#d4568f', trim: '#7d2b53', speed: 68,  r: 17, reward: 3 },
 ];
 const DREAD = {
-  name: 'Dreadnought', color: '#3a4157', speed: 46, r: 34, hp: 120, reward: 40, leak: 15,
+  name: 'Dreadnought', color: '#3a4157', speed: 44, r: 34, hp: 190, reward: 55, leak: 15,
 };
 
 /* ---------------- counter units ----------------
@@ -317,6 +341,49 @@ const SPECIAL_LIST = Object.values(SPECIALS);
 const SWIFT_MUL = 1.45;   // faster runners
 const SHIELD_SOAK = 1;    // shielded troopers shrug off this much of every hit
 
+/* ---------------- crates ----------------
+   Two tiers so gems have somewhere to go. The premium case costs most of a
+   city's earnings and is the only realistic route to a Legendary. */
+const RARITY_ORDER = ['Starter', 'Rare', 'Epic', 'Legendary'];
+const RARITY_COLOR = {
+  Starter: '#9aa4bf', Rare: '#5b8dd6', Epic: '#a97bff', Legendary: '#ffb03f',
+};
+const CRATES = [
+  {
+    id: 'standard', name: 'Field Case', cost: 220, accent: '#5b8dd6',
+    odds: { Rare: .62, Epic: .32, Legendary: .06 },
+    blurb: 'Mostly Rares. A slim shot at something better.',
+  },
+  {
+    id: 'premium', name: 'Vault Case', cost: 750, accent: '#ffb03f',
+    odds: { Rare: .18, Epic: .47, Legendary: .35 },
+    blurb: 'Expensive, but this is where Legendaries actually come from.',
+  },
+];
+const CRATE_BY_ID = Object.fromEntries(CRATES.map((c) => [c.id, c]));
+const DUPE_REFUND = { Starter: 40, Rare: 70, Epic: 140, Legendary: 320 };
+
+/** roll a rarity from a crate's odds, then a hero of that rarity */
+function rollCrate(crate, pool) {
+  const buckets = {};
+  for (const h of pool) (buckets[h.rarity] = buckets[h.rarity] || []).push(h);
+
+  let roll = Math.random();
+  for (const tier of ['Legendary', 'Epic', 'Rare']) {
+    const chance = crate.odds[tier] || 0;
+    /* only spend the odds on rarities this pool can actually pay out */
+    if (buckets[tier] && buckets[tier].length) {
+      if (roll < chance) return pick(buckets[tier]);
+      roll -= chance;
+    }
+  }
+  /* nothing hit — hand back whatever the pool does have */
+  for (const tier of ['Rare', 'Epic', 'Legendary', 'Starter']) {
+    if (buckets[tier] && buckets[tier].length) return pick(buckets[tier]);
+  }
+  return pick(pool);
+}
+
 /* ---------------- campaign ----------------
    30 missions: six cities of five. Difficulty is driven by the global mission
    number, so the thirtieth fight is a very different animal from the first. */
@@ -334,10 +401,11 @@ CHAPTERS.forEach((ch, ci) => {
       mission: i + 1,
       map: `${ch.id}-${i + 1}`,
       name: `${ch.name} — ${['Landfall', 'Push', 'Crossfire', 'Siege', 'Showdown'][i]}`,
-      rounds: 6 + ci + Math.floor(i * 1.5),
-      tiers: clamp(2 + ci, 2, TROOPS.length),
-      cash: 650 + ci * 60,
+      rounds: 7 + ci + Math.floor(i * 1.5),
+      tiers: clamp(3 + ci, 3, TROOPS.length),
+      cash: 700 + ci * 80,
       lives: Math.max(60, 100 - ci * 6),
+      heroSlots: heroSlotsFor(ci),
       specials,
       /* every city's fifth mission is its boss fight */
       chapterBoss: last ? ch.boss : null,
@@ -354,7 +422,18 @@ const LEVEL_COUNT = LEVELS.length;
 const LEVEL_BY_N = Object.fromEntries(LEVELS.map((l) => [l.n, l]));
 
 /** gems paid out for finishing a mission (first clear pays double) */
-function levelReward(lv) { return 18 + lv.n * 4; }
+function levelReward(lv) { return 16 + lv.n * 3; }
+
+/** gems for reaching a new star count on a mission — this is the main income */
+const STAR_BOUNTY = [0, 10, 30, 80];
+function starBounty(from, to) {
+  let sum = 0;
+  for (let k = from + 1; k <= to; k++) sum += STAR_BOUNTY[k] || 0;
+  return sum;
+}
+
+/** a one-off payout for taking every star in a city */
+function chapterBounty(chapterIndex) { return 250 + chapterIndex * 120; }
 
 /** stars are earned on how much of the bastion survived */
 const STAR_THRESHOLDS = [0, .55, .9];      // 1★ clear, 2★ 55% lives, 3★ 90%
@@ -372,7 +451,8 @@ function starsFor(livesLeft, livesStart) {
 function buildLevelWaves(lv) {
   const waves = [];
   const mods = lv.mods || {};
-  const diff = 1 + (lv.n - 1) * .085;
+  /* a much steeper ramp — the opening cities were a walkover */
+  const diff = 1.55 + (lv.n - 1) * .13;
 
   for (let r = 1; r <= lv.rounds; r++) {
     const p = lv.rounds > 1 ? (r - 1) / (lv.rounds - 1) : 1;
@@ -387,8 +467,8 @@ function buildLevelWaves(lv) {
       groups.push({ tier: 'boss', count: 1 + Math.floor(lv.n / 9), gap: 3.2, delay: 0 });
     }
 
-    const count = Math.round((9 + r * 2.2) * diff);
-    const gap = Math.max(.16, .58 - p * .24 - lv.n * .004);
+    const count = Math.round((10 + r * 2.6) * diff);
+    const gap = Math.max(.14, .52 - p * .24 - lv.n * .004);
     groups.push({
       tier: top, count, gap, delay: groups.length ? 2.5 : 0,
       swift: !!mods.swift && r % 3 === 0,
@@ -396,8 +476,15 @@ function buildLevelWaves(lv) {
 
     if (top > 0) {
       groups.push({
-        tier: Math.max(0, top - 1), count: Math.round(count * .85), gap: gap * .8,
+        tier: Math.max(0, top - 1), count: Math.round(count * .9), gap: gap * .75,
         delay: 4.5, shield: !!mods.shield && r % 2 === 0,
+      });
+    }
+    /* a rush of Skirmishers that will outrun a slow line */
+    if (r >= 3) {
+      groups.push({
+        tier: 1, count: Math.round(count * .55), gap: gap * .5,
+        delay: 3 + (r % 2) * 4, swift: !!mods.swift,
       });
     }
     if (top > 2 && r > lv.rounds * .5) {
@@ -1312,6 +1399,152 @@ const Art = {
     ctx.restore();
     ctx.restore();
   },
+  quiver(ctx, lvl, t) {
+    const bob = Math.sin(t * 2) * 1.2;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 13, 4.5, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#2b3a24';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    /* quiver of arrows over the shoulder */
+    ctx.fillStyle = '#6b4a2a';
+    ctx.save(); ctx.rotate(-.4);
+    roundRect(ctx, -14, -14, 6, 15, 2.5); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#d8dee9'; ctx.lineWidth = 1.4;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.moveTo(-13 + i * 2, -16); ctx.lineTo(-11 + i * 2, -23); ctx.stroke();
+    }
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#7ea34a'); g.addColorStop(1, '#3d5626');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(0, -15, 5.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#4a6b2d';
+    ctx.beginPath(); ctx.arc(0, -17, 6, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    /* eye mask */
+    ctx.fillStyle = '#2b3a24';
+    roundRect(ctx, -5.4, -16.6, 11, 2.6, 1.2); ctx.fill();
+
+    /* drawn bow */
+    ctx.strokeStyle = lvl > 2 ? '#ffd977' : '#c9a227'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(11, -2, 13, -1.35, 1.35); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(14, -14.6); ctx.lineTo(7, -2); ctx.lineTo(14, 10.6); ctx.stroke();
+    ctx.fillStyle = '#e8eefc';
+    ctx.beginPath(); ctx.moveTo(22, -2); ctx.lineTo(7, .4); ctx.lineTo(7, -4.4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  },
+  tempest(ctx, lvl, t) {
+    const bob = Math.sin(t * 1.8) * 2;
+    ctx.save(); ctx.translate(0, bob);
+
+    /* she rides a small weather front */
+    ctx.fillStyle = `rgba(180,215,255,${.18 + Math.sin(t * 3) * .07})`;
+    ctx.beginPath();
+    ctx.ellipse(-4, 15, 20, 6, 0, 0, TAU);
+    ctx.ellipse(6, 13, 13, 5, 0, 0, TAU);
+    ctx.fill();
+
+    ctx.fillStyle = '#2b2f52';
+    roundRect(ctx, -7.5, 1, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 1, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#c9d6f0'); g.addColorStop(1, '#5b6a99');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+
+    /* streaming white hair */
+    ctx.fillStyle = '#eef4ff';
+    ctx.beginPath();
+    ctx.moveTo(-6, -18);
+    ctx.quadraticCurveTo(-20 - Math.sin(t * 2.4) * 4, -12, -15, -2);
+    ctx.quadraticCurveTo(-9, -10, -4, -12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e8c9a8';
+    ctx.beginPath(); ctx.arc(0, -15, 5.6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#eef4ff';
+    ctx.beginPath(); ctx.arc(0, -17.5, 6, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    /* lit eyes */
+    ctx.fillStyle = `rgba(210,240,255,${.7 + Math.sin(t * 6) * .3})`;
+    ctx.beginPath();
+    ctx.ellipse(-2.2, -15.4, 1.7, 1.1, 0, 0, TAU);
+    ctx.ellipse(2.2, -15.4, 1.7, 1.1, 0, 0, TAU);
+    ctx.fill();
+
+    /* a small storm cell in the raised hand */
+    ctx.save(); ctx.translate(14, -6);
+    ctx.fillStyle = 'rgba(150,175,215,.85)';
+    ctx.beginPath();
+    ctx.arc(-3, 0, 4, 0, TAU); ctx.arc(2, -1.5, 5, 0, TAU); ctx.arc(5, 1.5, 3.4, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(190,235,255,${.6 + Math.sin(t * 16) * .4})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(-2, 9); ctx.lineTo(1, 8); ctx.lineTo(-1, 13);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+  },
+  sable(ctx, lvl, t) {
+    const bob = Math.sin(t * 2.4) * 1.2;
+    ctx.save(); ctx.translate(0, bob);
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 12.5, 4.5, 0, 0, TAU); ctx.fill();
+
+    ctx.fillStyle = '#15171f';
+    roundRect(ctx, -7.5, 2, 6, 12, 3); ctx.fill();
+    roundRect(ctx, 1.5, 2, 6, 12, 3); ctx.fill();
+
+    const g = ctx.createLinearGradient(0, -12, 0, 6);
+    g.addColorStop(0, '#3a3f4f'); g.addColorStop(1, '#14161d');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-8, -11); ctx.lineTo(8, -11);
+    ctx.quadraticCurveTo(10.5, -2, 7.5, 5); ctx.lineTo(-7.5, 5);
+    ctx.quadraticCurveTo(-10.5, -2, -8, -11);
+    ctx.fill();
+    /* belt and buckles */
+    ctx.fillStyle = '#8a3247';
+    roundRect(ctx, -8, .5, 16, 3, 1.4); ctx.fill();
+    ctx.fillStyle = '#c8506a';
+    ctx.beginPath(); ctx.arc(-4.5, -6, 1.8, 0, TAU); ctx.arc(4.5, -6, 1.8, 0, TAU); ctx.fill();
+
+    /* red hair */
+    ctx.fillStyle = '#a8342a';
+    ctx.beginPath(); ctx.arc(0, -16, 7, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f0c9a0';
+    ctx.beginPath(); ctx.arc(.5, -15.5, 5.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#16121c';
+    ctx.beginPath(); ctx.arc(-1.6, -16, 1.1, 0, TAU); ctx.arc(2.6, -16, 1.1, 0, TAU); ctx.fill();
+
+    /* twin batons crackling */
+    for (const s2 of [-1, 1]) {
+      ctx.save(); ctx.translate(s2 * 12, -1); ctx.rotate(s2 * .5 + Math.sin(t * 3) * .1);
+      ctx.fillStyle = '#20232c';
+      roundRect(ctx, -1.6, -7, 3.2, 14, 1.4); ctx.fill();
+      ctx.strokeStyle = `rgba(120,220,255,${.5 + Math.sin(t * 14 + s2) * .4})`;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(s2 * 2.5, -12); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  },
 };
 
 /* ---------------- towers ---------------- */
@@ -1370,7 +1603,8 @@ const HEROES = [
     ability: {
       kind: 'saw',
       name: 'Buzzsaw Construct',
-      charges: [1, 2, 3],   // by hero level
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       hint: 'Click Verdant to unleash',
     },
     desc: 'A weak ring beam chips away on its own — click him to grow huge and roll a giant '
@@ -1384,7 +1618,8 @@ const HEROES = [
     ability: {
       kind: 'overdrive',
       name: 'Overdrive',
-      charges: [1, 2, 3],
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
       duration: [5, 6.5, 8],
       hint: 'Click Streak to go supersonic',
     },
@@ -1399,7 +1634,8 @@ const HEROES = [
     ability: {
       kind: 'lance',
       name: 'Solar Lance',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       duration: [2.2, 2.8, 3.4],
       hint: 'Click Paragon to fire the lance',
     },
@@ -1414,7 +1650,8 @@ const HEROES = [
     ability: {
       kind: 'mark',
       name: 'Prep Time',
-      charges: [1, 2, 3],
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
       duration: [6, 8, 10],
       hint: 'Click Nocturne to mark the field',
     },
@@ -1429,7 +1666,8 @@ const HEROES = [
     ability: {
       kind: 'missiles',
       name: 'Micro-Missile Barrage',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       salvo: [8, 12, 18],
       hint: 'Click Ironclad to empty the pods',
     },
@@ -1443,7 +1681,8 @@ const HEROES = [
     ability: {
       kind: 'thunderclap',
       name: 'Thunderclap',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       radius: [230, 280, 340],
       hint: 'Click Havoc to bring both fists down',
     },
@@ -1458,7 +1697,8 @@ const HEROES = [
     ability: {
       kind: 'wildcard',
       name: 'Wild Card',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       hint: 'Click Jester and see what happens',
     },
     desc: 'Fans out razor cards for wildly inconsistent damage. Wild Card deals every hostile on '
@@ -1474,7 +1714,8 @@ const HEROES = [
     ability: {
       kind: 'webzone',
       name: 'Web Zone',
-      charges: [1, 2, 3],
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
       duration: [5, 7, 9],
       radius: [140, 165, 195],
       hint: 'Click Webline to string the route',
@@ -1490,7 +1731,8 @@ const HEROES = [
     ability: {
       kind: 'stormcall',
       name: 'Storm Call',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       strikes: [10, 16, 24],
       hint: 'Click Skyforge to call the sky down',
     },
@@ -1505,7 +1747,8 @@ const HEROES = [
     ability: {
       kind: 'rally',
       name: 'Rally',
-      charges: [1, 2, 3],
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
       duration: [6, 8, 10],
       hint: 'Click Bulwark to rally the line',
     },
@@ -1520,7 +1763,8 @@ const HEROES = [
     ability: {
       kind: 'lasso',
       name: 'Lasso of Truth',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       duration: [4, 5.5, 7],
       hint: 'Click Valkyra to bind the line',
     },
@@ -1535,12 +1779,61 @@ const HEROES = [
     ability: {
       kind: 'portal',
       name: 'Mirror Portal',
-      charges: [1, 2, 3],
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
       send: [.35, .5, .68],
       hint: 'Click Arcanist to fold the route',
     },
     desc: 'Bolts of raw spellwork that punch through ranks. Mirror Portal opens a gate under the '
         + 'legion and drops every hostile a long way back down the route.',
+  },
+  {
+    id: 'quiver', name: 'Quiver', role: 'Marksman', art: Art.quiver,
+    rarity: 'Rare', rarityColor: '#8fbf4a', glow: 'rgba(140,190,80,.4)',
+    range: 235, cooldown: 1.05, damage: 4, pierce: 2, projSpeed: 900, kind: 'dart',
+    color: '#8fbf4a', tags: ['kinetic'],
+    ability: {
+      kind: 'volley',
+      name: 'Full Quiver',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      shots: [14, 20, 28],
+      hint: 'Click Quiver to empty the quiver',
+    },
+    desc: 'The longest reach on the roster and heavy single arrows, but slow between shots. '
+        + 'Full Quiver rains arrows on everything currently on the road.',
+  },
+  {
+    id: 'tempest', name: 'Tempest', role: 'Weather Witch', art: Art.tempest,
+    rarity: 'Epic', rarityColor: '#c9d6f0', glow: 'rgba(190,215,255,.45)',
+    range: 165, cooldown: 1.9, damage: 2, kind: 'frost', slow: .4, slowTime: 2.6,
+    color: '#c9d6f0', tags: ['storm'],
+    ability: {
+      kind: 'downpour',
+      name: 'Downpour',
+      charges: [0, 0, 1],
+      unlockNote: 'Unlocks at Lv 3',
+      duration: [6, 8, 10],
+      hint: 'Click Tempest to break the weather',
+    },
+    desc: 'A standing cold front that chills everything nearby. Downpour drowns the whole field: '
+        + 'everything crawls and takes steady damage while it lasts.',
+  },
+  {
+    id: 'sable', name: 'Sable', role: 'Infiltrator', art: Art.sable,
+    rarity: 'Epic', rarityColor: '#c8506a', glow: 'rgba(200,80,106,.42)',
+    range: 150, cooldown: .42, damage: 2, pierce: 1, projSpeed: 760, kind: 'dart',
+    color: '#c8506a', tags: ['kinetic', 'tech'],
+    ability: {
+      kind: 'expose',
+      name: 'Expose',
+      charges: [0, 1, 2],
+      unlockNote: 'Unlocks at Lv 2',
+      duration: [7, 9, 12],
+      hint: 'Click Sable to find the weak points',
+    },
+    desc: 'Quick baton work at close range. Expose finds the seams in every suit of armour on the '
+        + 'field, so shields stop working and everything takes an extra point per hit.',
   },
 ];
 
@@ -1548,17 +1841,22 @@ const HERO_BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
 const TOWER_BY_ID = Object.fromEntries(TOWERS.map((t) => [t.id, t]));
 const UNIT_BY_ID = { ...TOWER_BY_ID, ...HERO_BY_ID };
 
-/* upgrade curve — shared by towers and heroes */
+/* Upgrades are a real commitment now — flat, readable prices rather than a
+   percentage of the unit. Maxing a hero costs 3500 and is most of a mission's
+   income, which is the point: that is what unlocks its ability. */
 const MAX_LEVEL = 3;
+const TOWER_UPGRADE_COST = [500, 1500];    // to reach level 2, then level 3
+const HERO_UPGRADE_COST = [1000, 2500];
+
 function upgradeCost(def, level) {
-  const base = def.cost || 300; // heroes are free to place, priced off 300
-  return Math.round(base * (level === 1 ? .85 : 1.6));
+  const ladder = def.ability || !def.cost ? HERO_UPGRADE_COST : TOWER_UPGRADE_COST;
+  return ladder[clamp(level - 1, 0, ladder.length - 1)];
 }
 function levelMods(level) {
   return {
-    range: 1 + (level - 1) * .14,
-    rate: 1 - (level - 1) * .22,      // cooldown multiplier
-    damage: level === 3 ? 1 : 0,      // flat bonus at level 3
+    range: 1 + (level - 1) * .16,
+    rate: 1 - (level - 1) * .24,      // cooldown multiplier
+    damage: level === 3 ? 2 : level === 2 ? 1 : 0,
     pierce: level - 1,
   };
 }

@@ -516,6 +516,21 @@ const Sfx = {
     this.noise({ dur: .8, gain: .09, type: 'bandpass', freq: 700, freqTo: 3600, q: 1, attack: .04 });
   },
 
+  volley() {
+    for (let i = 0; i < 5; i++) {
+      this.noise({ dur: .05, gain: .16, type: 'bandpass', freq: 1100, freqTo: 3200, q: 1.6,
+        delay: i * .05, attack: .001 });
+    }
+  },
+  downpour() {
+    this.noise({ dur: 1.6, gain: .12, type: 'highpass', freq: 900, freqTo: 4200, attack: .25, hold: .6 });
+    this.tone({ freq: 120, to: 60, dur: 1.2, type: 'sine', gain: .08, attack: .05, hold: .3 });
+  },
+  expose() {
+    this.tone({ freq: 1500, to: 520, dur: .3, type: 'square', gain: .04, attack: .002 });
+    this.noise({ dur: .35, gain: .16, type: 'bandpass', freq: 3000, freqTo: 900, q: 2.4, attack: .002 });
+  },
+
   /** can't afford it / can't do that */
   deny() {
     this.tone({ freq: 225, to: 155, dur: .12, type: 'square', gain: .05, attack: .002 });
@@ -526,6 +541,12 @@ const Sfx = {
   crateRumble() {
     this.noise({ dur: 1.15, gain: .06, type: 'lowpass', freq: 260, freqTo: 700, q: .9, attack: .3 });
     this.tone({ freq: 150, to: 400, dur: 1.15, type: 'sawtooth', gain: .028, attack: .3 });
+  },
+
+  /** one tile crossing the marker on the case reel */
+  reelTick() {
+    this.noise({ dur: .028, gain: .09, type: 'bandpass', freq: 2600, q: 6, attack: .0004 });
+    this.tone({ freq: 1750, dur: .022, type: 'square', gain: .012, attack: .0004 });
   },
 
   /** crate: the lid cracking open, then a rush of sparkle */

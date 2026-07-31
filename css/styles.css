@@ -571,7 +571,8 @@ canvas#game.placing{cursor:none}
   background:linear-gradient(#ffe08a,#f08c2e); -webkit-background-clip:text; background-clip:text; color:transparent}
 .result-card.defeat h2{background:linear-gradient(#ffb3bd,#e2405a); -webkit-background-clip:text; background-clip:text}
 .result-card p{color:var(--muted); margin:0 0 18px}
-.reward-row{font-weight:800; margin-bottom:22px; font-size:17px}
+.reward-row{font-weight:800; margin-bottom:6px; font-size:17px}
+.res-gem-note{margin-bottom:18px; font-size:12px; color:var(--muted); font-weight:700}
 .result-actions{display:flex; gap:10px; justify-content:center}
 
 .help-card{text-align:left}
@@ -890,4 +891,102 @@ body{ user-select:none; -webkit-user-select:none; }
   .hero-card:hover,.level-card:hover:not(.locked),.chapter-card:hover:not(.locked){transform:none}
   .shop-item:hover{transform:none}
   .btn:hover{filter:none}
+}
+
+/* ============ CASE OPENING ============ */
+.case-stage{
+  position:relative; width:min(760px,94vw);
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+}
+/* the old ceremony pinned this to the bottom; here it belongs in the flow */
+.case-stage .crate-continue{position:static; margin-top:2px}
+.case-head{text-align:center}
+.case-head b{display:block; font-size:22px; letter-spacing:.04em}
+.case-head span{font-size:12px; color:var(--muted)}
+
+.reel-frame{
+  position:relative; width:100%; height:132px; overflow:hidden;
+  border-radius:14px; border:1px solid var(--line);
+  background:linear-gradient(180deg,#141d3a,#0d1226);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.6);
+}
+.reel{display:flex; gap:8px; padding:10px; will-change:transform}
+.reel-item{
+  position:relative; flex:0 0 auto; width:104px; height:112px;
+  border-radius:10px; overflow:hidden;
+  background:linear-gradient(180deg,#212c50,#161e3a);
+  border:1px solid #2b3866;
+  display:flex; align-items:center; justify-content:center;
+}
+/* the rarity stripe is what you actually read as the reel flies past */
+.reel-item::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:5px;
+  background:var(--r,#5b8dd6); box-shadow:0 0 12px var(--r,#5b8dd6);
+}
+.reel-item::before{
+  content:""; position:absolute; inset:auto 0 0 0; height:52%;
+  background:linear-gradient(to top, var(--r,#5b8dd6), transparent);
+  opacity:.22;
+}
+.reel-item canvas{position:relative; z-index:1}
+
+.reel-marker{
+  position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px;
+  background:linear-gradient(180deg,#fff,#ffcf5c); z-index:3;
+  box-shadow:0 0 16px rgba(255,207,92,.9);
+}
+.reel-marker::before,.reel-marker::after{
+  content:""; position:absolute; left:50%; transform:translateX(-50%);
+  border-left:7px solid transparent; border-right:7px solid transparent;
+}
+.reel-marker::before{top:-1px; border-top:9px solid #ffcf5c}
+.reel-marker::after{bottom:-1px; border-bottom:9px solid #ffcf5c}
+.reel-fade{position:absolute; top:0; bottom:0; width:90px; z-index:2; pointer-events:none}
+.reel-fade.left{left:0; background:linear-gradient(90deg,#0d1226,transparent)}
+.reel-fade.right{right:0; background:linear-gradient(270deg,#0d1226,transparent)}
+
+.case-result{
+  display:flex; align-items:center; gap:16px;
+  padding:14px 22px 14px 14px; border-radius:16px;
+  background:linear-gradient(180deg,#212c50,#141c38);
+  border:2px solid var(--r,#5b8dd6);
+  box-shadow:0 0 34px var(--r,#5b8dd6);
+  animation:casePop .4s cubic-bezier(.2,1.4,.4,1);
+}
+.case-result[hidden]{display:none}
+@keyframes casePop{from{transform:scale(.85); opacity:0}to{transform:scale(1); opacity:1}}
+.case-info{display:flex; flex-direction:column; gap:3px}
+.case-rarity{
+  font-size:11px; font-weight:900; letter-spacing:.16em; color:var(--r,#5b8dd6);
+}
+.case-info b{font-size:24px}
+.case-tag{
+  align-self:flex-start; margin-top:4px; font-size:11px; font-weight:900; letter-spacing:.12em;
+  padding:4px 10px; border-radius:999px; background:var(--r,#5b8dd6); color:#0b1020;
+}
+
+/* the case buttons on the collection screen */
+.crate-list{display:flex; flex-direction:column; gap:10px; margin-bottom:12px}
+.case-btn{
+  position:relative; text-align:left; padding:12px 14px; border-radius:14px;
+  border:1px solid var(--line); cursor:pointer; color:var(--txt);
+  background:linear-gradient(180deg,#212c50,#161e3a);
+  display:flex; flex-direction:column; gap:3px;
+  transition:transform .12s ease, border-color .12s ease;
+}
+.case-btn:hover:not(:disabled){transform:translateY(-2px); border-color:var(--c)}
+.case-btn:disabled{opacity:.5; cursor:not-allowed}
+.case-btn .cb-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+.case-btn .cb-name{font-size:15px; font-weight:900; color:var(--c)}
+.case-btn .cb-cost{font-size:14px; font-weight:900; color:var(--gold)}
+.case-btn .cb-blurb{font-size:11.5px; color:var(--muted); line-height:1.4}
+.case-btn .cb-odds{display:flex; gap:6px; margin-top:5px}
+.case-btn .cb-odds i{
+  flex:1; height:5px; border-radius:999px; background:var(--o);
+}
+@media (max-width:640px){
+  .reel-frame{height:112px}
+  .reel-item{width:84px; height:92px}
+  .case-info b{font-size:19px}
+  .case-head b{font-size:18px}
 }

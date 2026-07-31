@@ -20,6 +20,7 @@ class Enemy {
     this.shield = !!opts.shield;      // soaks part of every hit
     this.speedMul = opts.speedMul || 1;
     this.special = opts.special ? SPECIALS[opts.special] : null;   // counter escort
+    this.lane = opts.lane || 0;                                    // which road
     this.marked = 0;                  // Nocturne's prep work: takes double damage
     this.backward = 0;                // Jester's confusion: marches the wrong way
     this.hp = this.chapterBoss ? this.chapterBoss.hp
@@ -31,6 +32,7 @@ class Enemy {
   }
 
   get info() { return this.chapterBoss || (this.boss ? DREAD : TROOPS[this.tier]); }
+  get path() { return PATHS[this.lane] || PATHS[0]; }
   get color() { return this.info.color; }
   get speed() {
     return this.info.speed * this.slowF * this.speedMul * (this.swift ? SWIFT_MUL : 1);
@@ -77,15 +79,15 @@ class Enemy {
       this.backward -= dt;
       this.d = Math.max(0, this.d - v * .6 * dt);
       this.step += dt * v * .09;
-      const q = PATH.at(this.d);
+      const q = this.path.at(this.d);
       this.x = q.x; this.y = q.y; this.ang = q.ang;
       return;
     }
 
     this.d += v * dt;
     this.step += dt * v * .09;
-    if (this.d >= PATH.length) { game.leak(this); return; }
-    const p = PATH.at(this.d);
+    if (this.d >= this.path.length) { game.leak(this); return; }
+    const p = this.path.at(this.d);
     this.x = p.x; this.y = p.y; this.ang = p.ang;
   }
 
@@ -903,8 +905,9 @@ class Projectile {
 const ULT_ANIM_TIME = 1.1;
 
 class Saw {
-  constructor(level) {
+  constructor(level, lane = 0) {
     this.level = level;
+    this.lane = lane;
     this.d = 0;
     this.speed = 400 + (level - 1) * 80;
     this.r = 32 + (level - 1) * 7;
@@ -912,7 +915,8 @@ class Saw {
     this.spin = 0;
     this.age = 0;
     this.dead = false;
-    this.x = PATH.at(0).x; this.y = PATH.at(0).y;
+    this.path = PATHS[lane] || PATHS[0];
+    this.x = this.path.at(0).x; this.y = this.path.at(0).y;
     /* brief per-target cooldown so a Dreadnought is chewed, not one-shot */
     this.hitAt = new Map();
     /* the blade hum runs for as long as the saw is on the track */
@@ -923,7 +927,7 @@ class Saw {
     this.age += dt;
     this.spin += dt * 15;
     this.d += this.speed * dt;
-    const p = PATH.at(this.d);
+    const p = this.path.at(this.d);
     this.x = p.x; this.y = p.y;
 
     /* sparks off the track */
@@ -947,7 +951,7 @@ class Saw {
       this.voice.bite();
     }
 
-    if (this.d >= PATH.length) {
+    if (this.d >= this.path.length) {
       this.dead = true;
       this.voice.stop();
       game.explodeFx(this.x, this.y, 70, '#5cff9e');
@@ -1279,6 +1283,10 @@ class Game {
     this.webs = [];
     this.strikes = [];
     this.rally = 0;
+    this.downpour = 0;
+    this.downpourDmg = 2;
+    this.downpourTick = 0;
+    this.exposed = 0;
     this.streak = 0;
     this.streakT = 0;
     this.particles = [];
@@ -1296,8 +1304,9 @@ class Game {
     this.heroesPlaced = new Set();
   }
 
+  get heroSlots() { return (this.level && this.level.heroSlots) || 1; }
   get heroSlotsUsed() { return this.heroesPlaced.size; }
-  get heroSlotsFree() { return HERO_SLOTS - this.heroesPlaced.size; }
+  get heroSlotsFree() { return this.heroSlots - this.heroesPlaced.size; }
 
   setMapAndBake(id) {
     setMap(id);
@@ -1342,29 +1351,54 @@ class Game {
     }
 
     /* --- the route --- */
-    const stroke = (w, style) => {
+    const stroke = (pts, w, style) => {
       g.strokeStyle = style; g.lineWidth = w;
       g.lineJoin = 'round'; g.lineCap = 'round';
       g.beginPath();
-      PATH.points.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+      pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
       g.stroke();
     };
-    stroke(TRACK_WIDTH + 16, 'rgba(0,0,0,.22)');
-    stroke(TRACK_WIDTH + 8, th.trackEdge);
-    stroke(TRACK_WIDTH, th.track);
-    stroke(TRACK_WIDTH - 12, th.trackMid);
-
-    /* grit scattered along the route */
-    for (let d = 0; d < PATH.length; d += 7) {
-      const p = PATH.at(d);
-      const off = (rng() - .5) * (TRACK_WIDTH - 10);
-      const nx = -Math.sin(p.ang) * off, ny = Math.cos(p.ang) * off;
-      g.fillStyle = `rgba(${rng() < .5 ? th.grit[0] : th.grit[1]},.55)`;
-      g.beginPath(); g.arc(p.x + nx, p.y + ny, .8 + rng() * 1.4, 0, TAU); g.fill();
+    /* every layer of every road, so crossings look built rather than stacked */
+    for (const w of [[TRACK_WIDTH + 16, 'rgba(0,0,0,.22)'], [TRACK_WIDTH + 8, th.trackEdge],
+                     [TRACK_WIDTH, th.track], [TRACK_WIDTH - 12, th.trackMid]]) {
+      for (const pth of PATHS) stroke(pth.points, w[0], w[1]);
     }
 
-    /* breach point and the bastion line */
-    const start = PATH.at(2), end = PATH.at(PATH.length - 40);
+    /* grit scattered along each route */
+    for (const pth of PATHS) {
+      for (let d = 0; d < pth.length; d += 7) {
+        const p = pth.at(d);
+        const off = (rng() - .5) * (TRACK_WIDTH - 10);
+        const nx = -Math.sin(p.ang) * off, ny = Math.cos(p.ang) * off;
+        g.fillStyle = `rgba(${rng() < .5 ? th.grit[0] : th.grit[1]},.55)`;
+        g.beginPath(); g.arc(p.x + nx, p.y + ny, .8 + rng() * 1.4, 0, TAU); g.fill();
+      }
+    }
+
+    /* breach point and the bastion line, once per road */
+    for (const pth of PATHS) this.drawRoadMarkers(g, pth);
+
+    /* scenery */
+    for (const s2 of SCENERY) {
+      g.save(); g.translate(s2.x, s2.y); g.scale(s2.s, s2.s);
+      this.drawDecor(g, s2.t, rng);
+      g.restore();
+    }
+
+    /* vignette */
+    const vig = g.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * .35,
+      CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * .95);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,.45)');
+    g.fillStyle = vig;
+    g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    this.bg = c;
+  }
+
+  /** the red breach mouth and the blue bastion gate for one road */
+  drawRoadMarkers(g, pth) {
+    const start = pth.at(2), end = pth.at(pth.length - 40);
     g.save();
     g.translate(start.x, start.y);
     g.rotate(start.ang);
@@ -1395,23 +1429,6 @@ class Game {
     g.strokeStyle = 'rgba(120,210,255,.5)'; g.lineWidth = 1.4; g.stroke();
     g.fillStyle = '#cfe6ff';
     g.fillText(label, gx, gy - 12);
-
-    /* scenery */
-    for (const s2 of SCENERY) {
-      g.save(); g.translate(s2.x, s2.y); g.scale(s2.s, s2.s);
-      this.drawDecor(g, s2.t, rng);
-      g.restore();
-    }
-
-    /* vignette */
-    const vig = g.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * .35,
-      CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * .95);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,.45)');
-    g.fillStyle = vig;
-    g.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    this.bg = c;
   }
 
   /** one piece of scenery, drawn around the origin */
@@ -1638,7 +1655,7 @@ class Game {
 
   canPlaceAt(x, y) {
     if (x < 26 || y < 26 || x > CANVAS_W - 26 || y > CANVAS_H - 26) return false;
-    if (PATH.distanceTo(x, y) < TRACK_WIDTH / 2 + 16) return false;
+    if (distanceToAnyPath(x, y) < TRACK_WIDTH / 2 + 16) return false;
     for (const t of this.towers) if (distSq(t.x, t.y, x, y) < 34 * 34) return false;
     return true;
   }
@@ -1648,7 +1665,9 @@ class Game {
     if (!p) return false;
     const cost = p.isHero ? 0 : p.def.cost;
     if (p.isHero && !this.heroesPlaced.has(p.def.id) && this.heroSlotsFree <= 0) {
-      this.floatText(x, y - 20, `Only ${HERO_SLOTS} heroes per mission`, '#ff5a6e', 1.2, 14);
+      this.floatText(x, y - 20,
+        `Only ${this.heroSlots} hero${this.heroSlots > 1 ? 'es' : ''} on this mission`,
+        '#ff5a6e', 1.3, 14);
       Sfx.deny();
       return false;
     }
@@ -1755,7 +1774,7 @@ class Game {
 
     switch (ab.kind) {
       case 'saw':
-        this.saws.push(new Saw(t.level));
+        this.saws.push(new Saw(t.level, this.busiestLane()));
         burst('#5cff9e');
         Sfx.ultCharge();
         break;
@@ -1833,7 +1852,9 @@ class Game {
 
       case 'webzone': {
         const r = ab.radius[t.level - 1];
-        const p = PATH.at(clamp(this.leadDistance() + 60, 0, PATH.length));
+        const lead = this.leadDistance();
+        const lanePath = PATHS[lead.lane] || PATHS[0];
+        const p = lanePath.at(clamp(lead.d + 60, 0, lanePath.length));
         this.webs.push({
           x: p.x, y: p.y, r, life: ab.duration[t.level - 1],
           maxLife: ab.duration[t.level - 1], slow: .3, seed: rand(0, TAU),
@@ -1893,9 +1914,9 @@ class Game {
         for (const e of this.enemies) {
           if (e.dead) continue;
           const before = e.d;
-          e.d = Math.max(0, e.d - PATH.length * frac);
+          e.d = Math.max(0, e.d - e.path.length * frac);
           if (e.d < before) n++;
-          const p2 = PATH.at(e.d);
+          const p2 = e.path.at(e.d);
           this.rings.push({ x: p2.x, y: p2.y, r: 4, max: 26, life: .4, maxLife: .4,
             color: '#ff9a4d', thick: 3 });
           e.x = p2.x; e.y = p2.y;
@@ -1904,6 +1925,43 @@ class Game {
         this.flash = Math.max(this.flash, .3);
         this.floatText(t.x, t.y - 66, `${n} sent back`, '#ffb37a', 1.5, 16);
         Sfx.portal();
+        break;
+      }
+
+      case 'volley': {
+        const shots = ab.shots[t.level - 1];
+        const marks = [...this.enemies].filter((e) => !e.dead).sort((a, b) => b.d - a.d);
+        for (let i = 0; i < shots; i++) {
+          const e = marks[i % Math.max(1, marks.length)];
+          if (!e) break;
+          const a = rand(0, TAU);
+          this.projectiles.push(new Projectile(t, {
+            x: t.x + Math.cos(a) * 12, y: t.y - 30 - i * 4,
+            vx: (e.x - t.x) * 1.6, vy: (e.y - t.y) * 1.6,
+            damage: 3 + t.level, pierce: 2, life: .9, kind: 'dart',
+            color: '#d8f0a0', size: 4, tags: t.def.tags,
+          }));
+        }
+        burst('#c9ef8a', 22);
+        Sfx.volley();
+        break;
+      }
+
+      case 'downpour': {
+        this.downpour = Math.max(this.downpour, ab.duration[t.level - 1]);
+        this.downpourDmg = 1 + t.level;
+        burst('#c9d6f0', 26);
+        this.floatText(t.x, t.y - 66, 'DOWNPOUR', '#dbe8ff', 1.5, 17);
+        Sfx.downpour();
+        break;
+      }
+
+      case 'expose': {
+        this.exposed = Math.max(this.exposed, ab.duration[t.level - 1]);
+        burst('#c8506a', 24);
+        for (const e of this.enemies) if (!e.dead) this.spark(e.x, e.y, '#ff8aa8', 3);
+        this.floatText(t.x, t.y - 66, 'ARMOUR EXPOSED', '#ff9ab0', 1.6, 16);
+        Sfx.expose();
         break;
       }
 
@@ -1958,6 +2016,8 @@ class Game {
     for (const t of this.towers) if (t.def.ability) t.charges = t.maxCharges;
     this.queue = [];
     const speedMul = (this.level.mods && this.level.mods.speed) || 1;
+    const lanes = PATHS.length;
+    let laneTick = 0;
     for (const grp of this.waves[this.round - 1]) {
       for (let i = 0; i < grp.count; i++) {
         this.queue.push({
@@ -1965,6 +2025,8 @@ class Game {
           opts: {
             swift: !!grp.swift, shield: !!grp.shield, speedMul, special: grp.special,
             bossDef: grp.tier === 'chapterBoss' ? this.level.chapterBoss : null,
+            /* split the wave across every road the map has */
+            lane: lanes > 1 ? (laneTick++) % lanes : 0,
             /* Dreadnoughts get tougher as the campaign goes on */
             hpMul: 1 + (this.levelNo - 1) * .13,
           },
@@ -1996,14 +2058,24 @@ class Game {
     Sfx.stopAll();
     this.running = false;
     if (win) {
-      const first = Save.starsOn(this.levelNo) === 0;
+      const had = Save.starsOn(this.levelNo);
+      const first = had === 0;
       const stars = starsFor(this.lives, this.level.lives);
-      const best = stars > Save.starsOn(this.levelNo);
-      this.runGems = levelReward(this.level) * (first ? 2 : 1) + (stars - 1) * 10;
-      Save.addGems(this.runGems);
+      const best = stars > had;
+      /* the clear pays a little; the stars pay properly */
+      const bounty = starBounty(had, Math.max(had, stars));
+      const chapterIdx = CHAPTERS.findIndex((c) => c.id === this.level.chapter);
+      const wasMastered = Save.chapterMastered(this.level.chapter);
       Save.clearLevel(this.levelNo, stars);
+      const nowMastered = Save.chapterMastered(this.level.chapter);
+      const cityBonus = !wasMastered && nowMastered ? chapterBounty(chapterIdx) : 0;
+
+      this.runGems = levelReward(this.level) * (first ? 2 : 1) + bounty + cityBonus;
+      Save.addGems(this.runGems);
       Sfx.fanfare();
-      this.onEvent('victory', { gems: this.runGems, first, level: this.levelNo, stars, best });
+      this.onEvent('victory', {
+        gems: this.runGems, first, level: this.levelNo, stars, best, bounty, cityBonus,
+      });
     } else {
       /* a failed run still pays for the rounds that were held */
       this.runGems = Math.max(0, (this.round - 1) * 4);
@@ -2018,8 +2090,9 @@ class Game {
     const dmg = b.boss ? DREAD.leak : b.tier + 1;
     this.lives -= dmg;
     this.shake = Math.max(this.shake, 7);
-    /* the track exits below the canvas, so pin the warning where it's visible */
-    const exit = PATH.at(PATH.length - 70);
+    /* the road may exit off-canvas, so pin the warning where it's visible */
+    const lane = b.path || PATH;
+    const exit = lane.at(lane.length - 70);
     this.floatText(exit.x, Math.min(exit.y, CANVAS_H - 46), `-${dmg}`, '#ff5a6e', 1.1, 20);
     Sfx.leak();
     if (this.lives <= 0) { this.lives = 0; this.end(false); }
@@ -2153,10 +2226,19 @@ class Game {
     return best;
   }
 
+  /** how far along its own road the leading trooper is, and on which road */
   leadDistance() {
-    let best = 0;
-    for (const e of this.enemies) if (!e.dead && e.d > best) best = e.d;
-    return best;
+    let best = 0, lane = 0;
+    for (const e of this.enemies) if (!e.dead && e.d > best) { best = e.d; lane = e.lane; }
+    return { d: best, lane };
+  }
+
+  /** the road carrying the most trouble right now */
+  busiestLane() {
+    if (PATHS.length < 2) return 0;
+    const tally = new Array(PATHS.length).fill(0);
+    for (const e of this.enemies) if (!e.dead) tally[e.lane] = (tally[e.lane] || 0) + 1;
+    return tally.indexOf(Math.max(...tally));
   }
 
   anyInRange(x, y, r) {
@@ -2182,8 +2264,9 @@ class Game {
     /* Nocturne's mark doubles everything that lands on it */
     if (b.marked > 0) amount *= 2;
 
-    /* shielded troopers shrug off part of every hit (but never all of it) */
-    if (b.shield && !opts.dot) amount = Math.max(1, amount - SHIELD_SOAK);
+    /* Sable's work: seams found, so plate stops helping and hits bite deeper */
+    if (this.exposed > 0) amount += 1;
+    else if (b.shield && !opts.dot) amount = Math.max(1, amount - SHIELD_SOAK);
 
     if (b.boss) {
       b.hp -= amount;
@@ -2361,6 +2444,18 @@ class Game {
     for (const sw of this.saws) if (!sw.dead) sw.update(dt, this);
     for (const ln of this.lances) if (!ln.dead) ln.update(dt, this);
     if (this.rally > 0) this.rally -= dt;
+    if (this.exposed > 0) this.exposed -= dt;
+    if (this.downpour > 0) {
+      this.downpour -= dt;
+      this.downpourTick -= dt;
+      for (const e of this.enemies) if (!e.dead) e.chill(.45, .3);
+      if (this.downpourTick <= 0) {
+        this.downpourTick = .6;
+        for (const e of [...this.enemies]) {
+          if (!e.dead) this.damage(e, this.downpourDmg, { x: e.x, y: e.y, silent: true, tags: ['storm'] });
+        }
+      }
+    }
     for (const w of this.webs) {
       w.life -= dt;
       for (const e of this.enemies) {
@@ -2540,6 +2635,22 @@ class Game {
       ctx.strokeText(t.text, t.x, t.y);
       ctx.fillStyle = t.color;
       ctx.fillText(t.text, t.x, t.y);
+      ctx.restore();
+    }
+
+    /* Downpour: rain across the whole board while it lasts */
+    if (this.downpour > 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(190,220,255,.35)';
+      ctx.lineWidth = 1.2;
+      const t = this.time * 900;
+      for (let i = 0; i < (this.fx > .75 ? 90 : 45); i++) {
+        const x = (i * 137.5 + t * .7) % (CANVAS_W + 60) - 30;
+        const y = (i * 271.3 + t) % (CANVAS_H + 60) - 30;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 14); ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(90,130,190,.12)';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
       ctx.restore();
     }
 

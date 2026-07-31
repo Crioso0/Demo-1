@@ -23,7 +23,6 @@ const UI = {
     $('#btn-res-again').onclick = () => { $('#overlay-result').hidden = true; this.startRun(); };
 
     /* ---- collection ---- */
-    $('#btn-open-crate').onclick = () => this.openCrate();
     $('#btn-crate-continue').onclick = () => this.closeCrate();
 
     /* ---- game chrome ---- */
@@ -261,7 +260,7 @@ const UI = {
       }
     }
     const slots = $('#hero-slots');
-    if (slots) slots.textContent = `${g.heroSlotsUsed} / ${HERO_SLOTS} deployed`;
+    if (slots) slots.textContent = `${g.heroSlotsUsed} / ${g.heroSlots} deployed`;
   },
 
   syncInspect() {
@@ -289,8 +288,13 @@ const UI = {
     const ult = $('#btn-ult');
     if (t.def.ability) {
       ult.hidden = false;
-      $('#ult-name').textContent = t.def.ability.name;
-      $('#ult-charges').textContent = `${t.charges} / ${t.maxCharges}`;
+      const locked = t.maxCharges === 0;
+      $('#ult-name').textContent = locked
+        ? `${t.def.ability.name} — locked` : t.def.ability.name;
+      $('#ult-charges').textContent = locked
+        ? (t.def.ability.unlockNote || 'Upgrade to unlock')
+        : `${t.charges} / ${t.maxCharges}`;
+      ult.classList.toggle('locked', locked);
       ult.disabled = !this.game.canUseUlt(t);
     } else {
       ult.hidden = true;
@@ -314,6 +318,13 @@ const UI = {
     $('#hud-round').textContent = `${g.round}/${g.waves.length}`;
     $('#hud-level').textContent = `MISSION ${g.level.mission} · ${g.levelNo}/${LEVEL_COUNT}`;
     $('#hud-map').textContent = CHAPTER_BY_ID[g.level.chapter].name;
+
+    /* the label is derived, not remembered — reset() used to leave it stale */
+    const sp = $('#btn-speed');
+    if (sp) {
+      sp.textContent = `${g.speed}×`;
+      sp.classList.toggle('on', g.speed > 1);
+    }
 
     const go = $('#btn-start-round');
     go.classList.toggle('running', g.running);
@@ -385,6 +396,11 @@ const UI = {
         : `The bastion fell on round ${g.round} of ${g.waves.length}. `
           + `Three stars needs ${Math.ceil(g.level.lives * .9)} lives left.`;
     $('#res-gems').textContent = `+${gems}`;
+    const bits = [];
+    if (payload.bounty) bits.push(`${payload.bounty} from stars`);
+    if (payload.cityBonus) bits.push(`${payload.cityBonus} city bounty`);
+    const note = $('#res-gem-note');
+    if (note) { note.textContent = bits.join(' · '); note.hidden = !bits.length; }
 
     /* offer the next level straight from the result card */
     const again = $('#btn-res-again');
@@ -439,64 +455,144 @@ const UI = {
       wrap.appendChild(card);
     }
 
-    const btn = $('#btn-open-crate');
-    btn.disabled = Save.gems < 150;
-    const note = $('#crate-note');
-    if (Save.lockedHeroes().length === 0) note.textContent = 'Full roster! Crates now pay out gems.';
-    else if (Save.gems < 150) note.textContent = `${150 - Save.gems} more gems needed.`;
-    else note.textContent = 'Ready to open!';
+    this.renderCrates();
   },
 
-  openCrate() {
+  /* ---- cases ---- */
+  renderCrates() {
+    const list = $('#crate-list');
+    list.innerHTML = '';
+    const locked = Save.lockedHeroes();
+
+    for (const crate of CRATES) {
+      const afford = Save.gems >= crate.cost;
+      const btn = document.createElement('button');
+      btn.className = 'case-btn';
+      btn.style.setProperty('--c', crate.accent);
+      btn.disabled = !afford || this.crateBusy;
+      const odds = ['Rare', 'Epic', 'Legendary']
+        .map((r) => `<i style="--o:${RARITY_COLOR[r]}; flex:${Math.max(1, (crate.odds[r] || 0) * 100)}"
+                        title="${r} ${Math.round((crate.odds[r] || 0) * 100)}%"></i>`).join('');
+      btn.innerHTML = `
+        <span class="cb-top">
+          <span class="cb-name">${crate.name}</span>
+          <span class="cb-cost">${crate.cost} gems</span>
+        </span>
+        <span class="cb-blurb">${crate.blurb}</span>
+        <span class="cb-odds">${odds}</span>`;
+      btn.onclick = () => this.openCrate(crate);
+      list.appendChild(btn);
+    }
+
+    const note = $('#crate-note');
+    if (!locked.length) note.textContent = 'Full roster — cases now pay out gems instead.';
+    else if (Save.gems < CRATES[0].cost) {
+      note.textContent = `${CRATES[0].cost - Save.gems} more gems for a ${CRATES[0].name}.`;
+    } else note.textContent = `${locked.length} hero${locked.length > 1 ? 'es' : ''} still out there.`;
+  },
+
+  /** a small canvas portrait, used for both reel tiles and the result */
+  heroTile(def, size, scale) {
+    const cv = document.createElement('canvas');
+    cv.width = size; cv.height = size;
+    const c = cv.getContext('2d');
+    c.translate(size / 2, size * .64);
+    c.scale(scale, scale);
+    def.art(c, 2, 0);
+    return cv;
+  },
+
+  /**
+   * The case reel: a long strip of heroes that flies past a marker and slows
+   * to a stop on the one you won. The winner is decided first — the spin is
+   * presentation, but the tension is real because the odds are.
+   */
+  openCrate(crate) {
     if (this.crateBusy) return;
-    if (!Save.spendGems(150)) return;
+    if (Save.gems < crate.cost) { Sfx.deny(); return; }
+    if (!Save.spendGems(crate.cost)) { Sfx.deny(); return; }
     this.crateBusy = true;
 
     const locked = Save.lockedHeroes();
     const isNew = locked.length > 0;
-    const hero = isNew ? pick(locked) : pick(HEROES);
-    if (isNew) Save.unlock(hero.id);
-    else Save.addGems(75);
+    const pool = isNew ? locked : HEROES.filter((h) => !h.starter);
+    const won = rollCrate(crate, pool);
+    const refund = DUPE_REFUND[won.rarity] || 60;
+    if (isNew) Save.unlock(won.id); else Save.addGems(refund);
 
-    const stage = $('#crate-stage');
-    stage.className = 'crate-stage';
-    $('#reveal-card').style.setProperty('--rare', hero.rarityColor);
+    /* build the strip: filler drawn from everything, winner at a fixed slot */
+    const reel = $('#reel');
+    const stage = $('#case-stage');
+    reel.innerHTML = '';
+    reel.style.transition = 'none';
+    reel.style.transform = 'translateX(0)';
+    $('#case-result').hidden = true;
     $('#btn-crate-continue').hidden = true;
+    $('#case-name').textContent = crate.name;
+    $('#case-odds').textContent = ['Legendary', 'Epic', 'Rare']
+      .map((r) => `${r} ${Math.round((crate.odds[r] || 0) * 100)}%`).join('  ·  ');
+    stage.style.setProperty('--r', RARITY_COLOR[won.rarity]);
+
+    const WIN_INDEX = 46;
+    const TOTAL = WIN_INDEX + 12;
+    const all = HEROES.filter((h) => !h.starter);
+    for (let i = 0; i < TOTAL; i++) {
+      const def = i === WIN_INDEX ? won : pick(all);
+      const cell = document.createElement('div');
+      cell.className = 'reel-item';
+      cell.style.setProperty('--r', RARITY_COLOR[def.rarity] || '#5b8dd6');
+      cell.appendChild(this.heroTile(def, 84, 1.5));
+      reel.appendChild(cell);
+    }
+
     $('#overlay-crate').hidden = false;
-
     Sfx.resume();
-    Sfx.crateRumble();
-    stage.classList.add('shaking');
 
-    setTimeout(() => {
-      stage.classList.remove('shaking');
-      stage.classList.add('burst');
-      Sfx.crate();
-    }, 1250);
+    /* measure a tile so the maths survives any breakpoint */
+    requestAnimationFrame(() => {
+      const cell = reel.children[0];
+      const step = cell.getBoundingClientRect().width + 8;
+      const frame = $('.reel-frame').getBoundingClientRect().width;
+      /* land the winner under the marker, a little off-centre so it feels real */
+      const jitter = (Math.random() - .5) * (step * .5);
+      const target = (WIN_INDEX * step) + step / 2 - frame / 2 + 10 + jitter;
 
-    setTimeout(() => {
-      /* fill in the reveal card */
-      const art = $('#reveal-art');
-      art.innerHTML = '';
-      const cv = document.createElement('canvas');
-      cv.width = 170; cv.height = 170;
-      const c = cv.getContext('2d');
-      c.translate(85, 104);
-      c.scale(3, 3);
-      hero.art(c, 3, 0);
-      art.appendChild(cv);
+      const DUR = 6.4;
+      reel.style.transition = `transform ${DUR}s cubic-bezier(.08,.62,.12,1)`;
+      reel.style.transform = `translateX(${-target}px)`;
 
-      $('#reveal-name').textContent = hero.name;
-      $('#reveal-role').textContent = hero.role;
-      const tag = $('#reveal-tag');
-      tag.textContent = isNew ? `NEW · ${hero.rarity.toUpperCase()}` : 'DUPLICATE · +75 GEMS';
-      stage.classList.add('revealed');
-      $('#btn-crate-continue').hidden = false;
-      if (isNew) Sfx.fanfare(); else Sfx.coin();
-    }, 1750);
+      /* tick as each tile crosses the marker — the ticks thin out as it slows */
+      let last = -1;
+      const startedAt = performance.now();
+      const tick = () => {
+        const t = (performance.now() - startedAt) / 1000;
+        const m = new DOMMatrixReadOnly(getComputedStyle(reel).transform);
+        const idx = Math.floor((-m.m41 + frame / 2) / step);
+        if (idx !== last) { last = idx; Sfx.reelTick(); }
+        if (t < DUR + .1) this.reelRaf = requestAnimationFrame(tick);
+      };
+      this.reelRaf = requestAnimationFrame(tick);
+
+      setTimeout(() => {
+        cancelAnimationFrame(this.reelRaf);
+        const res = $('#case-result');
+        $('#case-hero').innerHTML = '';
+        $('#case-hero').appendChild(this.heroTile(won, 96, 1.8));
+        $('#case-rarity').textContent = won.rarity.toUpperCase();
+        $('#case-hero-name').textContent = won.name;
+        $('#case-tag').textContent = isNew ? 'NEW HERO' : `DUPLICATE · +${refund} GEMS`;
+        res.style.setProperty('--r', RARITY_COLOR[won.rarity]);
+        res.hidden = false;
+        $('#btn-crate-continue').hidden = false;
+        if (won.rarity === 'Legendary') { Sfx.fanfare(); Sfx.crate(); }
+        else if (isNew) Sfx.crate();
+        else Sfx.coin();
+      }, DUR * 1000 + 120);
+    });
   },
 
   closeCrate() {
+    cancelAnimationFrame(this.reelRaf);
     $('#overlay-crate').hidden = true;
     this.crateBusy = false;
     this.renderCollection();

@@ -14,10 +14,13 @@ and all sound is synthesised with WebAudio.
 2. Place towers and up to **two heroes** on open ground (not on the route).
 3. Start a round; troopers march the route and cost you lives if they reach the
    bastion. Kills pay cash.
-4. Clear every round in a level to win it. Levels pay **gems** (double on first
-   clear); a failed run still pays for the rounds you held.
-5. Spend **150 gems** on a hero crate. Duplicates refund 75. Progress is saved
-   to `localStorage`.
+4. Clear every round in a level to win it. The clear pays a little; **stars pay
+   properly** — 10 / 30 / 80 gems the first time you reach each one, plus a
+   250+ bounty for taking every star in a city.
+5. Spend gems on cases: a **Field Case** (220) is mostly Rares, a **Vault Case**
+   (750) is where Legendaries actually come from. Both spin a reel that lands on
+   what you won. Duplicates refund by rarity. Progress is saved to
+   `localStorage`.
 
 ## The campaign
 
@@ -33,6 +36,11 @@ city**, so the campaign asks you to go back and play well, not just play on.
 | **Ashfall Reach** | the burning flats | The Cinderlord | Knits its own plating back together |
 | **Frostline Expanse** | the white silence | The Rimewarden | Flash-freezes everything you own |
 | **The Emerald Reach** | the cosmos | The Void Sovereign | Null pulse: every hero offline, and reinforcements |
+
+**Hero slots grow with the campaign** — one in the first city, two in the
+second, three from the third on — so the early missions are solved with towers.
+From the second city, later missions open a **second road** and the legion
+arrives from two directions at once.
 
 **Stars** come from how much of the bastion survived: 3★ needs 90% of your
 lives, 2★ needs 55%, 1★ is any clear. Every mission's route is generated from
@@ -122,8 +130,14 @@ press `Q`, or use the green button in the inspect panel.
 - **Mirror Portal** (Arcanist) — folds the route and drops the entire legion up
   to two thirds of the way back.
 
-All twelve scale the same way: **1 use at level 1, 2 at level 2, 3 at level 3**,
-refilled at the start of every round. Charge pips float above the hero.
+**An ultimate has to be earned.** Most heroes unlock theirs only at **level 3**
+— a 3500 investment — and get a **single use per round**. The lighter kits
+(Streak, Nocturne, Webline, Bulwark, Quiver, Sable) unlock at level 2 and get
+two. Charge pips float above the hero, and the inspect panel says what is still
+locked.
+
+Upgrades are flat and steep: **500 then 1500** for a tower, **1000 then 2500**
+for a hero. Maxing one hero is most of a mission's income.
 
 ## Towers
 
